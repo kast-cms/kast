@@ -1,2 +1,2 @@
 pnpm typecheck
-pnpm test --passWithNoTests
+pnpm turbo run test
