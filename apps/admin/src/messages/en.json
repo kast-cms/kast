@@ -216,5 +216,54 @@
       "noFiles": "No files found.",
       "uploadHint": "Upload files in the Media Library."
     }
+  },
+  "mediaLibrary": {
+    "title": "Media Library",
+    "description": "Upload and manage your media files.",
+    "searchPlaceholder": "Search files…",
+    "noFiles": "No files found.",
+    "upload": "Upload",
+    "filter": {
+      "allTypes": "All types",
+      "images": "Images",
+      "videos": "Videos",
+      "documents": "Documents"
+    },
+    "sort": {
+      "date": "Date uploaded",
+      "name": "Name",
+      "size": "Size"
+    },
+    "folder": {
+      "allFiles": "All files",
+      "new": "New folder",
+      "namePlaceholder": "Folder name",
+      "create": "Create"
+    },
+    "detail": {
+      "altText": "Alt text",
+      "altTextPlaceholder": "Describe this image…",
+      "save": "Save",
+      "saving": "Saving…",
+      "size": "Size",
+      "type": "Type",
+      "dimensions": "Dimensions",
+      "uploaded": "Uploaded",
+      "url": "URL",
+      "usedIn": "Used in {{count}} entries",
+      "trash": "Move to trash",
+      "trashDisabled": "In use — cannot trash"
+    },
+    "uploadZone": {
+      "title": "Upload files",
+      "tabFile": "Upload file",
+      "tabUrl": "From URL",
+      "dropHere": "Drop files here",
+      "or": "or",
+      "browse": "Browse files",
+      "uploading": "Uploading…",
+      "urlHint": "Enter a URL to download and store the file.",
+      "import": "Import"
+    }
   }
 }

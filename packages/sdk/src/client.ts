@@ -1,3 +1,4 @@
+import { MediaResource } from './media-resource.js';
 import type {
   AddFieldBody,
   ApiListResponse,
@@ -21,6 +22,7 @@ import type {
 interface RequestOptions {
   method?: string;
   body?: unknown;
+  formData?: FormData;
   headers?: Record<string, string>;
 }
 
@@ -41,29 +43,52 @@ export class KastClient {
     this.accessToken = token;
   }
 
-  private buildHeaders(): Record<string, string> {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  private buildAuthOnlyHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {};
     if (this.accessToken) headers['Authorization'] = `Bearer ${this.accessToken}`;
     else if (this.apiKey) headers['X-Kast-Key'] = this.apiKey;
     return headers;
   }
 
+  private buildHeaders(): Record<string, string> {
+    return { 'Content-Type': 'application/json', ...this.buildAuthOnlyHeaders() };
+  }
+
+  private buildRequestInit(options: RequestOptions): {
+    headers: Record<string, string>;
+    body: BodyInit | undefined;
+  } {
+    const isForm = options.formData !== undefined;
+    const headers = isForm
+      ? { ...this.buildAuthOnlyHeaders(), ...(options.headers ?? {}) }
+      : { ...this.buildHeaders(), ...(options.headers ?? {}) };
+    const body: BodyInit | undefined = isForm
+      ? options.formData
+      : options.body !== undefined
+        ? JSON.stringify(options.body)
+        : undefined;
+    return { headers, body };
+  }
+
+  private buildError(json: unknown, status: number): Error & { code?: string; status?: number } {
+    const err = (json as { error?: { message?: string; code?: string } }).error;
+    const message = err?.message ?? `HTTP ${status}`;
+    const error = new Error(message) as Error & { code?: string; status?: number };
+    if (err?.code !== undefined) error.code = err.code;
+    error.status = status;
+    return error;
+  }
+
   async request<T>(path: string, options: RequestOptions = {}): Promise<T> {
     const url = `${this.baseUrl}${path}`;
+    const { headers, body } = this.buildRequestInit(options);
     const res = await this._fetch(url, {
       method: options.method ?? 'GET',
-      headers: { ...this.buildHeaders(), ...(options.headers ?? {}) },
-      ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
+      headers,
+      ...(body !== undefined ? { body } : {}),
     });
     const json = (await res.json()) as unknown;
-    if (!res.ok) {
-      const err = (json as { error?: { message?: string; code?: string } }).error;
-      const message = err?.message ?? `HTTP ${res.status}`;
-      const error = new Error(message) as Error & { code?: string; status?: number };
-      if (err?.code !== undefined) error.code = err.code;
-      error.status = res.status;
-      throw error;
-    }
+    if (!res.ok) throw this.buildError(json, res.status);
     return json as T;
   }
 
@@ -230,23 +255,6 @@ class ContentResource {
       method: 'POST',
       body: { ids } satisfies BulkActionBody,
     });
-  }
-}
-
-class MediaResource {
-  constructor(private readonly client: KastClient) {}
-
-  list(params: Record<string, string> = {}): Promise<unknown> {
-    const qs = new URLSearchParams(params).toString();
-    return this.client.request(`/api/v1/media${qs ? `?${qs}` : ''}`);
-  }
-
-  get(id: string): Promise<unknown> {
-    return this.client.request(`/api/v1/media/${id}`);
-  }
-
-  delete(id: string): Promise<unknown> {
-    return this.client.request(`/api/v1/media/${id}`, { method: 'DELETE' });
   }
 }
 

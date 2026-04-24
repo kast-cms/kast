@@ -159,3 +159,68 @@ export interface EntryListParams {
   sort?: string;
   order?: 'asc' | 'desc';
 }
+
+/* ── Media ───────────────────────────────────────────────── */
+
+export interface MediaUsage {
+  entryId: string;
+  contentType: string;
+  fieldName: string;
+  entryTitle: string | null;
+}
+
+export interface MediaFolder {
+  id: string;
+  name: string;
+  parentId: string | null;
+  filesCount: number;
+  children: MediaFolder[];
+}
+
+export interface MediaFileSummary {
+  id: string;
+  filename: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  url: string;
+  provider: string;
+  width: number | null;
+  height: number | null;
+  altText: string | null;
+  isAiAltText: boolean;
+  isAiGenerated: boolean;
+  folder: { id: string; name: string } | null;
+  usagesCount: number;
+  createdAt: string;
+}
+
+export interface MediaFileDetail extends MediaFileSummary {
+  usages: MediaUsage[];
+  updatedAt: string;
+}
+
+export interface MediaListParams {
+  folderId?: string;
+  mimeType?: string;
+  search?: string;
+  limit?: string;
+  cursor?: string;
+  sort?: string;
+  order?: 'asc' | 'desc';
+}
+
+export interface UpdateMediaBody {
+  altText?: string | null;
+  folderId?: string | null;
+}
+
+export interface CreateFolderBody {
+  name: string;
+  parentId?: string;
+}
+
+export interface UpdateFolderBody {
+  name?: string;
+  parentId?: string | null;
+}
