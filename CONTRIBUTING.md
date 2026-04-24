@@ -27,13 +27,13 @@ pnpm dev
 
 ## Branch Strategy
 
-| Branch | Purpose |
-|---|---|
-| `main` | Production-ready. Protected. No direct pushes. |
-| `develop` | Integration branch. Always shippable. |
-| `feature/<scope>/<description>` | New features |
-| `fix/<scope>/<description>` | Bug fixes |
-| `docs/<description>` | Documentation only |
+| Branch                          | Purpose                                        |
+| ------------------------------- | ---------------------------------------------- |
+| `main`                          | Production-ready. Protected. No direct pushes. |
+| `develop`                       | Integration branch. Always shippable.          |
+| `feature/<scope>/<description>` | New features                                   |
+| `fix/<scope>/<description>`     | Bug fixes                                      |
+| `docs/<description>`            | Documentation only                             |
 
 **Always branch from `develop`. PRs go back to `develop`.**
 
@@ -48,13 +48,16 @@ We use [Conventional Commits](https://www.conventionalcommits.org/).
 ```
 
 ### Types
+
 `feat` `fix` `docs` `style` `refactor` `perf` `test` `build` `ci` `chore` `revert`
 
 ### Scopes
+
 `content` `seo` `auth` `media` `mcp` `i18n` `audit` `webhook` `queue` `plugin`
 `form` `menu` `settings` `trash` `admin` `api` `sdk` `cli` `deps` `config`
 
 ### Examples
+
 ```bash
 feat(content): add version history with diff view
 fix(auth): resolve jwt refresh token not rotating
@@ -74,6 +77,7 @@ All code must follow [KAST_DEV_STANDARDS.md](./docs/KAST_DEV_STANDARDS.md):
 - Tests required for all service methods (80% coverage minimum)
 
 Run checks locally:
+
 ```bash
 pnpm lint          # ESLint
 pnpm typecheck     # TypeScript
@@ -96,6 +100,7 @@ pnpm format:check  # Prettier
 ### PR Template
 
 When you open a PR, fill in the template:
+
 - What does this change?
 - Why is this change needed?
 - How was it tested?
@@ -108,6 +113,7 @@ When you open a PR, fill in the template:
 Use the [bug report template](https://github.com/kast-cms/kast/issues/new?template=bug_report.md).
 
 Include:
+
 - Kast version
 - Node.js version
 - Steps to reproduce
