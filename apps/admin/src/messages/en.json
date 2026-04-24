@@ -1,0 +1,69 @@
+{
+  "nav": {
+    "contentTypes": "Content Types",
+    "content": "Content",
+    "media": "Media",
+    "users": "Users",
+    "roles": "Roles",
+    "apiTokens": "API Tokens",
+    "agentTokens": "Agent Tokens",
+    "seo": "SEO",
+    "webhooks": "Webhooks",
+    "forms": "Forms",
+    "menus": "Menus",
+    "trash": "Trash",
+    "settings": "Settings"
+  },
+  "auth": {
+    "login": {
+      "title": "Sign in to Kast",
+      "subtitle": "Enter your credentials to access the admin panel",
+      "emailLabel": "Email address",
+      "emailPlaceholder": "you@example.com",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "••••••••",
+      "submit": "Sign in",
+      "submitting": "Signing in…",
+      "errorInvalid": "Invalid email or password.",
+      "errorGeneric": "Something went wrong. Please try again."
+    },
+    "logout": "Sign out"
+  },
+  "setup": {
+    "title": "Welcome to Kast",
+    "subtitle": "Create your first admin account to get started.",
+    "firstNameLabel": "First name",
+    "lastNameLabel": "Last name",
+    "emailLabel": "Email address",
+    "passwordLabel": "Password",
+    "confirmPasswordLabel": "Confirm password",
+    "submit": "Create account",
+    "submitting": "Creating account…",
+    "passwordMismatch": "Passwords do not match.",
+    "errorGeneric": "Something went wrong. Please try again."
+  },
+  "common": {
+    "loading": "Loading…",
+    "error": "Something went wrong",
+    "retry": "Try again",
+    "cancel": "Cancel",
+    "save": "Save",
+    "saving": "Saving…",
+    "delete": "Delete",
+    "edit": "Edit",
+    "view": "View",
+    "search": "Search",
+    "noResults": "No results found.",
+    "comingSoon": "Coming soon"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "description": "The page you're looking for doesn't exist or has been moved.",
+    "back": "Back to dashboard"
+  },
+  "error": {
+    "title": "Something went wrong",
+    "description": "An unexpected error occurred. Please try again.",
+    "retry": "Try again"
+  }
+}
