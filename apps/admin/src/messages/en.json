@@ -150,5 +150,71 @@
       "deleteButton": "Delete permanently",
       "deleting": "Deleting…"
     }
+  },
+  "content": {
+    "title": "Content",
+    "description": "Browse and manage your content entries.",
+    "newEntry": "New entry",
+    "emptyTitle": "No entries yet",
+    "emptyDescription": "Create your first entry for this content type.",
+    "searchPlaceholder": "Search entries…",
+    "filterStatus": "Status",
+    "filterLocale": "Locale",
+    "allStatuses": "All statuses",
+    "allLocales": "All locales",
+    "loadMore": "Load more",
+    "table": {
+      "title": "Title",
+      "status": "Status",
+      "locale": "Locale",
+      "author": "Author",
+      "updated": "Last Updated",
+      "actions": ""
+    },
+    "status": {
+      "DRAFT": "Draft",
+      "PUBLISHED": "Published",
+      "ARCHIVED": "Archived"
+    },
+    "bulk": {
+      "selected": "{{count}} selected",
+      "publish": "Publish",
+      "unpublish": "Unpublish",
+      "trash": "Move to Trash",
+      "confirmTrash": "Move {{count}} entries to trash?",
+      "confirmPublish": "Publish {{count}} entries?",
+      "confirmUnpublish": "Unpublish {{count}} entries?"
+    },
+    "editor": {
+      "newTitle": "New entry",
+      "editTitle": "Edit entry",
+      "saveDraft": "Save draft",
+      "saving": "Saving…",
+      "publish": "Publish",
+      "publishing": "Publishing…",
+      "unpublish": "Unpublish",
+      "unpublishing": "Unpublishing…",
+      "schedule": "Schedule",
+      "scheduledAt": "Publish at",
+      "autosaved": "Draft saved",
+      "unsavedChanges": "Unsaved changes",
+      "localeTab": "{{locale}}"
+    },
+    "seo": {
+      "panelTitle": "SEO",
+      "metaTitle": "Meta title",
+      "metaDescription": "Meta description",
+      "ogImage": "OG image",
+      "canonicalUrl": "Canonical URL",
+      "score": "SEO score",
+      "scoreStub": "SEO scoring will be available after WS-6."
+    },
+    "media": {
+      "pickerTitle": "Select media",
+      "selectButton": "Select",
+      "searchPlaceholder": "Search files…",
+      "noFiles": "No files found.",
+      "uploadHint": "Upload files in the Media Library."
+    }
   }
 }

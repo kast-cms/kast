@@ -46,11 +46,18 @@ export interface NavItem {
 
 export type {
   AddFieldBody,
+  BulkActionBody,
+  ContentEntryDetail,
+  ContentEntrySummary,
   ContentField,
   ContentFieldType,
   ContentTypeDetail,
   ContentTypeSummary,
   CreateContentTypeBody,
+  CreateEntryBody,
+  EntryListParams,
+  EntryStatus,
   UpdateContentTypeBody,
+  UpdateEntryBody,
   UpdateFieldBody,
 } from '@kast/sdk';

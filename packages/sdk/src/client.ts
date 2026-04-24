@@ -1,110 +1,22 @@
-export interface KastClientOptions {
-  baseUrl: string;
-  apiKey?: string;
-  accessToken?: string;
-  fetch?: typeof globalThis.fetch;
-}
-
-/* ── API types ─────────────────────────────────────────────── */
-
-export interface ApiResponse<T> {
-  data: T;
-}
-
-export interface ApiListResponse<T> {
-  data: T[];
-  meta: {
-    total: number;
-    limit: number;
-    cursor: string | null;
-    hasNextPage: boolean;
-  };
-}
-
-export type ContentFieldType =
-  | 'TEXT'
-  | 'RICH_TEXT'
-  | 'NUMBER'
-  | 'BOOLEAN'
-  | 'DATE'
-  | 'MEDIA'
-  | 'RELATION'
-  | 'JSON'
-  | 'EMAIL'
-  | 'URL'
-  | 'ENUM'
-  | 'UID';
-
-export interface ContentField {
-  id: string;
-  name: string;
-  displayName: string;
-  type: ContentFieldType;
-  isRequired: boolean;
-  isLocalized: boolean;
-  isUnique: boolean;
-  isHidden: boolean;
-  position: number;
-  config: Record<string, unknown>;
-  defaultValue: unknown;
-}
-
-export interface ContentTypeSummary {
-  id: string;
-  name: string;
-  displayName: string;
-  description: string | null;
-  icon: string | null;
-  isSystem: boolean;
-  fieldsCount: number;
-  entriesCount: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface ContentTypeDetail extends ContentTypeSummary {
-  fields: ContentField[];
-}
-
-export interface CreateContentTypeBody {
-  name: string;
-  displayName: string;
-  description?: string;
-  icon?: string;
-}
-
-export interface UpdateContentTypeBody {
-  displayName?: string;
-  description?: string | null;
-  icon?: string | null;
-}
-
-export interface AddFieldBody {
-  name: string;
-  displayName: string;
-  type: ContentFieldType;
-  isRequired?: boolean;
-  isLocalized?: boolean;
-  isUnique?: boolean;
-  isHidden?: boolean;
-  position?: number;
-  config?: Record<string, unknown>;
-  defaultValue?: unknown;
-}
-
-export interface UpdateFieldBody {
-  displayName?: string | null;
-  isRequired?: boolean;
-  isLocalized?: boolean;
-  isUnique?: boolean;
-  isHidden?: boolean;
-  config?: Record<string, unknown>;
-  defaultValue?: unknown;
-}
-
-export interface ReorderFieldsBody {
-  order: string[]; // field names in desired order
-}
+import type {
+  AddFieldBody,
+  ApiListResponse,
+  ApiResponse,
+  BulkActionBody,
+  ContentEntryDetail,
+  ContentEntrySummary,
+  ContentField,
+  ContentTypeDetail,
+  ContentTypeSummary,
+  CreateContentTypeBody,
+  CreateEntryBody,
+  EntryListParams,
+  KastClientOptions,
+  ReorderFieldsBody,
+  UpdateContentTypeBody,
+  UpdateEntryBody,
+  UpdateFieldBody,
+} from './types.js';
 
 interface RequestOptions {
   method?: string;
@@ -250,39 +162,73 @@ class ContentTypesResource {
 class ContentResource {
   constructor(private readonly client: KastClient) {}
 
-  list(typeSlug: string, params: Record<string, string> = {}): Promise<unknown> {
-    const qs = new URLSearchParams(params).toString();
+  list(
+    typeSlug: string,
+    params: EntryListParams = {},
+  ): Promise<ApiListResponse<ContentEntrySummary>> {
+    const qs = new URLSearchParams(params as Record<string, string>).toString();
     return this.client.request(`/api/v1/content-types/${typeSlug}/entries${qs ? `?${qs}` : ''}`);
   }
 
-  get(typeSlug: string, id: string, locale?: string): Promise<unknown> {
-    const qs = locale ? `?locale=${locale}` : '';
+  get(typeSlug: string, id: string, locale?: string): Promise<ApiResponse<ContentEntryDetail>> {
+    const qs = locale !== undefined ? `?locale=${locale}` : '';
     return this.client.request(`/api/v1/content-types/${typeSlug}/entries/${id}${qs}`);
   }
 
-  create(typeSlug: string, data: Record<string, unknown>): Promise<unknown> {
+  create(typeSlug: string, data: CreateEntryBody): Promise<ApiResponse<ContentEntryDetail>> {
     return this.client.request(`/api/v1/content-types/${typeSlug}/entries`, {
       method: 'POST',
       body: data,
     });
   }
 
-  update(typeSlug: string, id: string, data: Record<string, unknown>): Promise<unknown> {
+  update(
+    typeSlug: string,
+    id: string,
+    data: UpdateEntryBody,
+  ): Promise<ApiResponse<ContentEntryDetail>> {
     return this.client.request(`/api/v1/content-types/${typeSlug}/entries/${id}`, {
       method: 'PATCH',
       body: data,
     });
   }
 
-  publish(typeSlug: string, id: string): Promise<unknown> {
+  publish(typeSlug: string, id: string): Promise<ApiResponse<ContentEntryDetail>> {
     return this.client.request(`/api/v1/content-types/${typeSlug}/entries/${id}/publish`, {
       method: 'POST',
     });
   }
 
-  delete(typeSlug: string, id: string): Promise<unknown> {
+  unpublish(typeSlug: string, id: string): Promise<ApiResponse<ContentEntryDetail>> {
+    return this.client.request(`/api/v1/content-types/${typeSlug}/entries/${id}/unpublish`, {
+      method: 'POST',
+    });
+  }
+
+  trash(typeSlug: string, id: string): Promise<void> {
     return this.client.request(`/api/v1/content-types/${typeSlug}/entries/${id}`, {
       method: 'DELETE',
+    });
+  }
+
+  bulkTrash(typeSlug: string, ids: string[]): Promise<void> {
+    return this.client.request(`/api/v1/content-types/${typeSlug}/entries/bulk/trash`, {
+      method: 'POST',
+      body: { ids } satisfies BulkActionBody,
+    });
+  }
+
+  bulkPublish(typeSlug: string, ids: string[]): Promise<void> {
+    return this.client.request(`/api/v1/content-types/${typeSlug}/entries/bulk/publish`, {
+      method: 'POST',
+      body: { ids } satisfies BulkActionBody,
+    });
+  }
+
+  bulkUnpublish(typeSlug: string, ids: string[]): Promise<void> {
+    return this.client.request(`/api/v1/content-types/${typeSlug}/entries/bulk/unpublish`, {
+      method: 'POST',
+      body: { ids } satisfies BulkActionBody,
     });
   }
 }
