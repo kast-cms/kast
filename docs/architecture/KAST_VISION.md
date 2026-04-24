@@ -124,8 +124,8 @@ A small, high-quality plugin system is better than trying to build everything. K
 | Layer                       | Technology                             | Why                                                                                                                             |
 | --------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | **Backend**                 | NestJS (Node.js + TypeScript)          | Modules = natural plugin system. Guards = RBAC. Interceptors = logging/audit                                                    |
-| **Admin Panel**             | Next.js 15 (App Router)                | Server Components = fastest admin UI. TypeScript-native                                                                         |
-| **Frontend Starter**        | Next.js 15                             | Same tech, shared components, first-class integration                                                                           |
+| **Admin Panel**             | Next.js 16.2.4 (App Router)            | Server Components = fastest admin UI. TypeScript-native                                                                         |
+| **Frontend Starter**        | Next.js 16.2.4                         | Same tech, shared components, first-class integration                                                                           |
 | **Database**                | PostgreSQL (v1)                        | Production-grade. JSONB for flexible content. Full-text search built-in                                                         |
 | **ORM**                     | Prisma                                 | Type-safe schema, auto-migrations, great DX                                                                                     |
 | **Auth**                    | Custom NestJS AuthModule + JWT + OAuth | Full control, no magic                                                                                                          |

@@ -48,7 +48,7 @@ Phase 1 delivered the API spine. Phase 2 makes it usable by editors, AI agents, 
 
 **Done means:**
 
-- A `Next.js 15` admin panel (`apps/admin`) that covers the full content authoring workflow, media management, user/role management, SEO, webhooks, forms, menus, trash, and settings.
+- A `Next.js 16.2.4` admin panel (`apps/admin`) that covers the full content authoring workflow, media management, user/role management, SEO, webhooks, forms, menus, trash, and settings.
 - A fully operational MCP server at `/mcp` with 15 documented tools, scoped agent tokens, and session audit logging.
 - A live SEO score pipeline: entry saved → BullMQ `kast.seo` queue → score written back → displayed in editor before publish.
 - All 6 BullMQ queues (`kast.webhook`, `kast.media`, `kast.seo`, `kast.publish`, `kast.trash`, `kast.email`) running real processors with retry + dead-letter.
@@ -113,11 +113,11 @@ Each workstream lists: **objective**, **tech decisions**, **scope**, **out-of-sc
 
 ### WS-1 `apps/admin` Next.js Foundation (PH2-01 base)
 
-**Objective:** Bootstrap `apps/admin` as a Next.js 15 App Router application with RTL-ready design system, authenticated layout, and protected routing — the shell that all admin UI workstreams build inside.
+**Objective:** Bootstrap `apps/admin` as a Next.js 16.2.4 App Router application with RTL-ready design system, authenticated layout, and protected routing — the shell that all admin UI workstreams build inside.
 
 **Tech decisions:**
 
-- **Next.js 15** — App Router, TypeScript strict, `"use client"` minimal, Server Components by default.
+- **Next.js 16.2.4** — App Router, TypeScript strict, `"use client"` minimal, Server Components by default.
 - **Tailwind CSS v4** — CSS logical properties throughout for RTL compatibility (`ms-`, `me-`, `ps-`, `pe-` instead of `ml-`, `mr-`, `pl-`, `pr-`).
 - **shadcn/ui** — component library built on Radix UI. All components customized to use logical properties. Dark mode ready.
 - **next-intl** — i18n strings for the admin UI itself. Ships in English; Arabic added in WS-8.
@@ -151,7 +151,7 @@ Each workstream lists: **objective**, **tech decisions**, **scope**, **out-of-sc
 
 **Tasks:**
 
-1. `feat(admin): scaffold Next.js 15 app under apps/admin`
+1. `feat(admin): scaffold Next.js 16.2.4 app under apps/admin`
 2. `feat(admin): add tsconfig, tailwind, and next.config per dev standards`
 3. `feat(admin): add shadcn/ui with logical-css tailwind preset`
 4. `feat(admin): add authenticated layout (sidebar, topbar, session context)`
