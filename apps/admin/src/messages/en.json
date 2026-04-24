@@ -65,5 +65,90 @@
     "title": "Something went wrong",
     "description": "An unexpected error occurred. Please try again.",
     "retry": "Try again"
+  },
+  "contentTypes": {
+    "title": "Content Types",
+    "description": "Define the structure of your content.",
+    "createButton": "Create content type",
+    "emptyTitle": "No content types yet",
+    "emptyDescription": "Get started by creating your first content type.",
+    "table": {
+      "displayName": "Display Name",
+      "apiId": "API ID",
+      "fields": "Fields",
+      "entries": "Entries",
+      "updated": "Last Updated",
+      "actions": ""
+    },
+    "badges": {
+      "system": "System"
+    },
+    "new": {
+      "title": "Create content type",
+      "description": "Define a new content type for your project.",
+      "displayNameLabel": "Display Name",
+      "displayNamePlaceholder": "Blog Post",
+      "apiIdLabel": "API ID",
+      "apiIdPlaceholder": "blog-post",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "A short description (optional)",
+      "iconLabel": "Icon (emoji)",
+      "iconPlaceholder": "📝",
+      "submit": "Create",
+      "submitting": "Creating…"
+    },
+    "edit": {
+      "title": "Edit content type",
+      "submit": "Save changes",
+      "submitting": "Saving…",
+      "deleteButton": "Delete content type"
+    },
+    "fields": {
+      "title": "Fields",
+      "addField": "Add field",
+      "emptyTitle": "No fields yet",
+      "emptyDescription": "Add your first field to define the structure.",
+      "required": "Required",
+      "localized": "Localized",
+      "unique": "Unique",
+      "hidden": "Hidden",
+      "position": "Position"
+    },
+    "fieldTypes": {
+      "TEXT": "Text",
+      "RICH_TEXT": "Rich Text",
+      "NUMBER": "Number",
+      "BOOLEAN": "Boolean",
+      "DATE": "Date",
+      "MEDIA": "Media",
+      "RELATION": "Relation",
+      "JSON": "JSON",
+      "EMAIL": "Email",
+      "URL": "URL",
+      "ENUM": "Enum",
+      "UID": "UID"
+    },
+    "fieldDrawer": {
+      "addTitle": "Add field",
+      "editTitle": "Edit field",
+      "nameLabel": "Field name (API ID)",
+      "namePlaceholder": "title",
+      "displayNameLabel": "Display name",
+      "displayNamePlaceholder": "Title",
+      "typeLabel": "Field type",
+      "selectType": "Select a type",
+      "configSection": "Configuration",
+      "togglesSection": "Options",
+      "save": "Save field",
+      "saving": "Saving…"
+    },
+    "deleteDialog": {
+      "title": "Delete content type",
+      "description": "This action cannot be undone. All entries and fields associated with this content type will be permanently deleted.",
+      "confirmLabel": "Type the API ID to confirm:",
+      "confirmPlaceholder": "Type {{apiId}} to confirm",
+      "deleteButton": "Delete permanently",
+      "deleting": "Deleting…"
+    }
   }
 }

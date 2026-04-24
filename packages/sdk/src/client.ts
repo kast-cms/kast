@@ -5,6 +5,107 @@ export interface KastClientOptions {
   fetch?: typeof globalThis.fetch;
 }
 
+/* ── API types ─────────────────────────────────────────────── */
+
+export interface ApiResponse<T> {
+  data: T;
+}
+
+export interface ApiListResponse<T> {
+  data: T[];
+  meta: {
+    total: number;
+    limit: number;
+    cursor: string | null;
+    hasNextPage: boolean;
+  };
+}
+
+export type ContentFieldType =
+  | 'TEXT'
+  | 'RICH_TEXT'
+  | 'NUMBER'
+  | 'BOOLEAN'
+  | 'DATE'
+  | 'MEDIA'
+  | 'RELATION'
+  | 'JSON'
+  | 'EMAIL'
+  | 'URL'
+  | 'ENUM'
+  | 'UID';
+
+export interface ContentField {
+  id: string;
+  name: string;
+  displayName: string;
+  type: ContentFieldType;
+  isRequired: boolean;
+  isLocalized: boolean;
+  isUnique: boolean;
+  isHidden: boolean;
+  position: number;
+  config: Record<string, unknown>;
+  defaultValue: unknown;
+}
+
+export interface ContentTypeSummary {
+  id: string;
+  name: string;
+  displayName: string;
+  description: string | null;
+  icon: string | null;
+  isSystem: boolean;
+  fieldsCount: number;
+  entriesCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ContentTypeDetail extends ContentTypeSummary {
+  fields: ContentField[];
+}
+
+export interface CreateContentTypeBody {
+  name: string;
+  displayName: string;
+  description?: string;
+  icon?: string;
+}
+
+export interface UpdateContentTypeBody {
+  displayName?: string;
+  description?: string | null;
+  icon?: string | null;
+}
+
+export interface AddFieldBody {
+  name: string;
+  displayName: string;
+  type: ContentFieldType;
+  isRequired?: boolean;
+  isLocalized?: boolean;
+  isUnique?: boolean;
+  isHidden?: boolean;
+  position?: number;
+  config?: Record<string, unknown>;
+  defaultValue?: unknown;
+}
+
+export interface UpdateFieldBody {
+  displayName?: string | null;
+  isRequired?: boolean;
+  isLocalized?: boolean;
+  isUnique?: boolean;
+  isHidden?: boolean;
+  config?: Record<string, unknown>;
+  defaultValue?: unknown;
+}
+
+export interface ReorderFieldsBody {
+  order: string[]; // field names in desired order
+}
+
 interface RequestOptions {
   method?: string;
   body?: unknown;
@@ -94,20 +195,55 @@ class AuthResource {
 class ContentTypesResource {
   constructor(private readonly client: KastClient) {}
 
-  list(): Promise<unknown> {
+  list(): Promise<ApiListResponse<ContentTypeSummary>> {
     return this.client.request('/api/v1/content-types');
   }
 
-  get(name: string): Promise<unknown> {
+  get(name: string): Promise<ApiResponse<ContentTypeDetail>> {
     return this.client.request(`/api/v1/content-types/${name}`);
   }
 
-  create(data: Record<string, unknown>): Promise<unknown> {
+  create(data: CreateContentTypeBody): Promise<ApiResponse<ContentTypeDetail>> {
     return this.client.request('/api/v1/content-types', { method: 'POST', body: data });
   }
 
-  update(name: string, data: Record<string, unknown>): Promise<unknown> {
+  update(name: string, data: UpdateContentTypeBody): Promise<ApiResponse<ContentTypeDetail>> {
     return this.client.request(`/api/v1/content-types/${name}`, { method: 'PATCH', body: data });
+  }
+
+  delete(name: string): Promise<void> {
+    return this.client.request(`/api/v1/content-types/${name}`, { method: 'DELETE' });
+  }
+
+  addField(name: string, data: AddFieldBody): Promise<ApiResponse<ContentField>> {
+    return this.client.request(`/api/v1/content-types/${name}/fields`, {
+      method: 'POST',
+      body: data,
+    });
+  }
+
+  updateField(
+    name: string,
+    fieldName: string,
+    data: UpdateFieldBody,
+  ): Promise<ApiResponse<ContentField>> {
+    return this.client.request(`/api/v1/content-types/${name}/fields/${fieldName}`, {
+      method: 'PATCH',
+      body: data,
+    });
+  }
+
+  deleteField(name: string, fieldName: string): Promise<void> {
+    return this.client.request(`/api/v1/content-types/${name}/fields/${fieldName}`, {
+      method: 'DELETE',
+    });
+  }
+
+  reorderFields(name: string, data: ReorderFieldsBody): Promise<ApiResponse<ContentTypeDetail>> {
+    return this.client.request(`/api/v1/content-types/${name}/fields/reorder`, {
+      method: 'PATCH',
+      body: data,
+    });
   }
 }
 

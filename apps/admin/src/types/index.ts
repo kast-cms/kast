@@ -41,3 +41,16 @@ export interface NavItem {
   icon: string; // lucide icon name
   badge?: number;
 }
+
+/* ── Content Types ───────────────────────────────── */
+
+export type {
+  AddFieldBody,
+  ContentField,
+  ContentFieldType,
+  ContentTypeDetail,
+  ContentTypeSummary,
+  CreateContentTypeBody,
+  UpdateContentTypeBody,
+  UpdateFieldBody,
+} from '@kast/sdk';
