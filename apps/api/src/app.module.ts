@@ -1,0 +1,36 @@
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { validateEnv } from './config/env.schema';
+import { AuditModule } from './modules/audit/audit.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { ContentTypesModule } from './modules/content-types/content-types.module';
+import { ContentModule } from './modules/content/content.module';
+import { HealthModule } from './modules/health/health.module';
+import { MediaModule } from './modules/media/media.module';
+import { QueueModule } from './modules/queue/queue.module';
+import { PrismaModule } from './prisma/prisma.module';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validate: validateEnv,
+    }),
+    ThrottlerModule.forRoot([
+      { name: 'public', ttl: 60000, limit: 100 },
+      { name: 'auth', ttl: 900000, limit: 20 },
+      { name: 'admin', ttl: 60000, limit: 300 },
+      { name: 'apiKey', ttl: 60000, limit: 1000 },
+    ]),
+    PrismaModule,
+    QueueModule,
+    HealthModule,
+    AuthModule,
+    AuditModule,
+    ContentTypesModule,
+    ContentModule,
+    MediaModule,
+  ],
+})
+export class AppModule {}

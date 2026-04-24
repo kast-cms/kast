@@ -1,0 +1,875 @@
+// ============================================================
+// KAST CMS — schema.prisma
+// Database: PostgreSQL 16
+// ORM: Prisma 6
+// Version: 0.1
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = []
+}
+
+// Seed config
+// prisma.seed: ts-node -r tsconfig-paths/register prisma/seed.ts
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum ContentFieldType {
+  TEXT
+  RICH_TEXT
+  NUMBER
+  BOOLEAN
+  DATE
+  DATETIME
+  MEDIA
+  RELATION
+  JSON
+  COMPONENT
+  BLOCK
+  SELECT
+  MULTI_SELECT
+  COLOR
+  URL
+  EMAIL
+}
+
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+  SCHEDULED
+  TRASHED
+}
+
+enum RedirectType {
+  PERMANENT
+  TEMPORARY
+}
+
+enum IssueSeverity {
+  ERROR
+  WARNING
+  INFO
+}
+
+enum TokenScope {
+  READ_ONLY
+  FULL_ACCESS
+  SCOPED
+}
+
+enum TextDirection {
+  LTR
+  RTL
+}
+
+enum FormFieldType {
+  TEXT
+  EMAIL
+  PHONE
+  NUMBER
+  TEXTAREA
+  SELECT
+  MULTI_SELECT
+  CHECKBOX
+  RADIO
+  FILE
+  DATE
+}
+
+enum AiJobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum AiTriggerType {
+  MANUAL
+  AGENT
+  AUTO
+}
+
+
+// ============================================================
+// CONTENT MODULE
+// ============================================================
+
+model ContentType {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  displayName String
+  description String?
+  icon        String?
+  isSystem    Boolean  @default(false)
+
+  fields      ContentField[]
+  entries     ContentEntry[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("content_types")
+}
+
+model ContentField {
+  id            String          @id @default(cuid())
+  contentTypeId String
+  contentType   ContentType     @relation(fields: [contentTypeId], references: [id], onDelete: Cascade)
+
+  name          String
+  displayName   String
+  type          ContentFieldType
+  isRequired    Boolean         @default(false)
+  isLocalized   Boolean         @default(false)
+  isUnique      Boolean         @default(false)
+  isHidden      Boolean         @default(false)
+  position      Int             @default(0)
+  config        Json            @default("{}")
+  defaultValue  Json?
+
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@unique([contentTypeId, name])
+  @@index([contentTypeId])
+  @@map("content_fields")
+}
+
+model ContentEntry {
+  id            String        @id @default(cuid())
+  contentTypeId String
+  contentType   ContentType   @relation(fields: [contentTypeId], references: [id])
+
+  status        ContentStatus @default(DRAFT)
+  publishedAt   DateTime?
+  scheduledAt   DateTime?
+
+  isAiGenerated Boolean       @default(false)
+
+  createdById   String
+  createdBy     User          @relation("CreatedEntries", fields: [createdById], references: [id])
+  updatedById   String?
+  updatedBy     User?         @relation("UpdatedEntries", fields: [updatedById], references: [id])
+
+  trashedAt        DateTime?
+  trashedByUserId  String?
+  trashedByUser    User?      @relation("TrashedEntries", fields: [trashedByUserId], references: [id])
+
+  locales       ContentEntryLocale[]
+  versions      ContentEntryVersion[]
+  seoMeta       SeoMeta?
+  mediaUsages   MediaUsage[]
+  aiGenerations AiContentGeneration[]
+
+  relatedFrom   ContentRelation[] @relation("RelationFrom")
+  relatedTo     ContentRelation[] @relation("RelationTo")
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([contentTypeId, status])
+  @@index([trashedAt])
+  @@index([scheduledAt])
+  @@map("content_entries")
+}
+
+model ContentEntryLocale {
+  id           String       @id @default(cuid())
+  entryId      String
+  entry        ContentEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  localeCode   String
+  locale       Locale       @relation(fields: [localeCode], references: [code])
+
+  slug         String
+  data         Json
+
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@unique([entryId, localeCode])
+  @@unique([localeCode, slug])
+  @@index([entryId])
+  @@map("content_entry_locales")
+}
+
+model ContentEntryVersion {
+  id            String       @id @default(cuid())
+  entryId       String
+  entry         ContentEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  versionNumber Int
+  status        ContentStatus
+  data          Json
+  localesData   Json
+  isAiGenerated Boolean      @default(false)
+
+  savedById     String
+  savedBy       User         @relation(fields: [savedById], references: [id])
+
+  createdAt     DateTime     @default(now())
+
+  @@unique([entryId, versionNumber])
+  @@index([entryId])
+  @@map("content_entry_versions")
+}
+
+model ContentRelation {
+  id        String       @id @default(cuid())
+  fromId    String
+  from      ContentEntry @relation("RelationFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  toId      String
+  to        ContentEntry @relation("RelationTo", fields: [toId], references: [id], onDelete: Cascade)
+  fieldName String
+  position  Int          @default(0)
+
+  @@unique([fromId, toId, fieldName])
+  @@index([fromId])
+  @@index([toId])
+  @@map("content_relations")
+}
+
+
+// ============================================================
+// SEO MODULE
+// ============================================================
+
+model SeoMeta {
+  id              String       @id @default(cuid())
+  entryId         String       @unique
+  entry           ContentEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  metaTitle       String?
+  metaDescription String?
+  ogTitle         String?
+  ogDescription   String?
+  ogImageId       String?
+  ogImage         MediaFile?   @relation("OgImage", fields: [ogImageId], references: [id])
+  twitterTitle    String?
+  twitterDesc     String?
+  twitterImageId  String?
+  twitterImage    MediaFile?   @relation("TwitterImage", fields: [twitterImageId], references: [id])
+  canonicalUrl    String?
+  noIndex         Boolean      @default(false)
+  noFollow        Boolean      @default(false)
+  structuredData  Json?
+
+  scores          SeoScore[]
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@map("seo_meta")
+}
+
+model Redirect {
+  id          String       @id @default(cuid())
+  fromPath    String       @unique
+  toPath      String
+  type        RedirectType @default(PERMANENT)
+  isActive    Boolean      @default(true)
+  hitCount    Int          @default(0)
+
+  createdById String
+  createdBy   User         @relation(fields: [createdById], references: [id])
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([fromPath, isActive])
+  @@map("redirects")
+}
+
+model SeoScore {
+  id          String    @id @default(cuid())
+  seoMetaId   String
+  seoMeta     SeoMeta   @relation(fields: [seoMetaId], references: [id], onDelete: Cascade)
+
+  score       Int
+  validatedAt DateTime  @default(now())
+
+  issues      SeoIssue[]
+
+  @@index([seoMetaId])
+  @@map("seo_scores")
+}
+
+model SeoIssue {
+  id         String        @id @default(cuid())
+  seoScoreId String
+  seoScore   SeoScore      @relation(fields: [seoScoreId], references: [id], onDelete: Cascade)
+
+  type       String
+  severity   IssueSeverity
+  message    String
+  penalty    Int
+
+  @@index([seoScoreId])
+  @@map("seo_issues")
+}
+
+
+// ============================================================
+// AUTH MODULE
+// ============================================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String?
+  firstName     String?
+  lastName      String?
+  avatarUrl     String?
+  isActive      Boolean   @default(true)
+  isVerified    Boolean   @default(false)
+  lastLoginAt   DateTime?
+
+  trashedAt        DateTime?
+  trashedByUserId  String?
+
+  roles            UserRole[]
+  oauthAccounts    OAuthAccount[]
+  refreshTokens    RefreshToken[]
+  apiTokens        ApiToken[]
+  agentTokens      AgentToken[]
+
+  auditLogs        AuditLog[]
+  createdEntries   ContentEntry[]        @relation("CreatedEntries")
+  updatedEntries   ContentEntry[]        @relation("UpdatedEntries")
+  trashedEntries   ContentEntry[]        @relation("TrashedEntries")
+  savedVersions    ContentEntryVersion[]
+  redirectsCreated Redirect[]
+  filesUploaded    MediaFile[]
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([email])
+  @@map("users")
+}
+
+model Role {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  displayName String
+  description String?
+  isSystem    Boolean   @default(false)
+
+  users       UserRole[]
+  permissions RolePermission[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("roles")
+}
+
+model Permission {
+  id       String @id @default(cuid())
+  resource String
+  action   String
+  scope    String @default("*")
+
+  roles    RolePermission[]
+
+  @@unique([resource, action, scope])
+  @@map("permissions")
+}
+
+model UserRole {
+  userId     String
+  roleId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  assignedAt DateTime @default(now())
+  assignedBy String?
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model OAuthAccount {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider    String
+  providerId  String
+  email       String?
+  accessToken String?
+  createdAt   DateTime @default(now())
+
+  @@unique([provider, providerId])
+  @@index([userId])
+  @@map("oauth_accounts")
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model ApiToken {
+  id         String     @id @default(cuid())
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  tokenHash  String     @unique
+  prefix     String
+  scope      TokenScope
+  scopeData  Json?
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime   @default(now())
+
+  @@index([userId])
+  @@map("api_tokens")
+}
+
+
+// ============================================================
+// MEDIA MODULE
+// ============================================================
+
+model MediaFolder {
+  id        String        @id @default(cuid())
+  name      String
+  parentId  String?
+  parent    MediaFolder?  @relation("FolderTree", fields: [parentId], references: [id])
+  children  MediaFolder[] @relation("FolderTree")
+  files     MediaFile[]
+
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@map("media_folders")
+}
+
+model MediaFile {
+  id            String       @id @default(cuid())
+  folderId      String?
+  folder        MediaFolder? @relation(fields: [folderId], references: [id])
+
+  filename      String
+  originalName  String
+  mimeType      String
+  size          Int
+  url           String
+  storageKey    String
+  provider      String
+
+  width         Int?
+  height        Int?
+  altText       String?
+  isAiAltText   Boolean      @default(false)
+
+  isAiGenerated  Boolean     @default(false)
+  aiGenerations  AiImageGeneration[]
+
+  trashedAt        DateTime?
+  trashedByUserId  String?
+
+  uploadedById  String
+  uploadedBy    User         @relation(fields: [uploadedById], references: [id])
+
+  usages        MediaUsage[]
+  seoMetaOg     SeoMeta[]   @relation("OgImage")
+  seoMetaTwitter SeoMeta[]  @relation("TwitterImage")
+
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([folderId])
+  @@index([mimeType])
+  @@index([trashedAt])
+  @@map("media_files")
+}
+
+model MediaUsage {
+  id        String       @id @default(cuid())
+  fileId    String
+  file      MediaFile    @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  entryId   String
+  entry     ContentEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  fieldName String
+
+  @@unique([fileId, entryId, fieldName])
+  @@index([fileId])
+  @@index([entryId])
+  @@map("media_usages")
+}
+
+
+// ============================================================
+// MCP / AGENT MODULE
+// ============================================================
+
+model AgentToken {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  tokenHash   String    @unique
+  prefix      String
+  scope       Json
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+
+  sessions    AgentSession[]
+
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@map("agent_tokens")
+}
+
+model AgentSession {
+  id           String     @id @default(cuid())
+  agentTokenId String
+  agentToken   AgentToken @relation(fields: [agentTokenId], references: [id], onDelete: Cascade)
+
+  agentName    String?
+  toolsUsed    Json       @default("[]")
+  startedAt    DateTime   @default(now())
+  endedAt      DateTime?
+
+  @@index([agentTokenId])
+  @@map("agent_sessions")
+}
+
+
+// ============================================================
+// I18N MODULE
+// ============================================================
+
+model Locale {
+  code         String    @id
+  name         String
+  nativeName   String
+  direction    TextDirection @default(LTR)
+  isDefault    Boolean   @default(false)
+  isActive     Boolean   @default(true)
+  fallbackCode String?
+  fallback     Locale?   @relation("LocaleFallback", fields: [fallbackCode], references: [code])
+  fallbackFor  Locale[]  @relation("LocaleFallback")
+
+  entries      ContentEntryLocale[]
+  menus        Menu[]
+
+  createdAt    DateTime  @default(now())
+
+  @@map("locales")
+}
+
+
+// ============================================================
+// AUDIT MODULE
+// ============================================================
+
+model AuditLog {
+  id           String   @id @default(cuid())
+
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id])
+  agentTokenId String?
+  agentName    String?
+  ipAddress    String?
+  userAgent    String?
+
+  action       String
+  resource     String
+  resourceId   String?
+
+  before       Json?
+  after        Json?
+  metadata     Json?
+
+  isDryRun     Boolean  @default(false)
+
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([agentTokenId])
+  @@index([resource, resourceId])
+  @@index([createdAt])
+  @@index([action])
+  @@map("audit_logs")
+}
+
+
+// ============================================================
+// WEBHOOK MODULE
+// ============================================================
+
+model WebhookEndpoint {
+  id         String    @id @default(cuid())
+  name       String
+  url        String
+  secretHash String
+  isActive   Boolean   @default(true)
+  events     String[]
+
+  deliveries WebhookDelivery[]
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@map("webhook_endpoints")
+}
+
+model WebhookDelivery {
+  id           String          @id @default(cuid())
+  endpointId   String
+  endpoint     WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  event        String
+  payload      Json
+  statusCode   Int?
+  responseBody String?
+  attempts     Int             @default(0)
+  nextRetryAt  DateTime?
+  succeededAt  DateTime?
+  failedAt     DateTime?
+
+  createdAt    DateTime        @default(now())
+
+  @@index([endpointId])
+  @@index([event])
+  @@index([failedAt])
+  @@map("webhook_deliveries")
+}
+
+
+// ============================================================
+// PLUGIN MODULE
+// ============================================================
+
+model Plugin {
+  id             String       @id @default(cuid())
+  name           String       @unique
+  displayName    String
+  version        String
+  description    String?
+  isActive       Boolean      @default(false)
+  isSystemPlugin Boolean      @default(false)
+  installedAt    DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  config         PluginConfig?
+
+  @@map("plugins")
+}
+
+model PluginConfig {
+  id       String   @id @default(cuid())
+  pluginId String   @unique
+  plugin   Plugin   @relation(fields: [pluginId], references: [id], onDelete: Cascade)
+
+  data     Json     @default("{}")
+
+  updatedAt DateTime @updatedAt
+
+  @@map("plugin_configs")
+}
+
+
+// ============================================================
+// FORM MODULE
+// ============================================================
+
+model Form {
+  id           String      @id @default(cuid())
+  name         String
+  slug         String      @unique
+  description  String?
+  isActive     Boolean     @default(true)
+  notifyEmail  String?
+
+  trashedAt        DateTime?
+  trashedByUserId  String?
+
+  fields       FormField[]
+  submissions  FormSubmission[]
+
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@map("forms")
+}
+
+model FormField {
+  id         String        @id @default(cuid())
+  formId     String
+  form       Form          @relation(fields: [formId], references: [id], onDelete: Cascade)
+
+  name       String
+  label      String
+  type       FormFieldType
+  isRequired Boolean       @default(false)
+  position   Int           @default(0)
+  config     Json          @default("{}")
+
+  @@unique([formId, name])
+  @@index([formId])
+  @@map("form_fields")
+}
+
+model FormSubmission {
+  id        String   @id @default(cuid())
+  formId    String
+  form      Form     @relation(fields: [formId], references: [id], onDelete: Cascade)
+
+  data      Json
+  ipAddress String?
+  userAgent String?
+  isRead    Boolean  @default(false)
+  readAt    DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([formId])
+  @@index([isRead])
+  @@map("form_submissions")
+}
+
+
+// ============================================================
+// MENU MODULE
+// ============================================================
+
+model Menu {
+  id         String     @id @default(cuid())
+  name       String
+  slug       String     @unique
+  localeCode String?
+  locale     Locale?    @relation(fields: [localeCode], references: [code])
+
+  items      MenuItem[]
+
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@map("menus")
+}
+
+model MenuItem {
+  id        String     @id @default(cuid())
+  menuId    String
+  menu      Menu       @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  parentId  String?
+  parent    MenuItem?  @relation("MenuItemTree", fields: [parentId], references: [id])
+  children  MenuItem[] @relation("MenuItemTree")
+
+  label     String
+  url       String?
+  entryId   String?
+  target    String?
+  position  Int        @default(0)
+  isActive  Boolean    @default(true)
+
+  @@index([menuId])
+  @@index([parentId])
+  @@map("menu_items")
+}
+
+
+// ============================================================
+// SETTINGS MODULE
+// ============================================================
+
+model GlobalSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  group     String
+  label     String?
+  isPublic  Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  @@index([group])
+  @@map("global_settings")
+}
+
+
+// ============================================================
+// AI MODULE
+// ============================================================
+
+model AiContentGeneration {
+  id           String       @id @default(cuid())
+  entryId      String?
+  entry        ContentEntry? @relation(fields: [entryId], references: [id])
+
+  prompt       String
+  model        String
+  provider     String
+  result       String?
+  tokensUsed   Int?
+  durationMs   Int?
+  status       AiJobStatus
+  errorMessage String?
+
+  fieldName    String?
+  localeCode   String?
+
+  triggeredBy  String?
+  triggerType  AiTriggerType
+
+  createdAt    DateTime     @default(now())
+
+  @@index([entryId])
+  @@index([status])
+  @@index([triggeredBy])
+  @@map("ai_content_generations")
+}
+
+model AiImageGeneration {
+  id           String     @id @default(cuid())
+  mediaFileId  String?
+  mediaFile    MediaFile? @relation(fields: [mediaFileId], references: [id])
+
+  prompt       String
+  model        String
+  provider     String
+  resultUrl    String?
+  status       AiJobStatus
+  errorMessage String?
+  durationMs   Int?
+
+  triggeredBy  String?
+  triggerType  AiTriggerType
+
+  createdAt    DateTime   @default(now())
+
+  @@index([mediaFileId])
+  @@index([status])
+  @@map("ai_image_generations")
+}
