@@ -13,8 +13,8 @@ interface RequestOptions {
 
 export class KastClient {
   private readonly baseUrl: string;
-  private readonly apiKey?: string;
-  private accessToken?: string;
+  private readonly apiKey: string | undefined;
+  private accessToken: string | undefined;
   private readonly _fetch: typeof globalThis.fetch;
 
   constructor(options: KastClientOptions) {
@@ -40,14 +40,14 @@ export class KastClient {
     const res = await this._fetch(url, {
       method: options.method ?? 'GET',
       headers: { ...this.buildHeaders(), ...(options.headers ?? {}) },
-      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+      ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
     });
     const json = (await res.json()) as unknown;
     if (!res.ok) {
       const err = (json as { error?: { message?: string; code?: string } }).error;
       const message = err?.message ?? `HTTP ${res.status}`;
       const error = new Error(message) as Error & { code?: string; status?: number };
-      error.code = err?.code;
+      if (err?.code !== undefined) error.code = err.code;
       error.status = res.status;
       throw error;
     }
