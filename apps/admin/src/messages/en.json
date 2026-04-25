@@ -408,5 +408,65 @@
     "noExpiry": "No expiry",
     "revoke": "Revoke",
     "revokeConfirm": "Revoke token \"{{name}}\"? Any services using it will lose access."
+  },
+  "seo": {
+    "title": "SEO",
+    "description": "Manage redirects, sitemap, and SEO scores.",
+    "tabs": {
+      "redirects": "Redirects",
+      "sitemap": "Sitemap"
+    },
+    "score": {
+      "label": "SEO Score",
+      "issuesTitle": "SEO Issues",
+      "noIssues": "No issues found.",
+      "noScore": "No score yet — trigger validation to generate one.",
+      "validate": "Run validation",
+      "validating": "Validating…",
+      "severity": {
+        "ERROR": "Error",
+        "WARNING": "Warning",
+        "INFO": "Info"
+      }
+    },
+    "redirects": {
+      "title": "Redirect Rules",
+      "description": "Manage 301/302 redirect rules.",
+      "createButton": "Add redirect",
+      "emptyTitle": "No redirects yet",
+      "emptyDescription": "Add your first redirect rule.",
+      "table": {
+        "from": "From",
+        "to": "To",
+        "type": "Type",
+        "active": "Active",
+        "hits": "Hits",
+        "actions": ""
+      },
+      "type": {
+        "PERMANENT": "301 Permanent",
+        "TEMPORARY": "302 Temporary"
+      },
+      "create": {
+        "title": "Add redirect",
+        "fromLabel": "From path",
+        "fromPlaceholder": "/old-page",
+        "toLabel": "To path",
+        "toPlaceholder": "/new-page",
+        "typeLabel": "Type",
+        "submit": "Add redirect",
+        "submitting": "Adding…"
+      },
+      "deleteConfirm": "Delete redirect from \"{{from}}\"?",
+      "toggleActive": "Toggle active"
+    },
+    "sitemap": {
+      "title": "Sitemap URLs",
+      "description": "Published entries with canonical URLs appear here.",
+      "copyAll": "Copy all URLs",
+      "copied": "Copied!",
+      "empty": "No published entries with canonical URLs found.",
+      "urlCount": "{{count}} URLs"
+    }
   }
 }

@@ -410,7 +410,7 @@ Generates `<urlset>` with all published entries that have `SeoMeta.canonicalUrl`
 
 ### WS-7 MCP Server — 15 Tools (PH2-04)
 
-**Objective:** Ship the built-in MCP server so any MCP-compatible AI client (Claude.ai, Cursor, Cline) can manage Kast content, schema, and settings via the Model Context Protocol.
+**Objective:** Ship the built-in MCP server so any MCP-compatible AI client (Claude.ai, Cursor, Cline, and other ai agents) can manage Kast content, schema, and settings via the Model Context Protocol.
 
 **Tech decisions:**
 

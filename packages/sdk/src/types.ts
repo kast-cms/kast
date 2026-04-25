@@ -329,3 +329,17 @@ export interface CreateApiTokenBody {
   scopeData?: Record<string, string[]>;
   expiresAt?: string;
 }
+
+/* ── SEO ────────────────────────────────────────────────────── */
+
+export type {
+  CreateRedirectBody,
+  IssueSeverity,
+  Redirect,
+  RedirectType,
+  SeoIssue,
+  SeoMeta,
+  SeoScore,
+  UpdateRedirectBody,
+  UpsertSeoMetaBody,
+} from './seo-types.js';

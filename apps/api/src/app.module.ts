@@ -9,6 +9,7 @@ import { ContentModule } from './modules/content/content.module';
 import { HealthModule } from './modules/health/health.module';
 import { MediaModule } from './modules/media/media.module';
 import { QueueModule } from './modules/queue/queue.module';
+import { SeoModule } from './modules/seo/seo.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
@@ -31,6 +32,7 @@ import { PrismaModule } from './prisma/prisma.module';
     ContentTypesModule,
     ContentModule,
     MediaModule,
+    SeoModule,
   ],
 })
 export class AppModule {}

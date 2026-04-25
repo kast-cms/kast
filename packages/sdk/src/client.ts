@@ -1,5 +1,6 @@
 import { MediaResource } from './media-resource.js';
 import { RolesResource } from './roles-resource.js';
+import { SeoResource } from './seo-resource.js';
 import { TokensResource } from './tokens-resource.js';
 import type {
   AddFieldBody,
@@ -125,6 +126,10 @@ export class KastClient {
 
   get health(): HealthResource {
     return new HealthResource(this);
+  }
+
+  get seo(): SeoResource {
+    return new SeoResource(this);
   }
 }
 
