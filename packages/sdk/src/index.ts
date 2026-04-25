@@ -1,5 +1,11 @@
 export { KastClient } from './client.js';
 export type {
+  CreateLocaleBody,
+  LocaleSummary,
+  TextDirection,
+  UpdateLocaleBody,
+} from './locale-types.js';
+export type {
   AddFieldBody,
   ApiListResponse,
   ApiResponse,

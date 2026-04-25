@@ -27,7 +27,9 @@ export class ContentService {
 
   async findOne(typeSlug: string, id: string, locale?: string): Promise<{ data: EntryWithLocale }> {
     await this.contentTypesService.findByName(typeSlug);
-    const entry = await this.repo.findById(id, locale);
+    const entry = locale
+      ? await this.repo.findByIdWithFallback(id, locale)
+      : await this.repo.findById(id);
     if (!entry) throw new NotFoundException(`Content entry ${id} not found`);
     return { data: entry };
   }
@@ -40,7 +42,8 @@ export class ContentService {
     const ct = await this.contentTypesService.findByName(typeSlug);
     const locale = dto.locale;
     const slug = (dto.data['slug'] as string | undefined) ?? `${typeSlug}-${Date.now()}`;
-    const entry = await this.repo.create(ct.id, dto.data, locale, authorId, slug);
+    const extraLocaleCodes = ct.isLocalized ? await this.repo.findActiveLocaleCodes() : [];
+    const entry = await this.repo.create(ct.id, dto.data, locale, authorId, slug, extraLocaleCodes);
     return { data: entry };
   }
 

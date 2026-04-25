@@ -1,3 +1,4 @@
+import { LocalesResource } from './locales-resource.js';
 import { MediaResource } from './media-resource.js';
 import { RolesResource } from './roles-resource.js';
 import { SeoResource } from './seo-resource.js';
@@ -130,6 +131,10 @@ export class KastClient {
 
   get seo(): SeoResource {
     return new SeoResource(this);
+  }
+
+  get locales(): LocalesResource {
+    return new LocalesResource(this);
   }
 }
 

@@ -1,8 +1,12 @@
 import { getRequestConfig } from 'next-intl/server';
 
-export default getRequestConfig(async () => {
-  // Phase 2 starts with English only. RTL + multi-locale lands in WS-8 (Sprint 7).
-  const locale = 'en';
+const SUPPORTED_LOCALES = ['en', 'ar'];
+const DEFAULT_LOCALE = 'en';
+
+export default getRequestConfig(async ({ requestLocale }) => {
+  const requested = await requestLocale;
+  const locale =
+    requested !== undefined && SUPPORTED_LOCALES.includes(requested) ? requested : DEFAULT_LOCALE;
 
   return {
     locale,

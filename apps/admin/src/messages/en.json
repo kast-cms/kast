@@ -12,7 +12,8 @@
     "forms": "Forms",
     "menus": "Menus",
     "trash": "Trash",
-    "settings": "Settings"
+    "settings": "Settings",
+    "locales": "Locales"
   },
   "auth": {
     "login": {
@@ -467,6 +468,38 @@
       "copied": "Copied!",
       "empty": "No published entries with canonical URLs found.",
       "urlCount": "{{count}} URLs"
+    }
+  },
+  "locales": {
+    "title": "Locales",
+    "addLocale": "Add Locale",
+    "defaultBadge": "Default",
+    "setDefault": "Set as default",
+    "delete": "Delete",
+    "deleteConfirm": "Delete this locale? This action cannot be undone.",
+    "active": "Active",
+    "inactive": "Inactive",
+    "empty": "No locales configured yet.",
+    "columns": {
+      "code": "Code",
+      "name": "Name",
+      "nativeName": "Native Name",
+      "direction": "Direction",
+      "active": "Status",
+      "actions": "Actions"
+    },
+    "createDialog": {
+      "title": "Add Locale",
+      "code": "Language code (BCP-47)",
+      "name": "Name (in English)",
+      "nativeName": "Native name",
+      "direction": "Text direction",
+      "ltr": "Left to Right (LTR)",
+      "rtl": "Right to Left (RTL)",
+      "fallbackCode": "Fallback locale code (optional)",
+      "cancel": "Cancel",
+      "save": "Add Locale",
+      "saving": "Saving…"
     }
   }
 }

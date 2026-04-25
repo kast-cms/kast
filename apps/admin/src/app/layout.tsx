@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { getLocale } from 'next-intl/server';
 import type { JSX, ReactNode } from 'react';
 import './globals.css';
 import { Providers } from './providers';
@@ -16,9 +17,14 @@ interface RootLayoutProps {
   children: ReactNode;
 }
 
-export default function RootLayout({ children }: RootLayoutProps): JSX.Element {
+const RTL_LOCALES = new Set(['ar']);
+
+export default async function RootLayout({ children }: RootLayoutProps): Promise<JSX.Element> {
+  const locale = await getLocale();
+  const dir = RTL_LOCALES.has(locale) ? 'rtl' : 'ltr';
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} dir={dir} suppressHydrationWarning>
       <body>
         <Providers>{children}</Providers>
       </body>

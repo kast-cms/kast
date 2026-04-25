@@ -40,23 +40,69 @@ export class ContentRepository {
     }) as Promise<EntryWithLocale | null>;
   }
 
+  async findActiveLocaleCodes(): Promise<string[]> {
+    const locales = await this.prisma.locale.findMany({
+      where: { isActive: true },
+      select: { code: true },
+    });
+    return locales.map((l) => l.code);
+  }
+
+  async getLocaleFallbackChain(localeCode: string): Promise<string[]> {
+    const chain: string[] = [localeCode];
+    let current = localeCode;
+    for (let depth = 0; depth < 5; depth++) {
+      const row = await this.prisma.locale.findUnique({
+        where: { code: current },
+        select: { fallbackCode: true },
+      });
+      const fallbackCode = row?.fallbackCode;
+      if (!fallbackCode) break;
+      chain.push(fallbackCode);
+      current = fallbackCode;
+    }
+    return chain;
+  }
+
+  async findByIdWithFallback(id: string, locale: string): Promise<EntryWithLocale | null> {
+    const chain = await this.getLocaleFallbackChain(locale);
+    const entry = await this.prisma.contentEntry.findUnique({
+      where: { id },
+      include: { locales: { where: { localeCode: { in: chain } } } },
+    });
+    if (!entry) return null;
+    for (const code of chain) {
+      const match = entry.locales.find((l) => l.localeCode === code);
+      if (match) return { ...entry, locales: [match] } as EntryWithLocale;
+    }
+    return { ...entry, locales: [] } as EntryWithLocale;
+  }
+
   create(
     contentTypeId: string,
     data: Record<string, unknown>,
     locale: string,
     authorId: string,
     slug: string,
+    extraLocaleCodes: string[] = [],
   ): Promise<EntryWithLocale> {
+    const extraLocales = extraLocaleCodes
+      .filter((code) => code !== locale)
+      .map((code) => ({
+        localeCode: code,
+        slug: `${slug}-${code}`,
+        data: {} as Prisma.InputJsonValue,
+      }));
+
     return this.prisma.contentEntry.create({
       data: {
         contentTypeId,
         createdById: authorId,
         locales: {
-          create: {
-            localeCode: locale,
-            slug,
-            data: data as Prisma.InputJsonValue,
-          },
+          create: [
+            { localeCode: locale, slug, data: data as Prisma.InputJsonValue },
+            ...extraLocales,
+          ],
         },
       },
       include: { locales: true },

@@ -1,0 +1,505 @@
+{
+  "nav": {
+    "contentTypes": "أنواع المحتوى",
+    "content": "المحتوى",
+    "media": "الوسائط",
+    "users": "المستخدمون",
+    "roles": "الأدوار",
+    "apiTokens": "رموز API",
+    "agentTokens": "رموز الوكيل",
+    "seo": "تحسين محركات البحث",
+    "webhooks": "خطافات الويب",
+    "forms": "النماذج",
+    "menus": "القوائم",
+    "trash": "المهملات",
+    "settings": "الإعدادات",
+    "locales": "اللغات"
+  },
+  "auth": {
+    "login": {
+      "title": "تسجيل الدخول إلى Kast",
+      "subtitle": "أدخل بيانات اعتمادك للوصول إلى لوحة الإدارة",
+      "emailLabel": "البريد الإلكتروني",
+      "emailPlaceholder": "you@example.com",
+      "passwordLabel": "كلمة المرور",
+      "passwordPlaceholder": "••••••••",
+      "submit": "تسجيل الدخول",
+      "submitting": "جارٍ تسجيل الدخول…",
+      "errorInvalid": "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
+      "errorGeneric": "حدث خطأ ما. يرجى المحاولة مرة أخرى."
+    },
+    "logout": "تسجيل الخروج"
+  },
+  "setup": {
+    "title": "مرحباً بك في Kast",
+    "subtitle": "أنشئ أول حساب مسؤول للبدء.",
+    "firstNameLabel": "الاسم الأول",
+    "lastNameLabel": "اسم العائلة",
+    "emailLabel": "البريد الإلكتروني",
+    "passwordLabel": "كلمة المرور",
+    "confirmPasswordLabel": "تأكيد كلمة المرور",
+    "submit": "إنشاء الحساب",
+    "submitting": "جارٍ إنشاء الحساب…",
+    "passwordMismatch": "كلمتا المرور غير متطابقتين.",
+    "errorGeneric": "حدث خطأ ما. يرجى المحاولة مرة أخرى."
+  },
+  "common": {
+    "loading": "جارٍ التحميل…",
+    "error": "حدث خطأ ما",
+    "retry": "حاول مرة أخرى",
+    "cancel": "إلغاء",
+    "save": "حفظ",
+    "saving": "جارٍ الحفظ…",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "view": "عرض",
+    "search": "بحث",
+    "noResults": "لا توجد نتائج.",
+    "comingSoon": "قريباً"
+  },
+  "notFound": {
+    "title": "الصفحة غير موجودة",
+    "description": "الصفحة التي تبحث عنها غير موجودة أو تم نقلها.",
+    "back": "العودة إلى لوحة التحكم"
+  },
+  "error": {
+    "title": "حدث خطأ ما",
+    "description": "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.",
+    "retry": "حاول مرة أخرى"
+  },
+  "contentTypes": {
+    "title": "أنواع المحتوى",
+    "description": "حدد بنية المحتوى الخاص بك.",
+    "createButton": "إنشاء نوع محتوى",
+    "emptyTitle": "لا توجد أنواع محتوى بعد",
+    "emptyDescription": "ابدأ بإنشاء أول نوع محتوى.",
+    "table": {
+      "displayName": "الاسم المعروض",
+      "apiId": "معرف API",
+      "fields": "الحقول",
+      "entries": "المدخلات",
+      "updated": "آخر تحديث",
+      "actions": ""
+    },
+    "badges": {
+      "system": "نظام"
+    },
+    "new": {
+      "title": "إنشاء نوع محتوى",
+      "description": "حدد نوع محتوى جديد لمشروعك.",
+      "displayNameLabel": "الاسم المعروض",
+      "displayNamePlaceholder": "مقال المدونة",
+      "apiIdLabel": "معرف API",
+      "apiIdPlaceholder": "blog-post",
+      "descriptionLabel": "الوصف",
+      "descriptionPlaceholder": "وصف مختصر (اختياري)",
+      "iconLabel": "الأيقونة (إيموجي)",
+      "iconPlaceholder": "📝",
+      "submit": "إنشاء",
+      "submitting": "جارٍ الإنشاء…"
+    },
+    "edit": {
+      "title": "تعديل نوع المحتوى",
+      "submit": "حفظ التغييرات",
+      "submitting": "جارٍ الحفظ…",
+      "deleteButton": "حذف نوع المحتوى"
+    },
+    "fields": {
+      "title": "الحقول",
+      "addField": "إضافة حقل",
+      "emptyTitle": "لا توجد حقول بعد",
+      "emptyDescription": "أضف أول حقل لتحديد البنية.",
+      "required": "مطلوب",
+      "localized": "محلي",
+      "unique": "فريد",
+      "hidden": "مخفي",
+      "position": "الموضع"
+    },
+    "fieldTypes": {
+      "TEXT": "نص",
+      "RICH_TEXT": "نص منسق",
+      "NUMBER": "رقم",
+      "BOOLEAN": "منطقي",
+      "DATE": "تاريخ",
+      "MEDIA": "وسائط",
+      "RELATION": "علاقة",
+      "JSON": "JSON",
+      "EMAIL": "بريد إلكتروني",
+      "URL": "رابط",
+      "ENUM": "قائمة",
+      "UID": "معرف فريد"
+    },
+    "fieldDrawer": {
+      "addTitle": "إضافة حقل",
+      "editTitle": "تعديل حقل",
+      "nameLabel": "اسم الحقل (معرف API)",
+      "namePlaceholder": "title",
+      "displayNameLabel": "الاسم المعروض",
+      "displayNamePlaceholder": "العنوان",
+      "typeLabel": "نوع الحقل",
+      "selectType": "اختر نوعاً",
+      "configSection": "الإعداد",
+      "togglesSection": "الخيارات",
+      "save": "حفظ الحقل",
+      "saving": "جارٍ الحفظ…"
+    },
+    "deleteDialog": {
+      "title": "حذف نوع المحتوى",
+      "description": "لا يمكن التراجع عن هذا الإجراء. ستُحذف جميع المدخلات والحقول المرتبطة بهذا النوع نهائياً.",
+      "confirmLabel": "اكتب معرف API للتأكيد:",
+      "confirmPlaceholder": "اكتب {{apiId}} للتأكيد",
+      "deleteButton": "حذف نهائي",
+      "deleting": "جارٍ الحذف…"
+    }
+  },
+  "content": {
+    "title": "المحتوى",
+    "description": "تصفح وإدارة مدخلات المحتوى.",
+    "newEntry": "مدخل جديد",
+    "emptyTitle": "لا توجد مدخلات بعد",
+    "emptyDescription": "أنشئ أول مدخل لهذا النوع من المحتوى.",
+    "searchPlaceholder": "البحث في المدخلات…",
+    "filterStatus": "الحالة",
+    "filterLocale": "اللغة",
+    "allStatuses": "جميع الحالات",
+    "allLocales": "جميع اللغات",
+    "loadMore": "تحميل المزيد",
+    "table": {
+      "title": "العنوان",
+      "status": "الحالة",
+      "locale": "اللغة",
+      "author": "الكاتب",
+      "updated": "آخر تحديث",
+      "actions": ""
+    },
+    "status": {
+      "DRAFT": "مسودة",
+      "PUBLISHED": "منشور",
+      "ARCHIVED": "مؤرشف"
+    },
+    "bulk": {
+      "selected": "{{count}} محدد",
+      "publish": "نشر",
+      "unpublish": "إلغاء النشر",
+      "trash": "نقل إلى المهملات",
+      "confirmTrash": "نقل {{count}} مدخلات إلى المهملات؟",
+      "confirmPublish": "نشر {{count}} مدخلات؟",
+      "confirmUnpublish": "إلغاء نشر {{count}} مدخلات؟"
+    },
+    "editor": {
+      "newTitle": "مدخل جديد",
+      "editTitle": "تعديل المدخل",
+      "saveDraft": "حفظ المسودة",
+      "saving": "جارٍ الحفظ…",
+      "publish": "نشر",
+      "publishing": "جارٍ النشر…",
+      "unpublish": "إلغاء النشر",
+      "unpublishing": "جارٍ إلغاء النشر…",
+      "schedule": "جدولة",
+      "scheduledAt": "نشر في",
+      "autosaved": "تم حفظ المسودة",
+      "unsavedChanges": "تغييرات غير محفوظة",
+      "localeTab": "{{locale}}"
+    },
+    "seo": {
+      "panelTitle": "تحسين محركات البحث",
+      "metaTitle": "عنوان الميتا",
+      "metaDescription": "وصف الميتا",
+      "ogImage": "صورة OG",
+      "canonicalUrl": "الرابط المعياري",
+      "score": "نقاط SEO",
+      "scoreStub": "سيتوفر تقييم SEO بعد WS-6."
+    },
+    "media": {
+      "pickerTitle": "اختر وسائط",
+      "selectButton": "اختيار",
+      "searchPlaceholder": "البحث في الملفات…",
+      "noFiles": "لا توجد ملفات.",
+      "uploadHint": "ارفع الملفات من مكتبة الوسائط."
+    }
+  },
+  "mediaLibrary": {
+    "title": "مكتبة الوسائط",
+    "description": "ارفع وأدر ملفات الوسائط.",
+    "searchPlaceholder": "البحث في الملفات…",
+    "noFiles": "لا توجد ملفات.",
+    "upload": "رفع",
+    "filter": {
+      "allTypes": "جميع الأنواع",
+      "images": "صور",
+      "videos": "فيديوهات",
+      "documents": "مستندات"
+    },
+    "sort": {
+      "date": "تاريخ الرفع",
+      "name": "الاسم",
+      "size": "الحجم"
+    },
+    "folder": {
+      "allFiles": "جميع الملفات",
+      "new": "مجلد جديد",
+      "namePlaceholder": "اسم المجلد",
+      "create": "إنشاء"
+    },
+    "detail": {
+      "altText": "النص البديل",
+      "altTextPlaceholder": "اوصف هذه الصورة…",
+      "save": "حفظ",
+      "saving": "جارٍ الحفظ…",
+      "size": "الحجم",
+      "type": "النوع",
+      "dimensions": "الأبعاد",
+      "uploaded": "تاريخ الرفع",
+      "url": "الرابط",
+      "usedIn": "مستخدم في {{count}} مدخلات",
+      "trash": "نقل إلى المهملات",
+      "trashDisabled": "قيد الاستخدام — لا يمكن نقله"
+    },
+    "uploadZone": {
+      "title": "رفع الملفات",
+      "tabFile": "رفع ملف",
+      "tabUrl": "من رابط",
+      "dropHere": "أسقط الملفات هنا",
+      "or": "أو",
+      "browse": "تصفح الملفات",
+      "uploading": "جارٍ الرفع…",
+      "urlHint": "أدخل رابطاً لتنزيل الملف وتخزينه.",
+      "import": "استيراد"
+    }
+  },
+  "users": {
+    "title": "المستخدمون",
+    "description": "إدارة مستخدمي الإدارة وصلاحياتهم.",
+    "invite": "دعوة مستخدم",
+    "searchPlaceholder": "البحث بالاسم أو البريد الإلكتروني…",
+    "filterByRole": "جميع الأدوار",
+    "table": {
+      "name": "الاسم",
+      "email": "البريد الإلكتروني",
+      "roles": "الأدوار",
+      "status": "الحالة",
+      "lastLogin": "آخر تسجيل دخول",
+      "actions": "الإجراءات"
+    },
+    "status": {
+      "active": "نشط",
+      "invited": "مدعو",
+      "suspended": "موقوف"
+    },
+    "inviteDialog": {
+      "title": "دعوة مستخدم",
+      "email": "البريد الإلكتروني",
+      "firstName": "الاسم الأول",
+      "lastName": "اسم العائلة",
+      "roles": "الأدوار",
+      "submit": "إرسال الدعوة",
+      "submitting": "جارٍ الإرسال…",
+      "cancel": "إلغاء"
+    },
+    "editPage": {
+      "title": "تعديل المستخدم",
+      "firstName": "الاسم الأول",
+      "lastName": "اسم العائلة",
+      "roles": "الأدوار",
+      "active": "الحساب نشط",
+      "save": "حفظ التغييرات",
+      "saving": "جارٍ الحفظ…",
+      "back": "العودة إلى المستخدمين",
+      "cannotSelfSuspend": "لا يمكنك إيقاف حسابك الخاص."
+    },
+    "noUsers": "لا يوجد مستخدمون.",
+    "never": "أبداً"
+  },
+  "roles": {
+    "title": "الأدوار",
+    "description": "إعداد أدوار الصلاحيات. الأدوار النظامية للقراءة فقط.",
+    "createRole": "إنشاء دور",
+    "system": "نظام",
+    "custom": "مخصص",
+    "table": {
+      "role": "الدور",
+      "users": "المستخدمون",
+      "permissions": "الصلاحيات",
+      "type": "النوع",
+      "actions": "الإجراءات"
+    },
+    "createDialog": {
+      "title": "إنشاء دور مخصص",
+      "name": "المعرف",
+      "namePlaceholder": "content-manager",
+      "displayName": "الاسم المعروض",
+      "displayNamePlaceholder": "مدير المحتوى",
+      "description": "الوصف",
+      "submit": "إنشاء الدور",
+      "submitting": "جارٍ الإنشاء…",
+      "cancel": "إلغاء"
+    },
+    "permissions": {
+      "title": "الصلاحيات — {{name}}",
+      "readOnly": "صلاحيات الأدوار النظامية للقراءة فقط.",
+      "actions": {
+        "read": "قراءة",
+        "create": "إنشاء",
+        "update": "تحديث",
+        "delete": "حذف",
+        "publish": "نشر"
+      },
+      "resources": {
+        "content": "المحتوى",
+        "media": "الوسائط",
+        "seo": "تحسين محركات البحث",
+        "content-types": "أنواع المحتوى",
+        "users": "المستخدمون",
+        "roles": "الأدوار",
+        "tokens": "رموز API"
+      },
+      "save": "حفظ الصلاحيات",
+      "saving": "جارٍ الحفظ…",
+      "viewEdit": "الصلاحيات",
+      "delete": "حذف",
+      "deleteConfirm": "حذف الدور \"{{name}}\"؟ لا يمكن التراجع عن هذا الإجراء."
+    },
+    "noRoles": "لا توجد أدوار."
+  },
+  "apiTokens": {
+    "title": "رموز API",
+    "description": "إنشاء وإدارة مفاتيح API للوصول البرمجي.",
+    "create": "إنشاء رمز",
+    "table": {
+      "name": "الاسم",
+      "prefix": "البادئة",
+      "scope": "النطاق",
+      "lastUsed": "آخر استخدام",
+      "expires": "تاريخ الانتهاء",
+      "status": "الحالة",
+      "actions": "الإجراءات"
+    },
+    "scope": {
+      "READ_ONLY": "للقراءة فقط",
+      "FULL_ACCESS": "وصول كامل",
+      "SCOPED": "نطاق محدد"
+    },
+    "status": {
+      "active": "نشط",
+      "revoked": "ملغى"
+    },
+    "createDialog": {
+      "title": "إنشاء رمز API",
+      "name": "اسم الرمز",
+      "namePlaceholder": "sdk-staging",
+      "scope": "النطاق",
+      "scopeReadOnly": "للقراءة فقط — طلبات GET فقط",
+      "scopeFullAccess": "وصول كامل — جميع النقاط",
+      "scopeScoped": "نطاق محدد — صلاحيات مخصصة",
+      "expiry": "تاريخ الانتهاء",
+      "expiryHint": "اتركه فارغاً لعدم الانتهاء.",
+      "submit": "إنشاء الرمز",
+      "submitting": "جارٍ الإنشاء…",
+      "cancel": "إلغاء"
+    },
+    "revealDialog": {
+      "title": "تم إنشاء الرمز",
+      "warning": "سيُعرض هذا الرمز مرة واحدة فقط. انسخه الآن واحتفظ به في مكان آمن.",
+      "copy": "نسخ",
+      "copied": "تم النسخ!",
+      "done": "تم"
+    },
+    "noTokens": "لا توجد رموز بعد.",
+    "never": "أبداً",
+    "noExpiry": "لا انتهاء",
+    "revoke": "إلغاء",
+    "revokeConfirm": "إلغاء الرمز \"{{name}}\"؟ ستفقد جميع الخدمات التي تستخدمه الوصول."
+  },
+  "seo": {
+    "title": "تحسين محركات البحث",
+    "description": "إدارة إعادة التوجيه وخريطة الموقع ودرجات SEO.",
+    "tabs": {
+      "redirects": "إعادة التوجيه",
+      "sitemap": "خريطة الموقع"
+    },
+    "score": {
+      "label": "درجة SEO",
+      "issuesTitle": "مشكلات SEO",
+      "noIssues": "لا توجد مشكلات.",
+      "noScore": "لا توجد درجة بعد — قم بالتحقق لإنشاء واحدة.",
+      "validate": "تشغيل التحقق",
+      "validating": "جارٍ التحقق…",
+      "severity": {
+        "ERROR": "خطأ",
+        "WARNING": "تحذير",
+        "INFO": "معلومة"
+      }
+    },
+    "redirects": {
+      "title": "قواعد إعادة التوجيه",
+      "description": "إدارة قواعد إعادة التوجيه 301/302.",
+      "createButton": "إضافة إعادة توجيه",
+      "emptyTitle": "لا توجد إعادة توجيه بعد",
+      "emptyDescription": "أضف أول قاعدة إعادة توجيه.",
+      "table": {
+        "from": "من",
+        "to": "إلى",
+        "type": "النوع",
+        "active": "نشط",
+        "hits": "الزيارات",
+        "actions": ""
+      },
+      "type": {
+        "PERMANENT": "301 دائم",
+        "TEMPORARY": "302 مؤقت"
+      },
+      "create": {
+        "title": "إضافة إعادة توجيه",
+        "fromLabel": "المسار من",
+        "fromPlaceholder": "/old-page",
+        "toLabel": "المسار إلى",
+        "toPlaceholder": "/new-page",
+        "typeLabel": "النوع",
+        "submit": "إضافة إعادة توجيه",
+        "submitting": "جارٍ الإضافة…"
+      },
+      "deleteConfirm": "حذف إعادة التوجيه من \"{{from}}\"؟",
+      "toggleActive": "تبديل الحالة"
+    },
+    "sitemap": {
+      "title": "روابط خريطة الموقع",
+      "description": "تظهر هنا المدخلات المنشورة ذات الروابط المعيارية.",
+      "copyAll": "نسخ جميع الروابط",
+      "copied": "تم النسخ!",
+      "empty": "لا توجد مدخلات منشورة بروابط معيارية.",
+      "urlCount": "{{count}} روابط"
+    }
+  },
+  "locales": {
+    "title": "اللغات",
+    "addLocale": "إضافة لغة",
+    "defaultBadge": "افتراضي",
+    "setDefault": "تعيين كافتراضي",
+    "delete": "حذف",
+    "deleteConfirm": "حذف هذه اللغة؟ لا يمكن التراجع عن هذا الإجراء.",
+    "active": "نشط",
+    "inactive": "غير نشط",
+    "empty": "لا توجد لغات مضافة بعد.",
+    "columns": {
+      "code": "الرمز",
+      "name": "الاسم",
+      "nativeName": "الاسم المحلي",
+      "direction": "الاتجاه",
+      "active": "الحالة",
+      "actions": "الإجراءات"
+    },
+    "createDialog": {
+      "title": "إضافة لغة",
+      "code": "رمز اللغة (BCP-47)",
+      "name": "الاسم (بالإنجليزية)",
+      "nativeName": "الاسم المحلي",
+      "direction": "اتجاه النص",
+      "ltr": "من اليسار إلى اليمين (LTR)",
+      "rtl": "من اليمين إلى اليسار (RTL)",
+      "fallbackCode": "رمز اللغة الاحتياطية (اختياري)",
+      "cancel": "إلغاء",
+      "save": "إضافة اللغة",
+      "saving": "جارٍ الحفظ…"
+    }
+  }
+}

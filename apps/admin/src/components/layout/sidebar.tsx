@@ -20,6 +20,7 @@ import {
   Globe,
   Image as ImageIcon,
   Key,
+  Languages,
   LayoutDashboard,
   ListTree,
   LogOut,
@@ -77,6 +78,7 @@ function useNavGroups(): NavGroup[] {
       label: 'System',
       items: [
         { href: '/trash', label: t('trash'), Icon: Trash2 },
+        { href: '/settings/locales', label: t('locales'), Icon: Languages },
         { href: '/settings', label: t('settings'), Icon: Settings },
       ],
     },

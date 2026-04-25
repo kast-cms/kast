@@ -7,7 +7,7 @@ const REFRESH_COOKIE = process.env['REFRESH_TOKEN_COOKIE_NAME'] ?? 'kast_rt';
 const PUBLIC_PATHS = new Set(['/login', '/setup']);
 
 const intlMiddleware = createIntlMiddleware({
-  locales: ['en'],
+  locales: ['en', 'ar'],
   defaultLocale: 'en',
   localePrefix: 'never',
 });
