@@ -7,6 +7,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { ContentTypesModule } from './modules/content-types/content-types.module';
 import { ContentModule } from './modules/content/content.module';
 import { HealthModule } from './modules/health/health.module';
+import { McpModule } from './modules/mcp/mcp.module';
 import { MediaModule } from './modules/media/media.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { SeoModule } from './modules/seo/seo.module';
@@ -33,6 +34,7 @@ import { PrismaModule } from './prisma/prisma.module';
     ContentModule,
     MediaModule,
     SeoModule,
+    McpModule,
   ],
 })
 export class AppModule {}
