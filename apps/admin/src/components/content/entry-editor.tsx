@@ -27,13 +27,20 @@ export function EntryEditor({ typeId, contentType, entry }: EntryEditorProps): J
     isSaving,
     isPublishing,
     isUnpublishing,
+    isArchiving,
+    isRestoring,
+    isScheduling,
+    isCancellingSchedule,
     autosaved,
     setData,
     setSeo,
-    setScheduledAt,
     saveDraft,
     publish,
     unpublish,
+    archive,
+    restore,
+    schedulePublish,
+    cancelSchedule,
   } = useEntryEditor({ typeId, entryId: entry?.id ?? null, initialEntry: entry });
 
   async function handleSaveDraft(): Promise<void> {
@@ -51,6 +58,29 @@ export function EntryEditor({ typeId, contentType, entry }: EntryEditorProps): J
     router.refresh();
   }
 
+  async function handleArchive(): Promise<void> {
+    await archive();
+    router.refresh();
+  }
+
+  async function handleRestore(): Promise<void> {
+    await restore();
+    router.refresh();
+  }
+
+  async function handleSchedule(publishAt: string): Promise<void> {
+    await schedulePublish(publishAt);
+    router.refresh();
+  }
+
+  async function handleCancelSchedule(): Promise<void> {
+    await cancelSchedule();
+    router.refresh();
+  }
+
+  const busy = [isSaving, isPublishing, isUnpublishing, isArchiving, isRestoring].some(Boolean);
+  const { metaTitle = '', metaDescription = '', canonicalUrl = '', ogImage = '' } = seo;
+
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
       <div className="flex items-center justify-between">
@@ -64,8 +94,11 @@ export function EntryEditor({ typeId, contentType, entry }: EntryEditorProps): J
         isSaving={isSaving}
         isPublishing={isPublishing}
         isUnpublishing={isUnpublishing}
+        isArchiving={isArchiving}
+        isRestoring={isRestoring}
+        isScheduling={isScheduling}
+        isCancellingSchedule={isCancellingSchedule}
         scheduledAt={scheduledAt}
-        onScheduledAtChange={setScheduledAt}
         onSaveDraft={() => {
           void handleSaveDraft();
         }}
@@ -74,6 +107,18 @@ export function EntryEditor({ typeId, contentType, entry }: EntryEditorProps): J
         }}
         onUnpublish={() => {
           void handleUnpublish();
+        }}
+        onArchive={() => {
+          void handleArchive();
+        }}
+        onRestore={() => {
+          void handleRestore();
+        }}
+        onSchedule={(at) => {
+          void handleSchedule(at);
+        }}
+        onCancelSchedule={() => {
+          void handleCancelSchedule();
         }}
       />
       <div className="space-y-6 rounded-lg border border-[--color-border] p-6">
@@ -89,18 +134,18 @@ export function EntryEditor({ typeId, contentType, entry }: EntryEditorProps): J
               onChange={(val) => {
                 setData(field.name, val);
               }}
-              disabled={isSaving || isPublishing}
+              disabled={busy}
             />
           </div>
         ))}
       </div>
       <SeoPanel
-        metaTitle={seo['metaTitle'] ?? ''}
-        metaDescription={seo['metaDescription'] ?? ''}
-        canonicalUrl={seo['canonicalUrl'] ?? ''}
-        ogImage={seo['ogImage'] ?? ''}
+        metaTitle={metaTitle}
+        metaDescription={metaDescription}
+        canonicalUrl={canonicalUrl}
+        ogImage={ogImage}
         onChange={setSeo}
-        disabled={isSaving || isPublishing}
+        disabled={busy}
       />
     </div>
   );

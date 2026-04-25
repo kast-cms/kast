@@ -27,6 +27,7 @@ const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'destructive'> = 
   PUBLISHED: 'default',
   DRAFT: 'secondary',
   ARCHIVED: 'destructive',
+  SCHEDULED: 'secondary',
 };
 
 export function EntryTable({

@@ -175,7 +175,8 @@
     "status": {
       "DRAFT": "مسودة",
       "PUBLISHED": "منشور",
-      "ARCHIVED": "مؤرشف"
+      "ARCHIVED": "مؤرشف",
+      "SCHEDULED": "مجدول"
     },
     "bulk": {
       "selected": "{{count}} محدد",
@@ -195,8 +196,14 @@
       "publishing": "جارٍ النشر…",
       "unpublish": "إلغاء النشر",
       "unpublishing": "جارٍ إلغاء النشر…",
+      "archive": "أرشفة",
+      "archiving": "جارى الأرشفة…",
+      "restore": "استعادة كمسودة",
+      "restoring": "جارى الاستعادة…",
       "schedule": "جدولة",
-      "scheduledAt": "نشر في",
+      "cancelSchedule": "إلغاء الجدولة",
+      "cancelling": "جارى الإلغاء…",
+      "scheduledFor": "مجدول لـ {date}",
       "autosaved": "تم حفظ المسودة",
       "unsavedChanges": "تغييرات غير محفوظة",
       "localeTab": "{{locale}}"
@@ -216,6 +223,14 @@
       "searchPlaceholder": "البحث في الملفات…",
       "noFiles": "لا توجد ملفات.",
       "uploadHint": "ارفع الملفات من مكتبة الوسائط."
+    },
+    "schedule": {
+      "title": "جدولة النشر",
+      "publishAt": "نشر في",
+      "hint": "اختر تاريخًا ووقتًا مستقبليًا.",
+      "cancel": "إلغاء",
+      "confirm": "جدولة",
+      "scheduling": "جارى الجدولة…"
     }
   },
   "mediaLibrary": {

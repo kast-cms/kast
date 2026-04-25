@@ -175,7 +175,8 @@
     "status": {
       "DRAFT": "Draft",
       "PUBLISHED": "Published",
-      "ARCHIVED": "Archived"
+      "ARCHIVED": "Archived",
+      "SCHEDULED": "Scheduled"
     },
     "bulk": {
       "selected": "{{count}} selected",
@@ -195,8 +196,14 @@
       "publishing": "Publishing…",
       "unpublish": "Unpublish",
       "unpublishing": "Unpublishing…",
+      "archive": "Archive",
+      "archiving": "Archiving…",
+      "restore": "Restore to Draft",
+      "restoring": "Restoring…",
       "schedule": "Schedule",
-      "scheduledAt": "Publish at",
+      "cancelSchedule": "Cancel Schedule",
+      "cancelling": "Cancelling…",
+      "scheduledFor": "Scheduled for {date}",
       "autosaved": "Draft saved",
       "unsavedChanges": "Unsaved changes",
       "localeTab": "{{locale}}"
@@ -216,6 +223,14 @@
       "searchPlaceholder": "Search files…",
       "noFiles": "No files found.",
       "uploadHint": "Upload files in the Media Library."
+    },
+    "schedule": {
+      "title": "Schedule Publish",
+      "publishAt": "Publish at",
+      "hint": "Choose a future date and time.",
+      "cancel": "Cancel",
+      "confirm": "Schedule",
+      "scheduling": "Scheduling…"
     }
   },
   "mediaLibrary": {

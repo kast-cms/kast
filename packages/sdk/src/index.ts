@@ -41,6 +41,7 @@ export type {
   ReorderFieldsBody,
   RoleDetail,
   RoleSummary,
+  SchedulePublishBody,
   SeoIssue,
   SeoMeta,
   SeoScore,

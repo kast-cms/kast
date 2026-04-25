@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ContentStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
-import { IsEnum, IsObject, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsISO8601, IsObject, IsOptional, IsString } from 'class-validator';
 
 export class CreateContentEntryDto {
   @ApiPropertyOptional({ example: 'en' })
@@ -26,4 +26,10 @@ export class UpdateContentEntryDto {
   @IsOptional()
   @IsEnum(ContentStatus)
   status?: ContentStatus;
+}
+
+export class SchedulePublishDto {
+  @ApiProperty({ description: 'ISO 8601 datetime to publish at' })
+  @IsISO8601()
+  publishAt!: string;
 }

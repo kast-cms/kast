@@ -18,6 +18,7 @@ import type {
   EntryListParams,
   KastClientOptions,
   ReorderFieldsBody,
+  SchedulePublishBody,
   UpdateContentTypeBody,
   UpdateEntryBody,
   UpdateFieldBody,
@@ -252,6 +253,35 @@ class ContentResource {
   unpublish(typeSlug: string, id: string): Promise<ApiResponse<ContentEntryDetail>> {
     return this.client.request(`/api/v1/content-types/${typeSlug}/entries/${id}/unpublish`, {
       method: 'POST',
+    });
+  }
+
+  archive(typeSlug: string, id: string): Promise<ApiResponse<ContentEntryDetail>> {
+    return this.client.request(`/api/v1/content-types/${typeSlug}/entries/${id}/archive`, {
+      method: 'POST',
+    });
+  }
+
+  restore(typeSlug: string, id: string): Promise<ApiResponse<ContentEntryDetail>> {
+    return this.client.request(`/api/v1/content-types/${typeSlug}/entries/${id}/restore`, {
+      method: 'POST',
+    });
+  }
+
+  schedulePublish(
+    typeSlug: string,
+    id: string,
+    body: SchedulePublishBody,
+  ): Promise<ApiResponse<ContentEntryDetail>> {
+    return this.client.request(`/api/v1/content-types/${typeSlug}/entries/${id}/schedule`, {
+      method: 'POST',
+      body,
+    });
+  }
+
+  cancelSchedule(typeSlug: string, id: string): Promise<ApiResponse<ContentEntryDetail>> {
+    return this.client.request(`/api/v1/content-types/${typeSlug}/entries/${id}/schedule`, {
+      method: 'DELETE',
     });
   }
 

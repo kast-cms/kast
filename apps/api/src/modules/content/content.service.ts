@@ -1,8 +1,16 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import type { Queue } from 'bullmq';
 import type { PaginatedResult } from '../../common/types/auth.types';
 import { ContentTypesService } from '../content-types/content-types.service';
+import type { PublishJobData } from '../publish/publish.processor';
+import { QUEUE_NAMES } from '../queue/queue.constants';
 import { ContentRepository, EntryWithLocale } from './content.repository';
-import type { CreateContentEntryDto, UpdateContentEntryDto } from './dto/content-entry.dto';
+import type {
+  CreateContentEntryDto,
+  SchedulePublishDto,
+  UpdateContentEntryDto,
+} from './dto/content-entry.dto';
 import type { ContentQueryDto } from './dto/content-query.dto';
 
 @Injectable()
@@ -10,6 +18,7 @@ export class ContentService {
   constructor(
     private readonly repo: ContentRepository,
     private readonly contentTypesService: ContentTypesService,
+    @InjectQueue(QUEUE_NAMES.PUBLISH) private readonly publishQueue: Queue<PublishJobData>,
   ) {}
 
   async findAll(
@@ -88,6 +97,72 @@ export class ContentService {
     const entry = await this.repo.findById(id);
     if (!entry) throw new NotFoundException(`Content entry ${id} not found`);
     await this.repo.updateStatus(id, 'PUBLISHED', new Date());
+    const updated = await this.repo.findById(id);
+    if (!updated) throw new NotFoundException(`Content entry ${id} not found`);
+    return { data: updated };
+  }
+
+  async unpublish(typeSlug: string, id: string): Promise<{ data: EntryWithLocale }> {
+    await this.contentTypesService.findByName(typeSlug);
+    const entry = await this.repo.findById(id);
+    if (!entry) throw new NotFoundException(`Content entry ${id} not found`);
+    await this.repo.updateStatus(id, 'DRAFT');
+    const updated = await this.repo.findById(id);
+    if (!updated) throw new NotFoundException(`Content entry ${id} not found`);
+    return { data: updated };
+  }
+
+  async archive(typeSlug: string, id: string): Promise<{ data: EntryWithLocale }> {
+    await this.contentTypesService.findByName(typeSlug);
+    const entry = await this.repo.findById(id);
+    if (!entry) throw new NotFoundException(`Content entry ${id} not found`);
+    await this.repo.updateStatus(id, 'ARCHIVED');
+    const updated = await this.repo.findById(id);
+    if (!updated) throw new NotFoundException(`Content entry ${id} not found`);
+    return { data: updated };
+  }
+
+  async restore(typeSlug: string, id: string): Promise<{ data: EntryWithLocale }> {
+    await this.contentTypesService.findByName(typeSlug);
+    const entry = await this.repo.findById(id);
+    if (!entry) throw new NotFoundException(`Content entry ${id} not found`);
+    await this.repo.updateStatus(id, 'DRAFT');
+    const updated = await this.repo.findById(id);
+    if (!updated) throw new NotFoundException(`Content entry ${id} not found`);
+    return { data: updated };
+  }
+
+  async schedulePublish(
+    typeSlug: string,
+    id: string,
+    dto: SchedulePublishDto,
+  ): Promise<{ data: EntryWithLocale }> {
+    await this.contentTypesService.findByName(typeSlug);
+    const entry = await this.repo.findById(id);
+    if (!entry) throw new NotFoundException(`Content entry ${id} not found`);
+    const publishAt = new Date(dto.publishAt);
+    if (publishAt <= new Date()) {
+      throw new BadRequestException('publishAt must be in the future');
+    }
+    const delay = publishAt.getTime() - Date.now();
+    await this.publishQueue.add(
+      'publish',
+      { entryId: id, typeSlug },
+      { delay, jobId: `publish-${id}` },
+    );
+    await this.repo.updateSchedule(id, publishAt, 'SCHEDULED');
+    const updated = await this.repo.findById(id);
+    if (!updated) throw new NotFoundException(`Content entry ${id} not found`);
+    return { data: updated };
+  }
+
+  async cancelSchedule(typeSlug: string, id: string): Promise<{ data: EntryWithLocale }> {
+    await this.contentTypesService.findByName(typeSlug);
+    const entry = await this.repo.findById(id);
+    if (!entry) throw new NotFoundException(`Content entry ${id} not found`);
+    const job = await this.publishQueue.getJob(`publish-${id}`);
+    await job?.remove();
+    await this.repo.updateSchedule(id, null, 'DRAFT');
     const updated = await this.repo.findById(id);
     if (!updated) throw new NotFoundException(`Content entry ${id} not found`);
     return { data: updated };

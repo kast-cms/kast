@@ -106,7 +106,11 @@ export interface ReorderFieldsBody {
   order: string[]; // field names in desired order
 }
 
-export type EntryStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+export type EntryStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED';
+
+export interface SchedulePublishBody {
+  publishAt: string;
+}
 
 export interface ContentEntrySummary {
   id: string;

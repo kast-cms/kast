@@ -15,17 +15,24 @@ interface EntryEditorState {
   data: Record<string, unknown>;
   seo: Record<string, string>;
   status: EntryStatus;
-  scheduledAt: string;
+  scheduledAt: string | null;
   isSaving: boolean;
   isPublishing: boolean;
   isUnpublishing: boolean;
+  isArchiving: boolean;
+  isRestoring: boolean;
+  isScheduling: boolean;
+  isCancellingSchedule: boolean;
   autosaved: boolean;
   setData: (key: string, value: unknown) => void;
   setSeo: (key: string, value: string) => void;
-  setScheduledAt: (val: string) => void;
   saveDraft: () => Promise<void>;
   publish: () => Promise<void>;
   unpublish: () => Promise<void>;
+  archive: () => Promise<void>;
+  restore: () => Promise<void>;
+  schedulePublish: (publishAt: string) => Promise<void>;
+  cancelSchedule: () => Promise<void>;
   createdEntryId: string | null;
 }
 
@@ -65,10 +72,14 @@ export function useEntryEditor({
       : { metaTitle: '', metaDescription: '', canonicalUrl: '', ogImage: '' },
   );
   const [status, setStatus] = useState<EntryStatus>(initialEntry?.status ?? 'DRAFT');
-  const [scheduledAt, setScheduledAt] = useState('');
+  const [scheduledAt, setScheduledAt] = useState<string | null>(initialEntry?.scheduledAt ?? null);
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isUnpublishing, setIsUnpublishing] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [isScheduling, setIsScheduling] = useState(false);
+  const [isCancellingSchedule, setIsCancellingSchedule] = useState(false);
   const [autosaved, setAutosaved] = useState(false);
   const [createdEntryId, setCreatedEntryId] = useState<string | null>(entryId);
   const autosaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -116,12 +127,11 @@ export function useEntryEditor({
       const payload = { ...data, _seo: seo };
       if (createdEntryId) {
         await client.content.update(typeId, createdEntryId, { data: payload, status: 'DRAFT' });
-        setStatus('DRAFT');
       } else {
         const res = await client.content.create(typeId, { data: payload, status: 'DRAFT' });
         setCreatedEntryId(res.data.id);
-        setStatus('DRAFT');
       }
+      setStatus('DRAFT');
       setAutosaved(true);
     } finally {
       setIsSaving(false);
@@ -150,12 +160,50 @@ export function useEntryEditor({
   async function unpublish(): Promise<void> {
     if (!createdEntryId) return;
     setIsUnpublishing(true);
-    try {
-      await client.content.unpublish(typeId, createdEntryId);
-      setStatus('DRAFT');
-    } finally {
+    await client.content.unpublish(typeId, createdEntryId).finally(() => {
       setIsUnpublishing(false);
-    }
+    });
+    setStatus('DRAFT');
+  }
+
+  async function archive(): Promise<void> {
+    if (!createdEntryId) return;
+    setIsArchiving(true);
+    await client.content.archive(typeId, createdEntryId).finally(() => {
+      setIsArchiving(false);
+    });
+    setStatus('ARCHIVED');
+  }
+
+  async function restore(): Promise<void> {
+    if (!createdEntryId) return;
+    setIsRestoring(true);
+    await client.content.restore(typeId, createdEntryId).finally(() => {
+      setIsRestoring(false);
+    });
+    setStatus('DRAFT');
+  }
+
+  async function schedulePublish(publishAt: string): Promise<void> {
+    if (!createdEntryId) return;
+    setIsScheduling(true);
+    const res = await client.content
+      .schedulePublish(typeId, createdEntryId, { publishAt })
+      .finally(() => {
+        setIsScheduling(false);
+      });
+    setStatus('SCHEDULED');
+    setScheduledAt(res.data.scheduledAt);
+  }
+
+  async function cancelSchedule(): Promise<void> {
+    if (!createdEntryId) return;
+    setIsCancellingSchedule(true);
+    await client.content.cancelSchedule(typeId, createdEntryId).finally(() => {
+      setIsCancellingSchedule(false);
+    });
+    setStatus('DRAFT');
+    setScheduledAt(null);
   }
 
   return {
@@ -166,13 +214,20 @@ export function useEntryEditor({
     isSaving,
     isPublishing,
     isUnpublishing,
+    isArchiving,
+    isRestoring,
+    isScheduling,
+    isCancellingSchedule,
     autosaved,
     setData,
     setSeo,
-    setScheduledAt,
     saveDraft,
     publish,
     unpublish,
+    archive,
+    restore,
+    schedulePublish,
+    cancelSchedule,
     createdEntryId,
   };
 }

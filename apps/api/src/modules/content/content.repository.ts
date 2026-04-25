@@ -141,6 +141,17 @@ export class ContentRepository {
     });
   }
 
+  updateSchedule(
+    id: string,
+    scheduledAt: Date | null,
+    status: ContentStatus,
+  ): Promise<ContentEntry> {
+    return this.prisma.contentEntry.update({
+      where: { id },
+      data: { scheduledAt, status },
+    });
+  }
+
   trash(id: string): Promise<ContentEntry> {
     return this.prisma.contentEntry.update({
       where: { id },
