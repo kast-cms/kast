@@ -1,4 +1,6 @@
 import { MediaResource } from './media-resource.js';
+import { RolesResource } from './roles-resource.js';
+import { TokensResource } from './tokens-resource.js';
 import type {
   AddFieldBody,
   ApiListResponse,
@@ -18,6 +20,7 @@ import type {
   UpdateEntryBody,
   UpdateFieldBody,
 } from './types.js';
+import { UsersResource } from './users-resource.js';
 
 interface RequestOptions {
   method?: string;
@@ -106,6 +109,18 @@ export class KastClient {
 
   get media(): MediaResource {
     return new MediaResource(this);
+  }
+
+  get users(): UsersResource {
+    return new UsersResource(this);
+  }
+
+  get roles(): RolesResource {
+    return new RolesResource(this);
+  }
+
+  get tokens(): TokensResource {
+    return new TokensResource(this);
   }
 
   get health(): HealthResource {

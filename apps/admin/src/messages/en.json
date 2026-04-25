@@ -265,5 +265,148 @@
       "urlHint": "Enter a URL to download and store the file.",
       "import": "Import"
     }
+  },
+  "users": {
+    "title": "Users",
+    "description": "Manage admin users and their access.",
+    "invite": "Invite user",
+    "searchPlaceholder": "Search by name or email…",
+    "filterByRole": "All roles",
+    "table": {
+      "name": "Name",
+      "email": "Email",
+      "roles": "Roles",
+      "status": "Status",
+      "lastLogin": "Last login",
+      "actions": "Actions"
+    },
+    "status": {
+      "active": "Active",
+      "invited": "Invited",
+      "suspended": "Suspended"
+    },
+    "inviteDialog": {
+      "title": "Invite user",
+      "email": "Email address",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "roles": "Roles",
+      "submit": "Send invite",
+      "submitting": "Sending…",
+      "cancel": "Cancel"
+    },
+    "editPage": {
+      "title": "Edit user",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "roles": "Roles",
+      "active": "Account active",
+      "save": "Save changes",
+      "saving": "Saving…",
+      "back": "Back to users",
+      "cannotSelfSuspend": "You cannot suspend your own account."
+    },
+    "noUsers": "No users found.",
+    "never": "Never"
+  },
+  "roles": {
+    "title": "Roles",
+    "description": "Configure permission roles. System roles are read-only.",
+    "createRole": "Create role",
+    "system": "System",
+    "custom": "Custom",
+    "table": {
+      "role": "Role",
+      "users": "Users",
+      "permissions": "Permissions",
+      "type": "Type",
+      "actions": "Actions"
+    },
+    "createDialog": {
+      "title": "Create custom role",
+      "name": "Slug",
+      "namePlaceholder": "content-manager",
+      "displayName": "Display name",
+      "displayNamePlaceholder": "Content Manager",
+      "description": "Description",
+      "submit": "Create role",
+      "submitting": "Creating…",
+      "cancel": "Cancel"
+    },
+    "permissions": {
+      "title": "Permissions — {{name}}",
+      "readOnly": "System role permissions are read-only.",
+      "actions": {
+        "read": "Read",
+        "create": "Create",
+        "update": "Update",
+        "delete": "Delete",
+        "publish": "Publish"
+      },
+      "resources": {
+        "content": "Content",
+        "media": "Media",
+        "seo": "SEO",
+        "content-types": "Content Types",
+        "users": "Users",
+        "roles": "Roles",
+        "tokens": "API Tokens"
+      },
+      "save": "Save permissions",
+      "saving": "Saving…",
+      "viewEdit": "Permissions",
+      "delete": "Delete",
+      "deleteConfirm": "Delete role \"{{name}}\"? This cannot be undone."
+    },
+    "noRoles": "No roles found."
+  },
+  "apiTokens": {
+    "title": "API Tokens",
+    "description": "Create and manage API keys for programmatic access.",
+    "create": "Create token",
+    "table": {
+      "name": "Name",
+      "prefix": "Prefix",
+      "scope": "Scope",
+      "lastUsed": "Last used",
+      "expires": "Expires",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "scope": {
+      "READ_ONLY": "Read only",
+      "FULL_ACCESS": "Full access",
+      "SCOPED": "Scoped"
+    },
+    "status": {
+      "active": "Active",
+      "revoked": "Revoked"
+    },
+    "createDialog": {
+      "title": "Create API token",
+      "name": "Token name",
+      "namePlaceholder": "sdk-staging",
+      "scope": "Scope",
+      "scopeReadOnly": "Read only — GET requests only",
+      "scopeFullAccess": "Full access — all endpoints",
+      "scopeScoped": "Scoped — custom permissions",
+      "expiry": "Expires at",
+      "expiryHint": "Leave empty for no expiry.",
+      "submit": "Create token",
+      "submitting": "Creating…",
+      "cancel": "Cancel"
+    },
+    "revealDialog": {
+      "title": "Token created",
+      "warning": "This token will only be shown once. Copy it now and store it securely.",
+      "copy": "Copy",
+      "copied": "Copied!",
+      "done": "Done"
+    },
+    "noTokens": "No tokens yet.",
+    "never": "Never",
+    "noExpiry": "No expiry",
+    "revoke": "Revoke",
+    "revokeConfirm": "Revoke token \"{{name}}\"? Any services using it will lose access."
   }
 }
