@@ -15,6 +15,7 @@ export default tseslint.config(
       'eslint.config.ts',
       'commitlint.config.ts',
       'lint-staged.config.ts',
+      'plugins/**',
     ],
   },
 

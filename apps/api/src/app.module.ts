@@ -14,6 +14,7 @@ import { HealthModule } from './modules/health/health.module';
 import { LocalesModule } from './modules/locales/locales.module';
 import { McpModule } from './modules/mcp/mcp.module';
 import { MediaModule } from './modules/media/media.module';
+import { PluginModule } from './modules/plugin/plugin.module';
 import { PublishModule } from './modules/publish/publish.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { SeoModule } from './modules/seo/seo.module';
@@ -51,6 +52,7 @@ import { PrismaModule } from './prisma/prisma.module';
     EmailModule,
     WebhookModule,
     AgentTokenModule,
+    PluginModule,
   ],
 })
 export class AppModule {}

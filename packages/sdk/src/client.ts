@@ -2,6 +2,7 @@ import { AgentTokensResource } from './agent-tokens-resource.js';
 import { AuthResource, ContentTypesResource, HealthResource } from './content-types-resource.js';
 import { LocalesResource } from './locales-resource.js';
 import { MediaResource } from './media-resource.js';
+import { PluginsResource } from './plugins-resource.js';
 import { RolesResource } from './roles-resource.js';
 import { SeoResource } from './seo-resource.js';
 import { TokensResource } from './tokens-resource.js';
@@ -101,6 +102,10 @@ export class KastClient {
 
   get auth(): AuthResource {
     return new AuthResource(this);
+  }
+
+  get plugins(): PluginsResource {
+    return new PluginsResource(this);
   }
 
   get contentTypes(): ContentTypesResource {

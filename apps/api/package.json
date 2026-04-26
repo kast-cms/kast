@@ -19,6 +19,7 @@
     "prisma:studio": "prisma studio"
   },
   "dependencies": {
+    "@kast/plugin-sdk": "workspace:*",
     "@aws-sdk/client-s3": "^3.600.0",
     "@aws-sdk/s3-request-presigner": "^3.600.0",
     "@nestjs/bullmq": "^10.2.3",

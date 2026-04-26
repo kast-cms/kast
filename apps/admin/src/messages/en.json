@@ -7,6 +7,7 @@
     "roles": "Roles",
     "apiTokens": "API Tokens",
     "agentTokens": "Agent Tokens",
+    "plugins": "Plugins",
     "seo": "SEO",
     "webhooks": "Webhooks",
     "forms": "Forms",
@@ -612,6 +613,27 @@
       "warning": "This token will only be shown once. Copy it now and store it securely.",
       "copied": "Copied!",
       "done": "Done"
+    }
+  },
+  "plugins": {
+    "title": "Plugins",
+    "loading": "Loading plugins…",
+    "empty": "No plugins installed. Add plugins to the plugins/ directory.",
+    "status": {
+      "enabled": "Enabled",
+      "disabled": "Disabled"
+    },
+    "table": {
+      "name": "Plugin",
+      "version": "Version",
+      "description": "Description",
+      "status": "Status",
+      "installed": "Installed",
+      "actions": "Actions"
+    },
+    "actions": {
+      "enable": "Enable",
+      "disable": "Disable"
     }
   }
 }

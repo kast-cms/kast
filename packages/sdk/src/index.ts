@@ -5,6 +5,8 @@ export type {
   TextDirection,
   UpdateLocaleBody,
 } from './locale-types.js';
+export type { PluginRecord } from './plugin-types.js';
+export { PluginsResource } from './plugins-resource.js';
 export type {
   AddFieldBody,
   AgentTokenCreated,

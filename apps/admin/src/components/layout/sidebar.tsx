@@ -24,6 +24,7 @@ import {
   LayoutDashboard,
   ListTree,
   LogOut,
+  Puzzle,
   Settings,
   Shield,
   Trash2,
@@ -77,6 +78,7 @@ function useNavGroups(): NavGroup[] {
     {
       label: 'System',
       items: [
+        { href: '/plugins', label: t('plugins'), Icon: Puzzle },
         { href: '/trash', label: t('trash'), Icon: Trash2 },
         { href: '/settings/locales', label: t('locales'), Icon: Languages },
         { href: '/settings', label: t('settings'), Icon: Settings },
