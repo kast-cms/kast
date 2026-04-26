@@ -16,7 +16,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import type { AuthUser, PaginatedResult } from '../../common/types/auth.types';
-import type { EntryWithLocale } from './content.repository';
+import type { EntryWithLocale, VersionWithAuthor } from './content.repository';
 import { ContentService } from './content.service';
 import {
   CreateContentEntryDto,
@@ -150,5 +150,43 @@ export class ContentController {
   @ApiOperation({ summary: 'Trash a content entry' })
   remove(@Param('typeSlug') typeSlug: string, @Param('id') id: string): Promise<void> {
     return this.service.trash(typeSlug, id);
+  }
+
+  @Get(':id/versions')
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
+  @ApiOperation({ summary: 'List version history for a content entry' })
+  listVersions(
+    @Param('typeSlug') typeSlug: string,
+    @Param('id') id: string,
+    @Query('limit') limit?: string,
+    @Query('cursor') cursor?: string,
+  ): Promise<PaginatedResult<VersionWithAuthor>> {
+    return this.service.listVersions(typeSlug, id, Number(limit ?? 20), cursor);
+  }
+
+  @Get(':id/versions/:versionId')
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get a specific version snapshot' })
+  getVersion(
+    @Param('typeSlug') typeSlug: string,
+    @Param('id') id: string,
+    @Param('versionId') versionId: string,
+  ): Promise<{ data: VersionWithAuthor }> {
+    return this.service.getVersion(typeSlug, id, versionId);
+  }
+
+  @Post(':id/versions/:versionId/revert')
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Revert a content entry to a previous version' })
+  revertToVersion(
+    @Param('typeSlug') typeSlug: string,
+    @Param('id') id: string,
+    @Param('versionId') versionId: string,
+    @CurrentUser() user: AuthUser,
+  ): Promise<{ data: EntryWithLocale }> {
+    return this.service.revertToVersion(typeSlug, id, versionId, user.id);
   }
 }

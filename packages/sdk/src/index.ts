@@ -15,6 +15,7 @@ export type {
   BulkActionBody,
   ContentEntryDetail,
   ContentEntrySummary,
+  ContentEntryVersion,
   ContentField,
   ContentFieldType,
   ContentTypeDetail,
@@ -57,4 +58,5 @@ export type {
   UpsertSeoMetaBody,
   UserListParams,
   UserSummary,
+  VersionListParams,
 } from './types.js';

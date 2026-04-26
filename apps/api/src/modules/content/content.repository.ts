@@ -1,7 +1,18 @@
 import { Injectable } from '@nestjs/common';
-import type { ContentEntry, ContentEntryLocale, ContentStatus, Prisma } from '@prisma/client';
+import type {
+  ContentEntry,
+  ContentEntryLocale,
+  ContentEntryVersion,
+  ContentStatus,
+  Prisma,
+  User,
+} from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { ContentQueryDto } from './dto/content-query.dto';
+
+export type VersionWithAuthor = ContentEntryVersion & {
+  savedBy: Pick<User, 'id' | 'firstName' | 'lastName'>;
+};
 
 export type EntryWithLocale = ContentEntry & { locales: ContentEntryLocale[] };
 
@@ -180,5 +191,75 @@ export class ContentRepository {
         savedById,
       },
     });
+  }
+
+  async listVersions(
+    entryId: string,
+    limit: number,
+    cursor?: string,
+  ): Promise<{ items: VersionWithAuthor[]; total: number }> {
+    const where = { entryId };
+    const [items, total] = await Promise.all([
+      this.prisma.contentEntryVersion.findMany({
+        where,
+        include: { savedBy: { select: { id: true, firstName: true, lastName: true } } },
+        orderBy: { versionNumber: 'desc' },
+        take: limit + 1,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      }),
+      this.prisma.contentEntryVersion.count({ where }),
+    ]);
+    return { items: items as VersionWithAuthor[], total };
+  }
+
+  findVersionById(entryId: string, versionId: string): Promise<VersionWithAuthor | null> {
+    return this.prisma.contentEntryVersion.findFirst({
+      where: { id: versionId, entryId },
+      include: { savedBy: { select: { id: true, firstName: true, lastName: true } } },
+    }) as Promise<VersionWithAuthor | null>;
+  }
+
+  async revertToVersion(
+    entryId: string,
+    version: VersionWithAuthor,
+    userId: string,
+  ): Promise<EntryWithLocale> {
+    const entry = await this.prisma.contentEntry.findUniqueOrThrow({
+      where: { id: entryId },
+      include: { locales: true },
+    });
+    const locale = entry.locales[0]?.localeCode ?? 'en';
+    const revertedData = version.data as Record<string, unknown>;
+    await this.prisma.$transaction([
+      this.prisma.contentEntryLocale.upsert({
+        where: { entryId_localeCode: { entryId, localeCode: locale } },
+        create: {
+          entryId,
+          localeCode: locale,
+          slug: locale,
+          data: version.data as Prisma.InputJsonValue,
+        },
+        update: { data: version.data as Prisma.InputJsonValue },
+      }),
+      this.prisma.contentEntry.update({ where: { id: entryId }, data: { status: 'DRAFT' } }),
+    ]);
+    const latest = await this.prisma.contentEntryVersion.findFirst({
+      where: { entryId },
+      orderBy: { versionNumber: 'desc' },
+    });
+    await this.prisma.contentEntryVersion.create({
+      data: {
+        entryId,
+        versionNumber: (latest?.versionNumber ?? 0) + 1,
+        status: 'DRAFT',
+        data: revertedData as Prisma.InputJsonValue,
+        localesData: {} as Prisma.InputJsonValue,
+        savedById: userId,
+      },
+    });
+    return this.prisma.contentEntry.findUniqueOrThrow({
+      where: { id: entryId },
+      include: { locales: true },
+    }) as Promise<EntryWithLocale>;
   }
 }

@@ -231,6 +231,18 @@
       "cancel": "إلغاء",
       "confirm": "جدولة",
       "scheduling": "جارى الجدولة…"
+    },
+    "versions": {
+      "title": "سجل الإصدارات",
+      "empty": "لا توجد إصدارات بعد.",
+      "version": "الإصدار {number}",
+      "by": "بواسطة {name}",
+      "revert": "استرجاع",
+      "reverting": "جارٍ الاسترجاع…",
+      "confirmTitle": "الاسترجاع إلى الإصدار {number}؟",
+      "confirmDescription": "سيؤدي هذا إلى استبدال محتوى المسودة الحالية. سيتم ضبط المدخل على مسودة.",
+      "confirm": "استرجاع",
+      "cancel": "إلغاء"
     }
   },
   "mediaLibrary": {

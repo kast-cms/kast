@@ -4,11 +4,20 @@ import { Label } from '@/components/ui/label';
 import type { ContentEntryDetail, ContentTypeDetail } from '@kast/sdk';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import type { JSX } from 'react';
+import { useState, type JSX } from 'react';
 import { ActionBar } from './action-bar';
 import { FieldRenderer } from './field-renderer';
 import { SeoPanel } from './seo-panel';
 import { useEntryEditor } from './use-entry-editor';
+import { VersionPanel } from './version-panel';
+
+function getEffectiveEntryId(
+  entryId: string | null | undefined,
+  created: string | null,
+): string | null {
+  if (entryId) return entryId;
+  return created;
+}
 
 interface EntryEditorProps {
   typeId: string;
@@ -32,6 +41,9 @@ export function EntryEditor({ typeId, contentType, entry }: EntryEditorProps): J
     isScheduling,
     isCancellingSchedule,
     autosaved,
+    isReverting,
+    revertToVersion,
+    createdEntryId,
     setData,
     setSeo,
     saveDraft,
@@ -42,6 +54,9 @@ export function EntryEditor({ typeId, contentType, entry }: EntryEditorProps): J
     schedulePublish,
     cancelSchedule,
   } = useEntryEditor({ typeId, entryId: entry?.id ?? null, initialEntry: entry });
+
+  const [versionPanelOpen, setVersionPanelOpen] = useState(false);
+  const effectiveEntryId = getEffectiveEntryId(entry?.id, createdEntryId);
 
   async function handleSaveDraft(): Promise<void> {
     await saveDraft();
@@ -120,6 +135,9 @@ export function EntryEditor({ typeId, contentType, entry }: EntryEditorProps): J
         onCancelSchedule={() => {
           void handleCancelSchedule();
         }}
+        onOpenVersions={() => {
+          setVersionPanelOpen(true);
+        }}
       />
       <div className="space-y-6 rounded-lg border border-[--color-border] p-6">
         {contentType.fields.map((field) => (
@@ -146,6 +164,16 @@ export function EntryEditor({ typeId, contentType, entry }: EntryEditorProps): J
         ogImage={ogImage}
         onChange={setSeo}
         disabled={busy}
+      />
+      <VersionPanel
+        typeId={typeId}
+        entryId={effectiveEntryId}
+        open={versionPanelOpen}
+        onClose={() => {
+          setVersionPanelOpen(false);
+        }}
+        onRevert={revertToVersion}
+        isReverting={isReverting}
       />
     </div>
   );

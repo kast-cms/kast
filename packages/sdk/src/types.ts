@@ -164,6 +164,8 @@ export interface EntryListParams {
   order?: 'asc' | 'desc';
 }
 
+export type { ContentEntryVersion, VersionListParams } from './content-version-types.js';
+
 /* ── Media ───────────────────────────────────────────────── */
 
 export interface MediaUsage {

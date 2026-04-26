@@ -23,6 +23,7 @@ interface EntryEditorState {
   isRestoring: boolean;
   isScheduling: boolean;
   isCancellingSchedule: boolean;
+  isReverting: boolean;
   autosaved: boolean;
   setData: (key: string, value: unknown) => void;
   setSeo: (key: string, value: string) => void;
@@ -33,6 +34,7 @@ interface EntryEditorState {
   restore: () => Promise<void>;
   schedulePublish: (publishAt: string) => Promise<void>;
   cancelSchedule: () => Promise<void>;
+  revertToVersion: (versionId: string) => Promise<void>;
   createdEntryId: string | null;
 }
 
@@ -54,6 +56,59 @@ function stripSeo(d: Record<string, unknown>): Record<string, unknown> {
   const copy = { ...d };
   delete copy['_seo'];
   return copy;
+}
+
+async function withFlag<T>(setFlag: (b: boolean) => void, fn: () => Promise<T>): Promise<T> {
+  setFlag(true);
+  try {
+    return await fn();
+  } finally {
+    setFlag(false);
+  }
+}
+
+interface UseAutosaveParams {
+  typeId: string;
+  createdEntryId: string | null;
+  seo: Record<string, string>;
+  status: EntryStatus;
+  data: Record<string, unknown>;
+  client: ReturnType<typeof createApiClient>;
+  setCreatedEntryId: (id: string) => void;
+  setAutosaved: (v: boolean) => void;
+}
+
+function useAutosave({
+  typeId,
+  createdEntryId,
+  seo,
+  status,
+  data,
+  client,
+  setCreatedEntryId,
+  setAutosaved,
+}: UseAutosaveParams): void {
+  const dataRef = useRef(data);
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+  const persistDraft = useCallback(async (): Promise<void> => {
+    if (status === 'PUBLISHED') return;
+    const payload = { ...dataRef.current, _seo: seo };
+    if (createdEntryId) {
+      await client.content.update(typeId, createdEntryId, { data: payload });
+    } else {
+      const res = await client.content.create(typeId, { data: payload, status: 'DRAFT' });
+      setCreatedEntryId(res.data.id);
+    }
+    setAutosaved(true);
+  }, [client, createdEntryId, seo, status, typeId, setCreatedEntryId, setAutosaved]);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void persistDraft();
+    }, 30000);
+    return () => clearTimeout(timer);
+  }, [data, seo, persistDraft]);
 }
 
 export function useEntryEditor({
@@ -80,47 +135,28 @@ export function useEntryEditor({
   const [isRestoring, setIsRestoring] = useState(false);
   const [isScheduling, setIsScheduling] = useState(false);
   const [isCancellingSchedule, setIsCancellingSchedule] = useState(false);
+  const [isReverting, setIsReverting] = useState(false);
   const [autosaved, setAutosaved] = useState(false);
   const [createdEntryId, setCreatedEntryId] = useState<string | null>(entryId);
-  const autosaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const dataRef = useRef(data);
-
-  useEffect(() => {
-    dataRef.current = data;
-  }, [data]);
-
-  const persistDraft = useCallback(async (): Promise<void> => {
-    if (status === 'PUBLISHED') return;
-    const payload = { ...dataRef.current, _seo: seo };
-    if (createdEntryId) {
-      await client.content.update(typeId, createdEntryId, { data: payload });
-    } else {
-      const res = await client.content.create(typeId, { data: payload, status: 'DRAFT' });
-      setCreatedEntryId(res.data.id);
-    }
-    setAutosaved(true);
-  }, [client, createdEntryId, seo, status, typeId]);
-
-  useEffect(() => {
-    if (autosaveRef.current) clearTimeout(autosaveRef.current);
-    autosaveRef.current = setTimeout(() => {
-      void persistDraft();
-    }, 30000);
-    return () => {
-      if (autosaveRef.current) clearTimeout(autosaveRef.current);
-    };
-  }, [data, seo, persistDraft]);
+  useAutosave({
+    typeId,
+    createdEntryId,
+    seo,
+    status,
+    data,
+    client,
+    setCreatedEntryId,
+    setAutosaved,
+  });
 
   function setData(key: string, value: unknown): void {
     setAutosaved(false);
     setDataState((prev) => ({ ...prev, [key]: value }));
   }
-
   function setSeo(key: string, value: string): void {
     setAutosaved(false);
     setSeoState((prev) => ({ ...prev, [key]: value }));
   }
-
   async function saveDraft(): Promise<void> {
     setIsSaving(true);
     try {
@@ -137,7 +173,6 @@ export function useEntryEditor({
       setIsSaving(false);
     }
   }
-
   async function publish(): Promise<void> {
     setIsPublishing(true);
     try {
@@ -156,56 +191,50 @@ export function useEntryEditor({
       setIsPublishing(false);
     }
   }
-
   async function unpublish(): Promise<void> {
     if (!createdEntryId) return;
-    setIsUnpublishing(true);
-    await client.content.unpublish(typeId, createdEntryId).finally(() => {
-      setIsUnpublishing(false);
-    });
+    await withFlag(setIsUnpublishing, () => client.content.unpublish(typeId, createdEntryId));
     setStatus('DRAFT');
   }
-
   async function archive(): Promise<void> {
     if (!createdEntryId) return;
-    setIsArchiving(true);
-    await client.content.archive(typeId, createdEntryId).finally(() => {
-      setIsArchiving(false);
-    });
+    await withFlag(setIsArchiving, () => client.content.archive(typeId, createdEntryId));
     setStatus('ARCHIVED');
   }
-
   async function restore(): Promise<void> {
     if (!createdEntryId) return;
-    setIsRestoring(true);
-    await client.content.restore(typeId, createdEntryId).finally(() => {
-      setIsRestoring(false);
-    });
+    await withFlag(setIsRestoring, () => client.content.restore(typeId, createdEntryId));
     setStatus('DRAFT');
   }
-
   async function schedulePublish(publishAt: string): Promise<void> {
     if (!createdEntryId) return;
-    setIsScheduling(true);
-    const res = await client.content
-      .schedulePublish(typeId, createdEntryId, { publishAt })
-      .finally(() => {
-        setIsScheduling(false);
-      });
+    const res = await withFlag(setIsScheduling, () =>
+      client.content.schedulePublish(typeId, createdEntryId, { publishAt }),
+    );
     setStatus('SCHEDULED');
     setScheduledAt(res.data.scheduledAt);
   }
-
   async function cancelSchedule(): Promise<void> {
     if (!createdEntryId) return;
-    setIsCancellingSchedule(true);
-    await client.content.cancelSchedule(typeId, createdEntryId).finally(() => {
-      setIsCancellingSchedule(false);
-    });
+    await withFlag(setIsCancellingSchedule, () =>
+      client.content.cancelSchedule(typeId, createdEntryId),
+    );
     setStatus('DRAFT');
     setScheduledAt(null);
   }
-
+  async function revertToVersion(versionId: string): Promise<void> {
+    if (!createdEntryId) return;
+    setIsReverting(true);
+    try {
+      const res = await client.content.revert(typeId, createdEntryId, versionId);
+      setDataState(stripSeo(res.data.data));
+      setSeoState(extractSeo(res.data.data));
+      setStatus('DRAFT');
+      setAutosaved(false);
+    } finally {
+      setIsReverting(false);
+    }
+  }
   return {
     data,
     seo,
@@ -228,6 +257,8 @@ export function useEntryEditor({
     restore,
     schedulePublish,
     cancelSchedule,
+    revertToVersion,
+    isReverting,
     createdEntryId,
   };
 }

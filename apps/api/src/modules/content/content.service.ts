@@ -5,7 +5,7 @@ import type { PaginatedResult } from '../../common/types/auth.types';
 import { ContentTypesService } from '../content-types/content-types.service';
 import type { PublishJobData } from '../publish/publish.processor';
 import { QUEUE_NAMES } from '../queue/queue.constants';
-import { ContentRepository, EntryWithLocale } from './content.repository';
+import { ContentRepository, EntryWithLocale, VersionWithAuthor } from './content.repository';
 import type {
   CreateContentEntryDto,
   SchedulePublishDto,
@@ -166,5 +166,45 @@ export class ContentService {
     const updated = await this.repo.findById(id);
     if (!updated) throw new NotFoundException(`Content entry ${id} not found`);
     return { data: updated };
+  }
+
+  async listVersions(
+    typeSlug: string,
+    id: string,
+    limit: number,
+    cursor?: string,
+  ): Promise<PaginatedResult<VersionWithAuthor>> {
+    await this.contentTypesService.findByName(typeSlug);
+    const entry = await this.repo.findById(id);
+    if (!entry) throw new NotFoundException(`Content entry ${id} not found`);
+    const { items, total } = await this.repo.listVersions(id, limit, cursor);
+    const hasNextPage = items.length > limit;
+    const data = hasNextPage ? items.slice(0, limit) : items;
+    const nextCursor = hasNextPage ? (data[data.length - 1]?.id ?? null) : null;
+    return { data, meta: { total, limit, cursor: nextCursor, hasNextPage } };
+  }
+
+  async getVersion(
+    typeSlug: string,
+    id: string,
+    versionId: string,
+  ): Promise<{ data: VersionWithAuthor }> {
+    await this.contentTypesService.findByName(typeSlug);
+    const version = await this.repo.findVersionById(id, versionId);
+    if (!version) throw new NotFoundException(`Version ${versionId} not found`);
+    return { data: version };
+  }
+
+  async revertToVersion(
+    typeSlug: string,
+    id: string,
+    versionId: string,
+    userId: string,
+  ): Promise<{ data: EntryWithLocale }> {
+    await this.contentTypesService.findByName(typeSlug);
+    const version = await this.repo.findVersionById(id, versionId);
+    if (!version) throw new NotFoundException(`Version ${versionId} not found`);
+    const data = await this.repo.revertToVersion(id, version, userId);
+    return { data };
   }
 }

@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import type { EntryStatus } from '@kast/sdk';
+import { History } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 import { ScheduleDialog } from './schedule-dialog';
@@ -23,6 +24,7 @@ interface ActionBarProps {
   onRestore: () => void;
   onSchedule: (publishAt: string) => void;
   onCancelSchedule: () => void;
+  onOpenVersions: () => void;
 }
 
 export function ActionBar({
@@ -42,6 +44,7 @@ export function ActionBar({
   onRestore,
   onSchedule,
   onCancelSchedule,
+  onOpenVersions,
 }: ActionBarProps): JSX.Element {
   const t = useTranslations('content.editor');
   const [scheduleOpen, setScheduleOpen] = useState(false);
@@ -113,6 +116,15 @@ export function ActionBar({
       {status === 'PUBLISHED' && publishedActions()}
       {status === 'ARCHIVED' && archivedActions()}
       {status === 'SCHEDULED' && scheduledActions()}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={onOpenVersions}
+        aria-label="Version history"
+      >
+        <History className="h-4 w-4" />
+      </Button>
       <ScheduleDialog
         open={scheduleOpen}
         isSubmitting={isScheduling}

@@ -10,6 +10,7 @@ import type {
   BulkActionBody,
   ContentEntryDetail,
   ContentEntrySummary,
+  ContentEntryVersion,
   ContentField,
   ContentTypeDetail,
   ContentTypeSummary,
@@ -22,6 +23,7 @@ import type {
   UpdateContentTypeBody,
   UpdateEntryBody,
   UpdateFieldBody,
+  VersionListParams,
 } from './types.js';
 import { UsersResource } from './users-resource.js';
 
@@ -310,6 +312,38 @@ class ContentResource {
       method: 'POST',
       body: { ids } satisfies BulkActionBody,
     });
+  }
+
+  listVersions(
+    typeSlug: string,
+    id: string,
+    params: VersionListParams = {},
+  ): Promise<ApiListResponse<ContentEntryVersion>> {
+    const qs = new URLSearchParams(params as Record<string, string>).toString();
+    return this.client.request(
+      `/api/v1/content-types/${typeSlug}/entries/${id}/versions${qs ? `?${qs}` : ''}`,
+    );
+  }
+
+  getVersion(
+    typeSlug: string,
+    id: string,
+    versionId: string,
+  ): Promise<ApiResponse<ContentEntryVersion>> {
+    return this.client.request(
+      `/api/v1/content-types/${typeSlug}/entries/${id}/versions/${versionId}`,
+    );
+  }
+
+  revert(
+    typeSlug: string,
+    id: string,
+    versionId: string,
+  ): Promise<ApiResponse<ContentEntryDetail>> {
+    return this.client.request(
+      `/api/v1/content-types/${typeSlug}/entries/${id}/versions/${versionId}/revert`,
+      { method: 'POST' },
+    );
   }
 }
 

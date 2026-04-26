@@ -231,6 +231,18 @@
       "cancel": "Cancel",
       "confirm": "Schedule",
       "scheduling": "Scheduling…"
+    },
+    "versions": {
+      "title": "Version History",
+      "empty": "No versions yet.",
+      "version": "Version {number}",
+      "by": "by {name}",
+      "revert": "Revert",
+      "reverting": "Reverting…",
+      "confirmTitle": "Revert to Version {number}?",
+      "confirmDescription": "This will overwrite the current draft content. The entry will be set to Draft.",
+      "confirm": "Revert",
+      "cancel": "Cancel"
     }
   },
   "mediaLibrary": {
