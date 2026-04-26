@@ -528,5 +528,53 @@
       "save": "إضافة اللغة",
       "saving": "جارٍ الحفظ…"
     }
+  },
+  "webhooks": {
+    "title": "Webhooks",
+    "description": "إعداد Webhooks الصادرة مع توقيعات HMAC-SHA256.",
+    "create": "إضافة Webhook",
+    "active": "نشط",
+    "inactive": "غير نشط",
+    "noWebhooks": "لا توجد Webhooks مُعدَّة.",
+    "viewDeliveries": "عرض سجل التسليم",
+    "sendTest": "إرسال تسليم تجريبي",
+    "delete": "حذف Webhook",
+    "deleteConfirm": "حذف Webhook \"{name}\"؟ لا يمكن التراجع عن هذا.",
+    "table": {
+      "name": "الاسم",
+      "url": "رابط النقطة النهائية",
+      "events": "الأحداث",
+      "status": "الحالة"
+    },
+    "createDrawer": {
+      "title": "إضافة نقطة نهاية Webhook",
+      "nameLabel": "الاسم",
+      "namePlaceholder": "Webhook الخاص بي",
+      "urlLabel": "رابط النقطة النهائية",
+      "eventsLabel": "الأحداث المراد إرسالها",
+      "cancel": "إلغاء",
+      "create": "إنشاء Webhook",
+      "creating": "جارٍ الإنشاء…"
+    },
+    "secretReveal": {
+      "title": "مفتاح Webhook السري",
+      "warning": "انسخ مفتاح Webhook السري الآن. لن يُعرض مرة أخرى.",
+      "hint": "استخدم هذا المفتاح للتحقق من توقيعات HMAC-SHA256 في الطلبات الواردة (ترويسة X-Kast-Signature).",
+      "copied": "تم النسخ!",
+      "done": "تم"
+    },
+    "deliveries": {
+      "title": "سجل التسليم",
+      "event": "الحدث",
+      "status": "الحالة",
+      "statusCode": "HTTP",
+      "attempts": "المحاولات",
+      "date": "التاريخ",
+      "redeliver": "إعادة التسليم",
+      "success": "ناجح",
+      "failed": "فشل",
+      "pending": "قيد الانتظار",
+      "empty": "لا توجد تسليمات بعد."
+    }
   }
 }

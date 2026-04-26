@@ -5,6 +5,7 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { MediaFile } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { extname } from 'path';
@@ -47,6 +48,7 @@ export class MediaService {
     private readonly storage: StorageAdapter,
     config: ConfigService<Env>,
     private readonly queue: QueueAdapter,
+    private readonly eventEmitter: EventEmitter2,
   ) {
     const maxMb = config.get('UPLOAD_MAX_FILE_SIZE_MB', { infer: true }) ?? 10;
     this.maxBytes = maxMb * 1024 * 1024;
@@ -107,6 +109,11 @@ export class MediaService {
       ]);
     }
 
+    this.eventEmitter.emit('media.uploaded', {
+      mediaId: media.id,
+      mimeType: media.mimeType,
+      url: media.url,
+    });
     return { data: media };
   }
 

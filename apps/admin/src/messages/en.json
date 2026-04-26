@@ -528,5 +528,53 @@
       "save": "Add Locale",
       "saving": "Saving…"
     }
+  },
+  "webhooks": {
+    "title": "Webhooks",
+    "description": "Configure outbound webhooks with HMAC-SHA256 signatures.",
+    "create": "Add webhook",
+    "active": "Active",
+    "inactive": "Inactive",
+    "noWebhooks": "No webhooks configured.",
+    "viewDeliveries": "View delivery log",
+    "sendTest": "Send test delivery",
+    "delete": "Delete webhook",
+    "deleteConfirm": "Delete webhook \"{name}\"? This cannot be undone.",
+    "table": {
+      "name": "Name",
+      "url": "Endpoint URL",
+      "events": "Events",
+      "status": "Status"
+    },
+    "createDrawer": {
+      "title": "Add webhook endpoint",
+      "nameLabel": "Name",
+      "namePlaceholder": "My webhook",
+      "urlLabel": "Endpoint URL",
+      "eventsLabel": "Events to send",
+      "cancel": "Cancel",
+      "create": "Create webhook",
+      "creating": "Creating…"
+    },
+    "secretReveal": {
+      "title": "Webhook secret",
+      "warning": "Copy your webhook secret now. It will not be shown again.",
+      "hint": "Use this secret to verify HMAC-SHA256 signatures on incoming requests (X-Kast-Signature header).",
+      "copied": "Copied!",
+      "done": "Done"
+    },
+    "deliveries": {
+      "title": "Delivery log",
+      "event": "Event",
+      "status": "Status",
+      "statusCode": "HTTP",
+      "attempts": "Attempts",
+      "date": "Date",
+      "redeliver": "Re-deliver",
+      "success": "Success",
+      "failed": "Failed",
+      "pending": "Pending",
+      "empty": "No deliveries yet."
+    }
   }
 }

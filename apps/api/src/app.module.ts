@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { validateEnv } from './config/env.schema';
@@ -16,6 +17,7 @@ import { PublishModule } from './modules/publish/publish.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { SeoModule } from './modules/seo/seo.module';
 import { TrashModule } from './modules/trash/trash.module';
+import { WebhookModule } from './modules/webhook/webhook.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
@@ -25,6 +27,7 @@ import { PrismaModule } from './prisma/prisma.module';
       validate: validateEnv,
     }),
     ScheduleModule.forRoot(),
+    EventEmitterModule.forRoot(),
     ThrottlerModule.forRoot([
       { name: 'public', ttl: 60000, limit: 100 },
       { name: 'auth', ttl: 900000, limit: 20 },
@@ -45,6 +48,7 @@ import { PrismaModule } from './prisma/prisma.module';
     PublishModule,
     TrashModule,
     EmailModule,
+    WebhookModule,
   ],
 })
 export class AppModule {}

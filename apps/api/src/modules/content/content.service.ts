@@ -1,5 +1,6 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { Queue } from 'bullmq';
 import type { PaginatedResult } from '../../common/types/auth.types';
 import { ContentTypesService } from '../content-types/content-types.service';
@@ -19,6 +20,7 @@ export class ContentService {
     private readonly repo: ContentRepository,
     private readonly contentTypesService: ContentTypesService,
     @InjectQueue(QUEUE_NAMES.PUBLISH) private readonly publishQueue: Queue<PublishJobData>,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async findAll(
@@ -53,6 +55,12 @@ export class ContentService {
     const slug = (dto.data['slug'] as string | undefined) ?? `${typeSlug}-${Date.now()}`;
     const extraLocaleCodes = ct.isLocalized ? await this.repo.findActiveLocaleCodes() : [];
     const entry = await this.repo.create(ct.id, dto.data, locale, authorId, slug, extraLocaleCodes);
+    this.eventEmitter.emit('content.created', {
+      entryId: entry.id,
+      typeSlug,
+      locale,
+      status: entry.status,
+    });
     return { data: entry };
   }
 
@@ -82,6 +90,7 @@ export class ContentService {
 
     const updated = await this.repo.findById(id);
     if (!updated) throw new NotFoundException(`Content entry ${id} not found`);
+    this.eventEmitter.emit('content.updated', { entryId: id, typeSlug, status: updated.status });
     return { data: updated };
   }
 
@@ -90,6 +99,7 @@ export class ContentService {
     const entry = await this.repo.findById(id);
     if (!entry) throw new NotFoundException(`Content entry ${id} not found`);
     await this.repo.trash(id);
+    this.eventEmitter.emit('content.trashed', { entryId: id, typeSlug });
   }
 
   async publish(typeSlug: string, id: string): Promise<{ data: EntryWithLocale }> {
@@ -99,6 +109,7 @@ export class ContentService {
     await this.repo.updateStatus(id, 'PUBLISHED', new Date());
     const updated = await this.repo.findById(id);
     if (!updated) throw new NotFoundException(`Content entry ${id} not found`);
+    this.eventEmitter.emit('content.published', { entryId: id, typeSlug, status: 'PUBLISHED' });
     return { data: updated };
   }
 
@@ -109,6 +120,7 @@ export class ContentService {
     await this.repo.updateStatus(id, 'DRAFT');
     const updated = await this.repo.findById(id);
     if (!updated) throw new NotFoundException(`Content entry ${id} not found`);
+    this.eventEmitter.emit('content.unpublished', { entryId: id, typeSlug, status: 'DRAFT' });
     return { data: updated };
   }
 

@@ -1,6 +1,7 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { MulterModule } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import type { Env } from '../../config/env.schema';
@@ -38,13 +39,14 @@ import { S3StorageAdapter } from './storage/s3-storage.adapter';
     },
     {
       provide: MediaService,
-      inject: [MediaRepository, STORAGE_ADAPTER, ConfigService, QueueAdapter],
+      inject: [MediaRepository, STORAGE_ADAPTER, ConfigService, QueueAdapter, EventEmitter2],
       useFactory: (
         repo: MediaRepository,
         storage: LocalStorageAdapter | S3StorageAdapter,
         config: ConfigService<Env>,
         queue: QueueAdapter,
-      ) => new MediaService(repo, storage, config, queue),
+        eventEmitter: EventEmitter2,
+      ) => new MediaService(repo, storage, config, queue, eventEmitter),
     },
     MediaProcessor,
   ],

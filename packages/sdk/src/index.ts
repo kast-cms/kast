@@ -60,3 +60,11 @@ export type {
   UserSummary,
   VersionListParams,
 } from './types.js';
+export { WebhooksResource } from './webhooks-resource.js';
+export type {
+  CreateWebhookBody,
+  UpdateWebhookBody,
+  WebhookCreated,
+  WebhookDeliverySummary,
+  WebhookSummary,
+} from './webhooks-resource.js';
