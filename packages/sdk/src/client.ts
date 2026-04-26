@@ -1,3 +1,4 @@
+import { AgentTokensResource } from './agent-tokens-resource.js';
 import { AuthResource, ContentTypesResource, HealthResource } from './content-types-resource.js';
 import { LocalesResource } from './locales-resource.js';
 import { MediaResource } from './media-resource.js';
@@ -92,6 +93,10 @@ export class KastClient {
     const json = (await res.json()) as unknown;
     if (!res.ok) throw this.buildError(json, res.status);
     return json as T;
+  }
+
+  get agentTokens(): AgentTokensResource {
+    return new AgentTokensResource(this);
   }
 
   get auth(): AuthResource {

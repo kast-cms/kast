@@ -7,6 +7,8 @@ export type {
 } from './locale-types.js';
 export type {
   AddFieldBody,
+  AgentTokenCreated,
+  AgentTokenSummary,
   ApiListResponse,
   ApiResponse,
   ApiTokenCreated,
@@ -20,6 +22,7 @@ export type {
   ContentFieldType,
   ContentTypeDetail,
   ContentTypeSummary,
+  CreateAgentTokenBody,
   CreateApiTokenBody,
   CreateContentTypeBody,
   CreateEntryBody,

@@ -576,5 +576,42 @@
       "pending": "Pending",
       "empty": "No deliveries yet."
     }
+  },
+  "agentTokens": {
+    "title": "Agent Tokens",
+    "description": "Scoped tokens for AI agents accessing the MCP server.",
+    "create": "Create token",
+    "noTokens": "No agent tokens yet.",
+    "revokeConfirm": "Revoke token \"{name}\"? Any agents using it will lose access.",
+    "table": {
+      "name": "Name",
+      "prefix": "Prefix",
+      "scopes": "Scopes",
+      "lastUsed": "Last used",
+      "status": "Status"
+    },
+    "status": {
+      "active": "Active",
+      "revoked": "Revoked"
+    },
+    "createDrawer": {
+      "title": "Create agent token",
+      "name": "Token name",
+      "namePlaceholder": "my-agent",
+      "scopes": "Allowed MCP tools",
+      "scopesHint": "Select which MCP tools this agent token may call.",
+      "groupContentTypes": "Content Types",
+      "groupContentEntries": "Content Entries",
+      "groupMediaSeo": "Media & SEO",
+      "cancel": "Cancel",
+      "submit": "Create token",
+      "submitting": "Creating…"
+    },
+    "revealDialog": {
+      "title": "Agent token created",
+      "warning": "This token will only be shown once. Copy it now and store it securely.",
+      "copied": "Copied!",
+      "done": "Done"
+    }
   }
 }

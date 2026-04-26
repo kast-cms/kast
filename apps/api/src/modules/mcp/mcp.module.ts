@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AgentTokenModule } from '../agent-tokens/agent-token.module';
 import { AuditModule } from '../audit/audit.module';
 import { ContentTypesModule } from '../content-types/content-types.module';
 import { ContentModule } from '../content/content.module';
@@ -13,7 +14,14 @@ import { McpContentTypeTools } from './tools/content-type.tools';
 import { McpMediaSeoAuditTools } from './tools/media-seo-audit.tools';
 
 @Module({
-  imports: [ContentTypesModule, ContentModule, MediaModule, SeoModule, AuditModule],
+  imports: [
+    ContentTypesModule,
+    ContentModule,
+    MediaModule,
+    SeoModule,
+    AuditModule,
+    AgentTokenModule,
+  ],
   controllers: [McpController],
   providers: [
     McpService,

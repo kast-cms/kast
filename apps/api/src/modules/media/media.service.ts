@@ -71,18 +71,7 @@ export class MediaService {
     const ext = extname(file.originalname);
     const key = `${randomUUID()}${ext}`;
     const { url, storageKey } = await this.storage.upload(key, file.buffer, file.mimetype);
-
-    let width: number | undefined;
-    let height: number | undefined;
-    if (IMAGE_MIME_TYPES.has(file.mimetype)) {
-      try {
-        const dim = sizeOf(file.buffer);
-        width = dim?.width;
-        height = dim?.height;
-      } catch {
-        this.logger.warn(`Could not get dimensions for ${key}`);
-      }
-    }
+    const { width, height } = this.getImageDimensions(file);
 
     const media = await this.repo.create({
       filename: key,
@@ -97,24 +86,43 @@ export class MediaService {
       uploadedBy: { connect: { id: uploaderId } },
     });
 
-    if (OPTIMIZE_RASTER_TYPES.has(file.mimetype)) {
-      const jobData: MediaJobData = {
-        mediaFileId: media.id,
-        storageKey,
-        mimeType: file.mimetype,
-      };
-      await Promise.all([
-        this.queue.enqueue(QUEUE_NAMES.MEDIA, 'optimize', jobData, { attempts: 3 }),
-        this.queue.enqueue(QUEUE_NAMES.MEDIA, 'thumbnail', jobData, { attempts: 3 }),
-      ]);
-    }
-
+    await this.enqueueOptimizationJobs(media.id, storageKey, file.mimetype);
     this.eventEmitter.emit('media.uploaded', {
       mediaId: media.id,
       mimeType: media.mimeType,
       url: media.url,
     });
     return { data: media };
+  }
+
+  private getImageDimensions(file: Express.Multer.File): {
+    width?: number;
+    height?: number;
+  } {
+    if (!IMAGE_MIME_TYPES.has(file.mimetype)) return {};
+    try {
+      const dim = sizeOf(file.buffer);
+      const result: { width?: number; height?: number } = {};
+      if (dim?.width !== undefined) result.width = dim.width;
+      if (dim?.height !== undefined) result.height = dim.height;
+      return result;
+    } catch {
+      this.logger.warn(`Could not get dimensions for ${file.originalname}`);
+      return {};
+    }
+  }
+
+  private async enqueueOptimizationJobs(
+    mediaFileId: string,
+    storageKey: string,
+    mimeType: string,
+  ): Promise<void> {
+    if (!OPTIMIZE_RASTER_TYPES.has(mimeType)) return;
+    const jobData: MediaJobData = { mediaFileId, storageKey, mimeType };
+    await Promise.all([
+      this.queue.enqueue(QUEUE_NAMES.MEDIA, 'optimize', jobData, { attempts: 3 }),
+      this.queue.enqueue(QUEUE_NAMES.MEDIA, 'thumbnail', jobData, { attempts: 3 }),
+    ]);
   }
 
   async findAll(query: PaginationDto): Promise<PaginatedResult<MediaFile>> {

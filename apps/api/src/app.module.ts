@@ -4,6 +4,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { validateEnv } from './config/env.schema';
+import { AgentTokenModule } from './modules/agent-tokens/agent-token.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ContentTypesModule } from './modules/content-types/content-types.module';
@@ -49,6 +50,7 @@ import { PrismaModule } from './prisma/prisma.module';
     TrashModule,
     EmailModule,
     WebhookModule,
+    AgentTokenModule,
   ],
 })
 export class AppModule {}

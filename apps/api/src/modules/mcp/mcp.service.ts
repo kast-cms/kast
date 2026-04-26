@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { ROLE_HIERARCHY, SYSTEM_ROLES } from '../../common/constants/roles.constants';
 import type { AuthUser } from '../../common/types/auth.types';
+import { AgentTokenRepository } from '../agent-tokens/agent-token.repository';
 import { AuditService } from '../audit/audit.service';
 import { McpRegistry } from './mcp.registry';
 import type {
@@ -9,6 +10,7 @@ import type {
   McpRequest,
   McpResponse,
   McpToolCallParams,
+  McpToolDef,
   McpToolListEntry,
 } from './types/mcp.types';
 
@@ -20,6 +22,7 @@ export class McpService {
   constructor(
     private readonly registry: McpRegistry,
     private readonly auditService: AuditService,
+    private readonly agentTokenRepo: AgentTokenRepository,
   ) {}
 
   async handle(req: McpRequest, user: AuthUser): Promise<McpResponse> {
@@ -66,6 +69,19 @@ export class McpService {
       return this.errorResponse(req.id, -32603, 'FORBIDDEN');
     }
 
+    if (!this.isAgentTokenScopeAllowed(user, params.name)) {
+      return this.errorResponse(req.id, -32603, 'FORBIDDEN');
+    }
+
+    return this.executeTool(req, tool, user, params);
+  }
+
+  private async executeTool(
+    req: McpRequest,
+    tool: McpToolDef,
+    user: AuthUser,
+    params: McpToolCallParams,
+  ): Promise<McpResponse> {
     const args = params.arguments ?? {};
     const dryRun = (args['dryRun'] as boolean | undefined) === true;
 
@@ -83,12 +99,25 @@ export class McpService {
         userId: user.id,
         changes: args as unknown as Prisma.InputJsonValue,
       });
+      this.logAgentSession(user, params.name);
       return this.okResponse(req.id, {
         content: [{ type: 'text', text: JSON.stringify(result) }],
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Tool execution failed';
       return this.errorResponse(req.id, -32603, message);
+    }
+  }
+
+  private isAgentTokenScopeAllowed(user: AuthUser, toolName: string): boolean {
+    if (user.isAgentToken !== true) return true;
+    const scopes = user.agentTokenScopes ?? [];
+    return scopes.includes(toolName);
+  }
+
+  private logAgentSession(user: AuthUser, toolName: string): void {
+    if (user.isAgentToken === true && user.agentTokenId !== undefined) {
+      this.agentTokenRepo.logToolCall(user.agentTokenId, toolName);
     }
   }
 
