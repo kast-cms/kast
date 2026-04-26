@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { validateEnv } from './config/env.schema';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ContentTypesModule } from './modules/content-types/content-types.module';
 import { ContentModule } from './modules/content/content.module';
+import { EmailModule } from './modules/email/email.module';
 import { HealthModule } from './modules/health/health.module';
 import { LocalesModule } from './modules/locales/locales.module';
 import { McpModule } from './modules/mcp/mcp.module';
@@ -13,6 +15,7 @@ import { MediaModule } from './modules/media/media.module';
 import { PublishModule } from './modules/publish/publish.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { SeoModule } from './modules/seo/seo.module';
+import { TrashModule } from './modules/trash/trash.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
@@ -21,6 +24,7 @@ import { PrismaModule } from './prisma/prisma.module';
       isGlobal: true,
       validate: validateEnv,
     }),
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([
       { name: 'public', ttl: 60000, limit: 100 },
       { name: 'auth', ttl: 900000, limit: 20 },
@@ -39,6 +43,8 @@ import { PrismaModule } from './prisma/prisma.module';
     McpModule,
     LocalesModule,
     PublishModule,
+    TrashModule,
+    EmailModule,
   ],
 })
 export class AppModule {}

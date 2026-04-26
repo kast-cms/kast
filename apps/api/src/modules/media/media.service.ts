@@ -11,6 +11,9 @@ import { extname } from 'path';
 import type { PaginationDto } from '../../common/dto/pagination.dto';
 import type { PaginatedResult } from '../../common/types/auth.types';
 import type { Env } from '../../config/env.schema';
+import { QueueAdapter } from '../queue/queue.adapter';
+import { QUEUE_NAMES } from '../queue/queue.constants';
+import type { MediaJobData } from './media.processor';
 import { MediaRepository } from './media.repository';
 import type { StorageAdapter } from './storage/storage.adapter';
 
@@ -24,6 +27,15 @@ const IMAGE_MIME_TYPES = new Set([
   'image/svg+xml',
 ]);
 
+const OPTIMIZE_RASTER_TYPES = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/gif',
+  'image/bmp',
+  'image/tiff',
+]);
+
 @Injectable()
 export class MediaService {
   private readonly logger = new Logger(MediaService.name);
@@ -34,6 +46,7 @@ export class MediaService {
     private readonly repo: MediaRepository,
     private readonly storage: StorageAdapter,
     config: ConfigService<Env>,
+    private readonly queue: QueueAdapter,
   ) {
     const maxMb = config.get('UPLOAD_MAX_FILE_SIZE_MB', { infer: true }) ?? 10;
     this.maxBytes = maxMb * 1024 * 1024;
@@ -81,6 +94,18 @@ export class MediaService {
       height: height ?? null,
       uploadedBy: { connect: { id: uploaderId } },
     });
+
+    if (OPTIMIZE_RASTER_TYPES.has(file.mimetype)) {
+      const jobData: MediaJobData = {
+        mediaFileId: media.id,
+        storageKey,
+        mimeType: file.mimetype,
+      };
+      await Promise.all([
+        this.queue.enqueue(QUEUE_NAMES.MEDIA, 'optimize', jobData, { attempts: 3 }),
+        this.queue.enqueue(QUEUE_NAMES.MEDIA, 'thumbnail', jobData, { attempts: 3 }),
+      ]);
+    }
 
     return { data: media };
   }

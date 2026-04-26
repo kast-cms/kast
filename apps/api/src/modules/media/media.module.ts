@@ -1,18 +1,24 @@
+import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MulterModule } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import type { Env } from '../../config/env.schema';
+import { QueueAdapter } from '../queue/queue.adapter';
+import { QUEUE_NAMES } from '../queue/queue.constants';
 import { MediaController } from './media.controller';
+import { MediaProcessor, STORAGE_ADAPTER } from './media.processor';
 import { MediaRepository } from './media.repository';
 import { MediaService } from './media.service';
 import { LocalStorageAdapter } from './storage/local-storage.adapter';
 import { S3StorageAdapter } from './storage/s3-storage.adapter';
 
-const STORAGE_ADAPTER = 'STORAGE_ADAPTER';
-
 @Module({
-  imports: [ConfigModule, MulterModule.register({ storage: memoryStorage() })],
+  imports: [
+    ConfigModule,
+    MulterModule.register({ storage: memoryStorage() }),
+    BullModule.registerQueue({ name: QUEUE_NAMES.MEDIA }),
+  ],
   controllers: [MediaController],
   providers: [
     MediaRepository,
@@ -32,13 +38,15 @@ const STORAGE_ADAPTER = 'STORAGE_ADAPTER';
     },
     {
       provide: MediaService,
-      inject: [MediaRepository, STORAGE_ADAPTER, ConfigService],
+      inject: [MediaRepository, STORAGE_ADAPTER, ConfigService, QueueAdapter],
       useFactory: (
         repo: MediaRepository,
         storage: LocalStorageAdapter | S3StorageAdapter,
         config: ConfigService<Env>,
-      ) => new MediaService(repo, storage, config),
+        queue: QueueAdapter,
+      ) => new MediaService(repo, storage, config, queue),
     },
+    MediaProcessor,
   ],
   exports: [MediaService],
 })

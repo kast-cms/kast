@@ -37,6 +37,17 @@ const envSchema = z.object({
   UPLOAD_ALLOWED_MIME_TYPES: z
     .string()
     .default('image/jpeg,image/png,image/webp,image/gif,image/svg+xml,application/pdf'),
+
+  // SMTP (email queue)
+  SMTP_HOST: z.string().default('localhost'),
+  SMTP_PORT: z.coerce.number().int().default(1025),
+  SMTP_SECURE: z
+    .string()
+    .optional()
+    .transform((v) => v === 'true'),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_FROM: z.string().default('noreply@kast.io'),
 });
 
 export type Env = z.infer<typeof envSchema>;
