@@ -24,4 +24,10 @@ export class AuditResource {
   getById(id: string): Promise<{ data: AuditLogEntry }> {
     return this.client.request(`/api/v1/audit/${id}`);
   }
+
+  /** Download audit log as a CSV Blob (max 5 000 rows). */
+  export(params?: AuditLogListParams): Promise<Blob> {
+    const qs = params ? buildAuditParams(params).toString() : '';
+    return this.client.requestBlob(`/api/v1/audit/export${qs ? `?${qs}` : ''}`);
+  }
 }

@@ -24,4 +24,14 @@ export class PluginsResource {
   getConfig(name: string): Promise<ApiResponse<Record<string, unknown>>> {
     return this.client.request(`/api/v1/plugins/${encodeURIComponent(name)}/config`);
   }
+
+  updateConfig(
+    name: string,
+    config: Record<string, unknown>,
+  ): Promise<ApiResponse<Record<string, unknown>>> {
+    return this.client.request(`/api/v1/plugins/${encodeURIComponent(name)}/config`, {
+      method: 'PATCH',
+      body: config,
+    });
+  }
 }

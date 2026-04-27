@@ -54,6 +54,10 @@ export class KastClient {
     this.accessToken = token;
   }
 
+  getBaseUrl(): string {
+    return this.baseUrl;
+  }
+
   private buildAuthOnlyHeaders(): Record<string, string> {
     const headers: Record<string, string> = {};
     if (this.accessToken) headers['Authorization'] = `Bearer ${this.accessToken}`;
@@ -101,6 +105,20 @@ export class KastClient {
     const json = (await res.json()) as unknown;
     if (!res.ok) throw this.buildError(json, res.status);
     return json as T;
+  }
+
+  async requestBlob(path: string, options: RequestOptions = {}): Promise<Blob> {
+    const url = `${this.baseUrl}${path}`;
+    const headers = { ...this.buildAuthOnlyHeaders(), ...(options.headers ?? {}) };
+    const res = await this._fetch(url, {
+      method: options.method ?? 'GET',
+      headers,
+    });
+    if (!res.ok) {
+      const json = (await res.json()) as unknown;
+      throw this.buildError(json, res.status);
+    }
+    return res.blob();
   }
 
   get agentTokens(): AgentTokensResource {

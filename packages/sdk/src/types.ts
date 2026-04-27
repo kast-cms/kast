@@ -119,6 +119,7 @@ export interface ContentEntrySummary {
   titleField: string | null; // value of the first text field
   authorId: string | null;
   authorName: string | null;
+  isAiGenerated: boolean;
   createdAt: string;
   updatedAt: string;
   publishedAt: string | null;
@@ -132,6 +133,7 @@ export interface ContentEntryDetail {
   data: Record<string, unknown>;
   authorId: string | null;
   authorName: string | null;
+  isAiGenerated: boolean;
   createdAt: string;
   updatedAt: string;
   publishedAt: string | null;
@@ -162,6 +164,7 @@ export interface EntryListParams {
   limit?: string;
   sort?: string;
   order?: 'asc' | 'desc';
+  scheduledAt?: string;
 }
 
 export type { ContentEntryVersion, VersionListParams } from './content-version-types.js';

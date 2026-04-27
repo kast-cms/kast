@@ -26,6 +26,29 @@ export class AuthResource {
   me(): Promise<unknown> {
     return this.client.request('/api/v1/auth/me');
   }
+
+  /**
+   * Returns the URL to redirect the user to for OAuth login.
+   * The provider initiates a server-side redirect, so this method
+   * constructs the URL rather than following it.
+   */
+  getOAuthUrl(provider: 'google' | 'github'): string {
+    return `${this.client.getBaseUrl()}/api/v1/auth/oauth/${provider}`;
+  }
+
+  forgotPassword(email: string): Promise<{ message: string }> {
+    return this.client.request('/api/v1/auth/forgot-password', {
+      method: 'POST',
+      body: { email },
+    });
+  }
+
+  resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+    return this.client.request('/api/v1/auth/reset-password', {
+      method: 'POST',
+      body: { token, newPassword },
+    });
+  }
 }
 
 export class ContentTypesResource {

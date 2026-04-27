@@ -139,3 +139,5 @@ export type {
   WebhookDeliverySummary,
   WebhookSummary,
 } from './webhooks-resource.js';
+/** OAuth provider identifier — pass to `client.auth.getOAuthUrl()`. */
+export type OAuthProvider = 'google' | 'github';
