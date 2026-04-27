@@ -1,17 +1,17 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @theme {
   /* ── Brand colours ──────────────────────────────── */
   --color-brand-50: oklch(0.97 0.01 265);
   --color-brand-100: oklch(0.94 0.03 265);
   --color-brand-200: oklch(0.87 0.06 265);
-  --color-brand-300: oklch(0.78 0.10 265);
+  --color-brand-300: oklch(0.78 0.1 265);
   --color-brand-400: oklch(0.67 0.15 265);
   --color-brand-500: oklch(0.56 0.21 265);
   --color-brand-600: oklch(0.47 0.22 265);
   --color-brand-700: oklch(0.39 0.19 265);
-  --color-brand-800: oklch(0.30 0.15 265);
-  --color-brand-900: oklch(0.22 0.10 265);
+  --color-brand-800: oklch(0.3 0.15 265);
+  --color-brand-900: oklch(0.22 0.1 265);
   --color-brand-950: oklch(0.14 0.07 265);
 
   /* ── Semantic tokens (light mode defaults) ──────── */
@@ -31,8 +31,8 @@
   --color-accent-foreground: oklch(0.14 0 0);
   --color-destructive: oklch(0.58 0.22 27);
   --color-destructive-foreground: oklch(0.98 0 0);
-  --color-border: oklch(0.90 0 0);
-  --color-input: oklch(0.90 0 0);
+  --color-border: oklch(0.9 0 0);
+  --color-input: oklch(0.9 0 0);
   --color-ring: oklch(0.47 0.22 265);
   --color-sidebar: oklch(0.97 0 0);
   --color-sidebar-foreground: oklch(0.14 0 0);
@@ -40,7 +40,7 @@
   --color-sidebar-primary-foreground: oklch(0.98 0 0);
   --color-sidebar-accent: oklch(0.93 0.01 265);
   --color-sidebar-accent-foreground: oklch(0.47 0.22 265);
-  --color-sidebar-border: oklch(0.90 0 0);
+  --color-sidebar-border: oklch(0.9 0 0);
 
   /* ── Radius ─────────────────────────────────────── */
   --radius-sm: 0.25rem;
@@ -50,8 +50,8 @@
   --radius-full: 9999px;
 
   /* ── Typography ─────────────────────────────────── */
-  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    sans-serif;
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
@@ -60,11 +60,11 @@
   :root {
     --color-background: oklch(0.08 0 0);
     --color-foreground: oklch(0.96 0 0);
-    --color-card: oklch(0.10 0 0);
+    --color-card: oklch(0.1 0 0);
     --color-card-foreground: oklch(0.96 0 0);
-    --color-popover: oklch(0.10 0 0);
+    --color-popover: oklch(0.1 0 0);
     --color-popover-foreground: oklch(0.96 0 0);
-    --color-primary: oklch(0.67 0.20 265);
+    --color-primary: oklch(0.67 0.2 265);
     --color-primary-foreground: oklch(0.08 0 0);
     --color-secondary: oklch(0.16 0 0);
     --color-secondary-foreground: oklch(0.96 0 0);
@@ -74,16 +74,16 @@
     --color-accent-foreground: oklch(0.96 0 0);
     --color-destructive: oklch(0.65 0.22 27);
     --color-destructive-foreground: oklch(0.96 0 0);
-    --color-border: oklch(0.20 0 0);
-    --color-input: oklch(0.20 0 0);
-    --color-ring: oklch(0.67 0.20 265);
-    --color-sidebar: oklch(0.10 0 0);
+    --color-border: oklch(0.2 0 0);
+    --color-input: oklch(0.2 0 0);
+    --color-ring: oklch(0.67 0.2 265);
+    --color-sidebar: oklch(0.1 0 0);
     --color-sidebar-foreground: oklch(0.96 0 0);
-    --color-sidebar-primary: oklch(0.67 0.20 265);
+    --color-sidebar-primary: oklch(0.67 0.2 265);
     --color-sidebar-primary-foreground: oklch(0.08 0 0);
     --color-sidebar-accent: oklch(0.15 0.02 265);
-    --color-sidebar-accent-foreground: oklch(0.67 0.20 265);
-    --color-sidebar-border: oklch(0.20 0 0);
+    --color-sidebar-accent-foreground: oklch(0.67 0.2 265);
+    --color-sidebar-border: oklch(0.2 0 0);
   }
 }
 
