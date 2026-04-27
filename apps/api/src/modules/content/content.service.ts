@@ -1,8 +1,17 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import type { Queue } from 'bullmq';
 import type { PaginatedResult } from '../../common/types/auth.types';
 import { ContentTypesService } from '../content-types/content-types.service';
-import { ContentRepository, EntryWithLocale } from './content.repository';
-import type { CreateContentEntryDto, UpdateContentEntryDto } from './dto/content-entry.dto';
+import type { PublishJobData } from '../publish/publish.processor';
+import { QUEUE_NAMES } from '../queue/queue.constants';
+import { ContentRepository, EntryWithLocale, VersionWithAuthor } from './content.repository';
+import type {
+  CreateContentEntryDto,
+  SchedulePublishDto,
+  UpdateContentEntryDto,
+} from './dto/content-entry.dto';
 import type { ContentQueryDto } from './dto/content-query.dto';
 
 @Injectable()
@@ -10,6 +19,8 @@ export class ContentService {
   constructor(
     private readonly repo: ContentRepository,
     private readonly contentTypesService: ContentTypesService,
+    @InjectQueue(QUEUE_NAMES.PUBLISH) private readonly publishQueue: Queue<PublishJobData>,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async findAll(
@@ -27,7 +38,9 @@ export class ContentService {
 
   async findOne(typeSlug: string, id: string, locale?: string): Promise<{ data: EntryWithLocale }> {
     await this.contentTypesService.findByName(typeSlug);
-    const entry = await this.repo.findById(id, locale);
+    const entry = locale
+      ? await this.repo.findByIdWithFallback(id, locale)
+      : await this.repo.findById(id);
     if (!entry) throw new NotFoundException(`Content entry ${id} not found`);
     return { data: entry };
   }
@@ -40,7 +53,14 @@ export class ContentService {
     const ct = await this.contentTypesService.findByName(typeSlug);
     const locale = dto.locale;
     const slug = (dto.data['slug'] as string | undefined) ?? `${typeSlug}-${Date.now()}`;
-    const entry = await this.repo.create(ct.id, dto.data, locale, authorId, slug);
+    const extraLocaleCodes = ct.isLocalized ? await this.repo.findActiveLocaleCodes() : [];
+    const entry = await this.repo.create(ct.id, dto.data, locale, authorId, slug, extraLocaleCodes);
+    this.eventEmitter.emit('content.created', {
+      entryId: entry.id,
+      typeSlug,
+      locale,
+      status: entry.status,
+    });
     return { data: entry };
   }
 
@@ -70,6 +90,7 @@ export class ContentService {
 
     const updated = await this.repo.findById(id);
     if (!updated) throw new NotFoundException(`Content entry ${id} not found`);
+    this.eventEmitter.emit('content.updated', { entryId: id, typeSlug, status: updated.status });
     return { data: updated };
   }
 
@@ -78,6 +99,7 @@ export class ContentService {
     const entry = await this.repo.findById(id);
     if (!entry) throw new NotFoundException(`Content entry ${id} not found`);
     await this.repo.trash(id);
+    this.eventEmitter.emit('content.trashed', { entryId: id, typeSlug });
   }
 
   async publish(typeSlug: string, id: string): Promise<{ data: EntryWithLocale }> {
@@ -87,6 +109,114 @@ export class ContentService {
     await this.repo.updateStatus(id, 'PUBLISHED', new Date());
     const updated = await this.repo.findById(id);
     if (!updated) throw new NotFoundException(`Content entry ${id} not found`);
+    this.eventEmitter.emit('content.published', { entryId: id, typeSlug, status: 'PUBLISHED' });
     return { data: updated };
+  }
+
+  async unpublish(typeSlug: string, id: string): Promise<{ data: EntryWithLocale }> {
+    await this.contentTypesService.findByName(typeSlug);
+    const entry = await this.repo.findById(id);
+    if (!entry) throw new NotFoundException(`Content entry ${id} not found`);
+    await this.repo.updateStatus(id, 'DRAFT');
+    const updated = await this.repo.findById(id);
+    if (!updated) throw new NotFoundException(`Content entry ${id} not found`);
+    this.eventEmitter.emit('content.unpublished', { entryId: id, typeSlug, status: 'DRAFT' });
+    return { data: updated };
+  }
+
+  async archive(typeSlug: string, id: string): Promise<{ data: EntryWithLocale }> {
+    await this.contentTypesService.findByName(typeSlug);
+    const entry = await this.repo.findById(id);
+    if (!entry) throw new NotFoundException(`Content entry ${id} not found`);
+    await this.repo.updateStatus(id, 'ARCHIVED');
+    const updated = await this.repo.findById(id);
+    if (!updated) throw new NotFoundException(`Content entry ${id} not found`);
+    return { data: updated };
+  }
+
+  async restore(typeSlug: string, id: string): Promise<{ data: EntryWithLocale }> {
+    await this.contentTypesService.findByName(typeSlug);
+    const entry = await this.repo.findById(id);
+    if (!entry) throw new NotFoundException(`Content entry ${id} not found`);
+    await this.repo.updateStatus(id, 'DRAFT');
+    const updated = await this.repo.findById(id);
+    if (!updated) throw new NotFoundException(`Content entry ${id} not found`);
+    return { data: updated };
+  }
+
+  async schedulePublish(
+    typeSlug: string,
+    id: string,
+    dto: SchedulePublishDto,
+  ): Promise<{ data: EntryWithLocale }> {
+    await this.contentTypesService.findByName(typeSlug);
+    const entry = await this.repo.findById(id);
+    if (!entry) throw new NotFoundException(`Content entry ${id} not found`);
+    const publishAt = new Date(dto.publishAt);
+    if (publishAt <= new Date()) {
+      throw new BadRequestException('publishAt must be in the future');
+    }
+    const delay = publishAt.getTime() - Date.now();
+    await this.publishQueue.add(
+      'publish',
+      { entryId: id, typeSlug },
+      { delay, jobId: `publish-${id}` },
+    );
+    await this.repo.updateSchedule(id, publishAt, 'SCHEDULED');
+    const updated = await this.repo.findById(id);
+    if (!updated) throw new NotFoundException(`Content entry ${id} not found`);
+    return { data: updated };
+  }
+
+  async cancelSchedule(typeSlug: string, id: string): Promise<{ data: EntryWithLocale }> {
+    await this.contentTypesService.findByName(typeSlug);
+    const entry = await this.repo.findById(id);
+    if (!entry) throw new NotFoundException(`Content entry ${id} not found`);
+    const job = await this.publishQueue.getJob(`publish-${id}`);
+    await job?.remove();
+    await this.repo.updateSchedule(id, null, 'DRAFT');
+    const updated = await this.repo.findById(id);
+    if (!updated) throw new NotFoundException(`Content entry ${id} not found`);
+    return { data: updated };
+  }
+
+  async listVersions(
+    typeSlug: string,
+    id: string,
+    limit: number,
+    cursor?: string,
+  ): Promise<PaginatedResult<VersionWithAuthor>> {
+    await this.contentTypesService.findByName(typeSlug);
+    const entry = await this.repo.findById(id);
+    if (!entry) throw new NotFoundException(`Content entry ${id} not found`);
+    const { items, total } = await this.repo.listVersions(id, limit, cursor);
+    const hasNextPage = items.length > limit;
+    const data = hasNextPage ? items.slice(0, limit) : items;
+    const nextCursor = hasNextPage ? (data[data.length - 1]?.id ?? null) : null;
+    return { data, meta: { total, limit, cursor: nextCursor, hasNextPage } };
+  }
+
+  async getVersion(
+    typeSlug: string,
+    id: string,
+    versionId: string,
+  ): Promise<{ data: VersionWithAuthor }> {
+    await this.contentTypesService.findByName(typeSlug);
+    const version = await this.repo.findVersionById(id, versionId);
+    if (!version) throw new NotFoundException(`Version ${versionId} not found`);
+    return { data: version };
+  }
+
+  async revertToVersion(
+    typeSlug: string,
+    id: string,
+    versionId: string,
+    userId: string,
+  ): Promise<{ data: EntryWithLocale }> {
+    await this.contentTypesService.findByName(typeSlug);
+    const version = await this.repo.findVersionById(id, versionId);
+    if (!version) throw new NotFoundException(`Version ${versionId} not found`);
+    const data = await this.repo.revertToVersion(id, version, userId);
+    return { data };
   }
 }

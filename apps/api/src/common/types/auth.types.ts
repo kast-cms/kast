@@ -6,6 +6,7 @@ export interface AuthUser {
   apiTokenId?: string;
   isAgentToken?: boolean;
   agentTokenId?: string;
+  agentTokenScopes?: string[];
 }
 
 export interface JwtPayload {

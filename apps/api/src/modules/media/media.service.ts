@@ -5,12 +5,16 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { MediaFile } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { extname } from 'path';
 import type { PaginationDto } from '../../common/dto/pagination.dto';
 import type { PaginatedResult } from '../../common/types/auth.types';
 import type { Env } from '../../config/env.schema';
+import { QueueAdapter } from '../queue/queue.adapter';
+import { QUEUE_NAMES } from '../queue/queue.constants';
+import type { MediaJobData } from './media.processor';
 import { MediaRepository } from './media.repository';
 import type { StorageAdapter } from './storage/storage.adapter';
 
@@ -24,6 +28,15 @@ const IMAGE_MIME_TYPES = new Set([
   'image/svg+xml',
 ]);
 
+const OPTIMIZE_RASTER_TYPES = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/gif',
+  'image/bmp',
+  'image/tiff',
+]);
+
 @Injectable()
 export class MediaService {
   private readonly logger = new Logger(MediaService.name);
@@ -34,6 +47,8 @@ export class MediaService {
     private readonly repo: MediaRepository,
     private readonly storage: StorageAdapter,
     config: ConfigService<Env>,
+    private readonly queue: QueueAdapter,
+    private readonly eventEmitter: EventEmitter2,
   ) {
     const maxMb = config.get('UPLOAD_MAX_FILE_SIZE_MB', { infer: true }) ?? 10;
     this.maxBytes = maxMb * 1024 * 1024;
@@ -56,18 +71,7 @@ export class MediaService {
     const ext = extname(file.originalname);
     const key = `${randomUUID()}${ext}`;
     const { url, storageKey } = await this.storage.upload(key, file.buffer, file.mimetype);
-
-    let width: number | undefined;
-    let height: number | undefined;
-    if (IMAGE_MIME_TYPES.has(file.mimetype)) {
-      try {
-        const dim = sizeOf(file.buffer);
-        width = dim?.width;
-        height = dim?.height;
-      } catch {
-        this.logger.warn(`Could not get dimensions for ${key}`);
-      }
-    }
+    const { width, height } = this.getImageDimensions(file);
 
     const media = await this.repo.create({
       filename: key,
@@ -82,7 +86,43 @@ export class MediaService {
       uploadedBy: { connect: { id: uploaderId } },
     });
 
+    await this.enqueueOptimizationJobs(media.id, storageKey, file.mimetype);
+    this.eventEmitter.emit('media.uploaded', {
+      mediaId: media.id,
+      mimeType: media.mimeType,
+      url: media.url,
+    });
     return { data: media };
+  }
+
+  private getImageDimensions(file: Express.Multer.File): {
+    width?: number;
+    height?: number;
+  } {
+    if (!IMAGE_MIME_TYPES.has(file.mimetype)) return {};
+    try {
+      const dim = sizeOf(file.buffer);
+      const result: { width?: number; height?: number } = {};
+      if (dim?.width !== undefined) result.width = dim.width;
+      if (dim?.height !== undefined) result.height = dim.height;
+      return result;
+    } catch {
+      this.logger.warn(`Could not get dimensions for ${file.originalname}`);
+      return {};
+    }
+  }
+
+  private async enqueueOptimizationJobs(
+    mediaFileId: string,
+    storageKey: string,
+    mimeType: string,
+  ): Promise<void> {
+    if (!OPTIMIZE_RASTER_TYPES.has(mimeType)) return;
+    const jobData: MediaJobData = { mediaFileId, storageKey, mimeType };
+    await Promise.all([
+      this.queue.enqueue(QUEUE_NAMES.MEDIA, 'optimize', jobData, { attempts: 3 }),
+      this.queue.enqueue(QUEUE_NAMES.MEDIA, 'thumbnail', jobData, { attempts: 3 }),
+    ]);
   }
 
   async findAll(query: PaginationDto): Promise<PaginatedResult<MediaFile>> {

@@ -2,6 +2,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { Global, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import type { Env } from '../../config/env.schema';
+import { QueueAdapter } from './queue.adapter';
 import { QUEUE_NAMES } from './queue.constants';
 
 @Global()
@@ -39,6 +40,7 @@ import { QUEUE_NAMES } from './queue.constants';
       { name: QUEUE_NAMES.TRASH },
     ),
   ],
-  exports: [BullModule],
+  providers: [QueueAdapter],
+  exports: [BullModule, QueueAdapter],
 })
 export class QueueModule {}

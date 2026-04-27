@@ -110,7 +110,8 @@ model ContentType {
   displayName String
   description String?
   icon        String?
-  isSystem    Boolean  @default(false)
+  isSystem      Boolean  @default(false)
+  isLocalized   Boolean  @default(false)
 
   fields      ContentField[]
   entries     ContentEntry[]

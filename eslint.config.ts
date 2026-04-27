@@ -15,6 +15,7 @@ export default tseslint.config(
       'eslint.config.ts',
       'commitlint.config.ts',
       'lint-staged.config.ts',
+      'plugins/**',
     ],
   },
 
@@ -83,6 +84,15 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'off',
       'max-lines-per-function': 'off',
       'max-lines': 'off',
+    },
+  },
+
+  // Relaxed complexity rules for React component files (TSX)
+  // JSX templates naturally produce longer functions than pure logic
+  {
+    files: ['**/*.tsx'],
+    rules: {
+      'max-lines-per-function': ['error', { max: 150, skipBlankLines: true, skipComments: true }],
     },
   },
 );

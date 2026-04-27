@@ -29,6 +29,11 @@ export class LocalStorageAdapter implements StorageAdapter {
     return { url, storageKey: key };
   }
 
+  async read(key: string): Promise<Buffer> {
+    const filePath = join(this.localDir, key);
+    return fs.readFile(filePath);
+  }
+
   async delete(key: string): Promise<void> {
     const filePath = join(this.localDir, key);
     await fs.unlink(filePath).catch((err: NodeJS.ErrnoException) => {
