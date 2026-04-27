@@ -45,10 +45,10 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.6",
-    "@types/node": "^22.0.0",
+    "@types/node": "^25.6.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "eslint": "^9.0.0",
+    "eslint": "^10.2.1",
     "tailwindcss": "^4.1.6",
     "typescript": "^5.5.0",
     "typescript-eslint": "^8.0.0"
