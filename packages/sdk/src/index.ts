@@ -1,4 +1,11 @@
 export { AgentTokensResource } from './agent-tokens-resource.js';
+export { AuditResource } from './audit-resource.js';
+export type {
+  AuditLogEntry,
+  AuditLogListParams,
+  AuditLogListResponse,
+  AuditLogMeta,
+} from './audit-types.js';
 export { KastClient } from './client.js';
 export type {
   CreateFormBody,

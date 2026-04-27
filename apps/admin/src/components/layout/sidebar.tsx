@@ -25,6 +25,7 @@ import {
   ListTree,
   LogOut,
   Puzzle,
+  ScrollText,
   Settings,
   Shield,
   Trash2,
@@ -80,6 +81,7 @@ function useNavGroups(): NavGroup[] {
       items: [
         { href: '/plugins', label: t('plugins'), Icon: Puzzle },
         { href: '/trash', label: t('trash'), Icon: Trash2 },
+        { href: '/audit-log', label: t('auditLog'), Icon: ScrollText },
         { href: '/settings/locales', label: t('locales'), Icon: Languages },
         { href: '/settings', label: t('settings'), Icon: Settings },
       ],

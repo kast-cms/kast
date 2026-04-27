@@ -14,7 +14,8 @@
     "menus": "Menus",
     "trash": "Trash",
     "settings": "Settings",
-    "locales": "Locales"
+    "locales": "Locales",
+    "auditLog": "Audit Log"
   },
   "auth": {
     "login": {
@@ -810,19 +811,34 @@
       "actions": "Actions"
     }
   },
-  "settings": {
-    "title": "Settings",
-    "subtitle": "Configure your KAST instance",
-    "tabs": {
-      "general": "General",
-      "email": "Email",
-      "storage": "Storage",
-      "security": "Security",
-      "seo": "SEO",
-      "content": "Content"
+  "auditLog": {
+    "title": "Audit Log",
+    "subtitle": "A searchable record of all actions performed in your CMS.",
+    "export": "Export CSV",
+    "loading": "Loading…",
+    "noEntries": "No audit entries found.",
+    "total": "{count} total entries",
+    "prev": "Previous",
+    "next": "Next",
+    "filters": {
+      "action": "Action",
+      "actionPlaceholder": "e.g. create, delete",
+      "resource": "Resource",
+      "resourcePlaceholder": "e.g. content, media",
+      "userId": "User ID",
+      "userIdPlaceholder": "UUID",
+      "from": "From",
+      "to": "To",
+      "apply": "Search",
+      "clear": "Clear"
     },
-    "save": "Save",
-    "saving": "Saving…",
-    "maintenanceBanner": "Maintenance mode is active. Public API delivery routes are returning 503."
+    "table": {
+      "action": "Action",
+      "resource": "Resource",
+      "resourceId": "Resource ID",
+      "actor": "Actor",
+      "ip": "IP Address",
+      "timestamp": "Timestamp"
+    }
   }
 }

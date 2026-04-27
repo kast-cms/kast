@@ -14,7 +14,8 @@
     "menus": "القوائم",
     "trash": "المهملات",
     "settings": "الإعدادات",
-    "locales": "اللغات"
+    "locales": "اللغات",
+    "auditLog": "سجل التدقيق"
   },
   "auth": {
     "login": {
@@ -810,19 +811,34 @@
       "actions": "إجراءات"
     }
   },
-  "settings": {
-    "title": "الإعدادات",
-    "subtitle": "تهيئة نظام KAST",
-    "tabs": {
-      "general": "عام",
-      "email": "البريد الإلكتروني",
-      "storage": "التخزين",
-      "security": "الأمان",
-      "seo": "تهيئة محركات البحث",
-      "content": "المحتوى"
+  "auditLog": {
+    "title": "سجل التدقيق",
+    "subtitle": "سجل قابل للبحث لجميع الإجراءات المنفذة في نظام إدارة المحتوى.",
+    "export": "تصدير CSV",
+    "loading": "جارٍ التحميل…",
+    "noEntries": "لا توجد إدخالات تدقيق.",
+    "total": "{count} إجمالي الإدخالات",
+    "prev": "السابق",
+    "next": "التالي",
+    "filters": {
+      "action": "الإجراء",
+      "actionPlaceholder": "مثال: create, delete",
+      "resource": "المورد",
+      "resourcePlaceholder": "مثال: content, media",
+      "userId": "معرف المستخدم",
+      "userIdPlaceholder": "UUID",
+      "from": "من",
+      "to": "إلى",
+      "apply": "بحث",
+      "clear": "مسح"
     },
-    "save": "حفظ",
-    "saving": "جارٍ الحفظ…",
-    "maintenanceBanner": "وضع الصيانة نشط. مسارات توصيل API العامة تُرجع 503."
+    "table": {
+      "action": "الإجراء",
+      "resource": "المورد",
+      "resourceId": "معرف المورد",
+      "actor": "المنفذ",
+      "ip": "عنوان IP",
+      "timestamp": "التوقيت"
+    }
   }
 }
