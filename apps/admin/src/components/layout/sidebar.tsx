@@ -33,6 +33,7 @@ import {
   Users,
   Webhook,
 } from 'lucide-react';
+import type { Route } from 'next';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -43,7 +44,7 @@ interface NavGroup {
 }
 
 interface NavLinkItem {
-  href: string;
+  href: Route;
   label: string;
   Icon: React.ComponentType<{ className?: string }>;
 }
@@ -89,7 +90,9 @@ function useNavGroups(isSuperAdmin: boolean): NavGroup[] {
         { href: '/audit-log', label: t('auditLog'), Icon: ScrollText },
         { href: '/settings/locales', label: t('locales'), Icon: Languages },
         { href: '/settings', label: t('settings'), Icon: Settings },
-        ...(isSuperAdmin ? [{ href: '/queues', label: t('queueMonitor'), Icon: MonitorDot }] : []),
+        ...(isSuperAdmin
+          ? ([{ href: '/queues', label: t('queueMonitor'), Icon: MonitorDot }] as NavLinkItem[])
+          : []),
       ],
     },
   ];
@@ -102,7 +105,7 @@ export function Sidebar(): JSX.Element {
   const navGroups = useNavGroups(isSuperAdmin);
   const t = useTranslations('auth');
 
-  const isActive = (href: string): boolean => pathname === href || pathname.startsWith(`${href}/`);
+  const isActive = (href: Route): boolean => pathname === href || pathname.startsWith(`${href}/`);
 
   return (
     <aside className="flex h-full w-60 flex-col border-e border-[--color-sidebar-border] bg-[--color-sidebar]">

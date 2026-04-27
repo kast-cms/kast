@@ -1,12 +1,13 @@
 'use client';
 
+import type { Route } from 'next';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import type { JSX } from 'react';
 
 interface OnboardingStep {
   key: 'createContentType' | 'addContent' | 'uploadMedia' | 'inviteUser';
-  href: string;
+  href: Route;
 }
 
 const STEPS: OnboardingStep[] = [
