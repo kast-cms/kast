@@ -6,7 +6,6 @@
     "moduleResolution": "Bundler",
     "verbatimModuleSyntax": true,
     "outDir": "./dist",
-    "rootDir": "./src",
     "declaration": true,
     "declarationMap": true
   },
