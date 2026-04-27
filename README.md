@@ -25,13 +25,13 @@ docker-compose up
 
 ## What Makes Kast Different
 
-| Feature | Kast | Strapi | Payload | WordPress |
-|---|---|---|---|---|
-| SEO built-in (not a plugin) | ✅ | ❌ | ❌ | ❌ |
-| MCP server (AI agent control) | ✅ | ❌ | ❌ | ❌ |
-| RTL / Arabic first-class | ✅ | ⚠️ | ⚠️ | ⚠️ |
-| TypeScript end-to-end | ✅ | ⚠️ | ✅ | ❌ |
-| Setup in under 5 minutes | ✅ | ⚠️ | ⚠️ | ✅ |
+| Feature                       | Kast | Strapi | Payload | WordPress |
+| ----------------------------- | ---- | ------ | ------- | --------- |
+| SEO built-in (not a plugin)   | ✅   | ❌     | ❌      | ❌        |
+| MCP server (AI agent control) | ✅   | ❌     | ❌      | ❌        |
+| RTL / Arabic first-class      | ✅   | ⚠️     | ⚠️      | ⚠️        |
+| TypeScript end-to-end         | ✅   | ⚠️     | ✅      | ❌        |
+| Setup in under 5 minutes      | ✅   | ⚠️     | ⚠️      | ✅        |
 
 ---
 
