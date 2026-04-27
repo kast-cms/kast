@@ -40,12 +40,12 @@ cp .env.example .env
 docker-compose up
 ```
 
-| Service | URL |
-|---|---|
-| Admin Panel | http://localhost:3001 |
-| REST API | http://localhost:3000/api/v1 |
-| MCP Server | http://localhost:3000/mcp |
-| API Docs (Swagger) | http://localhost:3000/api |
+| Service            | URL                          |
+| ------------------ | ---------------------------- |
+| Admin Panel        | http://localhost:3001        |
+| REST API           | http://localhost:3000/api/v1 |
+| MCP Server         | http://localhost:3000/mcp    |
+| API Docs (Swagger) | http://localhost:3000/api    |
 
 ---
 
@@ -171,11 +171,11 @@ Most headless CMSes were built for an era before AI agents, before Arabic-first 
 
 ## npm Packages
 
-| Package | Version | Description |
-|---|---|---|
-| [`@kast-cms/sdk`](https://www.npmjs.com/package/@kast-cms/sdk) | [![npm](https://img.shields.io/npm/v/@kast-cms/sdk?style=flat-square)](https://www.npmjs.com/package/@kast-cms/sdk) | Official TypeScript client for the Kast API |
-| [`@kast/plugin-sdk`](https://www.npmjs.com/package/@kast/plugin-sdk) | [![npm](https://img.shields.io/npm/v/@kast/plugin-sdk?style=flat-square)](https://www.npmjs.com/package/@kast/plugin-sdk) | Build your own Kast plugins |
-| [`create-kast-app`](https://www.npmjs.com/package/create-kast-app) | [![npm](https://img.shields.io/npm/v/create-kast-app?style=flat-square)](https://www.npmjs.com/package/create-kast-app) | Scaffold a new Kast project in seconds |
+| Package                                                              | Version                                                                                                                   | Description                                 |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| [`@kast-cms/sdk`](https://www.npmjs.com/package/@kast-cms/sdk)       | [![npm](https://img.shields.io/npm/v/@kast-cms/sdk?style=flat-square)](https://www.npmjs.com/package/@kast-cms/sdk)       | Official TypeScript client for the Kast API |
+| [`@kast/plugin-sdk`](https://www.npmjs.com/package/@kast/plugin-sdk) | [![npm](https://img.shields.io/npm/v/@kast/plugin-sdk?style=flat-square)](https://www.npmjs.com/package/@kast/plugin-sdk) | Build your own Kast plugins                 |
+| [`create-kast-app`](https://www.npmjs.com/package/create-kast-app)   | [![npm](https://img.shields.io/npm/v/create-kast-app?style=flat-square)](https://www.npmjs.com/package/create-kast-app)   | Scaffold a new Kast project in seconds      |
 
 ```bash
 # Use the SDK in your frontend / Next.js app
@@ -194,13 +194,13 @@ npx create-kast-app my-site
 
 First-party plugins, installable via the Kast admin:
 
-| Plugin | Description |
-|---|---|
-| `kast-plugin-stripe` | Payments and subscription management |
-| `kast-plugin-meilisearch` | Full-text search with Meilisearch |
-| `kast-plugin-resend` | Transactional email via Resend |
-| `kast-plugin-r2` | Media storage on Cloudflare R2 |
-| `kast-plugin-sentry` | Error tracking and monitoring |
+| Plugin                    | Description                          |
+| ------------------------- | ------------------------------------ |
+| `kast-plugin-stripe`      | Payments and subscription management |
+| `kast-plugin-meilisearch` | Full-text search with Meilisearch    |
+| `kast-plugin-resend`      | Transactional email via Resend       |
+| `kast-plugin-r2`          | Media storage on Cloudflare R2       |
+| `kast-plugin-sentry`      | Error tracking and monitoring        |
 
 Build your own with [`@kast/plugin-sdk`](https://www.npmjs.com/package/@kast/plugin-sdk).
 

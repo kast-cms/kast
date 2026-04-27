@@ -88,28 +88,28 @@ kast.setAccessToken(token);
 
 The client exposes a resource for every Kast API domain:
 
-| Resource | Description |
-|---|---|
+| Resource             | Description                                      |
+| -------------------- | ------------------------------------------------ |
 | `kast.entries(type)` | CRUD for content entries, versioning, scheduling |
-| `kast.contentTypes` | Manage content type schemas |
-| `kast.media` | Upload and manage media files |
-| `kast.seo` | Per-entry SEO metadata |
-| `kast.forms` | Form definitions and submissions |
-| `kast.menus` | Navigation menu management |
-| `kast.locales` | Internationalisation and locale config |
-| `kast.users` | User management |
-| `kast.roles` | Role and permission management |
-| `kast.webhooks` | Webhook registration and management |
-| `kast.plugins` | Plugin registry |
-| `kast.tokens` | API token management |
-| `kast.agentTokens` | MCP / AI agent token management |
-| `kast.audit` | Audit log queries |
-| `kast.dashboard` | Dashboard stats and activity |
-| `kast.settings` | Global CMS settings |
-| `kast.trash` | Soft-deleted content recovery |
-| `kast.versions` | Content version history |
-| `kast.auth` | Authentication flows |
-| `kast.health` | API health check |
+| `kast.contentTypes`  | Manage content type schemas                      |
+| `kast.media`         | Upload and manage media files                    |
+| `kast.seo`           | Per-entry SEO metadata                           |
+| `kast.forms`         | Form definitions and submissions                 |
+| `kast.menus`         | Navigation menu management                       |
+| `kast.locales`       | Internationalisation and locale config           |
+| `kast.users`         | User management                                  |
+| `kast.roles`         | Role and permission management                   |
+| `kast.webhooks`      | Webhook registration and management              |
+| `kast.plugins`       | Plugin registry                                  |
+| `kast.tokens`        | API token management                             |
+| `kast.agentTokens`   | MCP / AI agent token management                  |
+| `kast.audit`         | Audit log queries                                |
+| `kast.dashboard`     | Dashboard stats and activity                     |
+| `kast.settings`      | Global CMS settings                              |
+| `kast.trash`         | Soft-deleted content recovery                    |
+| `kast.versions`      | Content version history                          |
+| `kast.auth`          | Authentication flows                             |
+| `kast.health`        | API health check                                 |
 
 ---
 
@@ -187,8 +187,7 @@ const kast = new KastClient({
   baseUrl: process.env.KAST_API_URL!,
   apiKey: process.env.KAST_API_KEY!,
   // Next.js extended fetch with ISR revalidation
-  fetch: (url, init) =>
-    fetch(url, { ...init, next: { revalidate: 60 } }),
+  fetch: (url, init) => fetch(url, { ...init, next: { revalidate: 60 } }),
 });
 ```
 
