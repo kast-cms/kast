@@ -14,7 +14,10 @@
     "menus": "Menus",
     "trash": "Trash",
     "settings": "Settings",
-    "locales": "Locales"
+    "locales": "Locales",
+    "auditLog": "Audit Log",
+    "dashboard": "Dashboard",
+    "queueMonitor": "Queue Monitor"
   },
   "auth": {
     "login": {
@@ -27,7 +30,38 @@
       "submit": "Sign in",
       "submitting": "Signing in…",
       "errorInvalid": "Invalid email or password.",
+      "errorGeneric": "Something went wrong. Please try again.",
+      "forgotPassword": "Forgot password?",
+      "orContinueWith": "Or continue with",
+      "continueWithGoogle": "Continue with Google",
+      "continueWithGitHub": "Continue with GitHub"
+    },
+    "forgotPassword": {
+      "title": "Forgot your password?",
+      "subtitle": "Enter your email and we'll send you a reset link.",
+      "emailLabel": "Email address",
+      "emailPlaceholder": "you@example.com",
+      "submit": "Send reset link",
+      "submitting": "Sending…",
+      "successMessage": "If that email is registered, a reset link has been sent. Check your inbox.",
+      "backToLogin": "Back to sign in",
       "errorGeneric": "Something went wrong. Please try again."
+    },
+    "resetPassword": {
+      "title": "Set new password",
+      "subtitle": "Choose a strong password for your account.",
+      "passwordLabel": "New password",
+      "passwordPlaceholder": "At least 8 characters",
+      "confirmLabel": "Confirm password",
+      "confirmPlaceholder": "Repeat your new password",
+      "submit": "Reset password",
+      "submitting": "Resetting…",
+      "successMessage": "Your password has been reset. You can now sign in.",
+      "errorInvalid": "This reset link is invalid or has expired.",
+      "errorGeneric": "Something went wrong. Please try again.",
+      "passwordMismatch": "Passwords do not match.",
+      "missingToken": "No reset token found. Please request a new link.",
+      "backToLogin": "Back to sign in"
     },
     "logout": "Sign out"
   },
@@ -777,6 +811,105 @@
       "trashedAt": "Trashed At",
       "daysUntilDeletion": "Expires In",
       "actions": "Actions"
+    }
+  },
+  "auditLog": {
+    "title": "Audit Log",
+    "subtitle": "A searchable record of all actions performed in your CMS.",
+    "export": "Export CSV",
+    "loading": "Loading…",
+    "noEntries": "No audit entries found.",
+    "total": "{count} total entries",
+    "prev": "Previous",
+    "next": "Next",
+    "filters": {
+      "action": "Action",
+      "actionPlaceholder": "e.g. create, delete",
+      "resource": "Resource",
+      "resourcePlaceholder": "e.g. content, media",
+      "userId": "User ID",
+      "userIdPlaceholder": "UUID",
+      "from": "From",
+      "to": "To",
+      "apply": "Search",
+      "clear": "Clear"
+    },
+    "table": {
+      "action": "Action",
+      "resource": "Resource",
+      "resourceId": "Resource ID",
+      "actor": "Actor",
+      "ip": "IP Address",
+      "timestamp": "Timestamp"
+    }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome back",
+    "stats": {
+      "publishedEntries": "Published Entries",
+      "draftEntries": "Draft Entries",
+      "mediaFiles": "Media Files",
+      "activeUsers": "Active Users",
+      "totalSize": "{size} MB total",
+      "scheduledEntries": "Scheduled",
+      "archivedEntries": "Archived"
+    },
+    "charts": {
+      "entryStatusTitle": "Entry Status",
+      "seoScoreTitle": "SEO Score Distribution",
+      "below50": "Below 50",
+      "between50and74": "50–74",
+      "above74": "75+",
+      "noData": "No data yet"
+    },
+    "activity": {
+      "title": "Recent Activity",
+      "empty": "No activity yet",
+      "agent": "Agent",
+      "dryRun": "Dry run"
+    },
+    "queueHealth": {
+      "title": "Queue Health",
+      "queue": "Queue",
+      "waiting": "Waiting",
+      "active": "Active",
+      "completed": "Completed",
+      "failed": "Failed",
+      "delayed": "Delayed",
+      "healthy": "Healthy",
+      "failedAlert": "Failed jobs detected",
+      "viewQueues": "View Queues"
+    },
+    "scheduled": {
+      "title": "Upcoming Scheduled",
+      "empty": "No scheduled entries",
+      "at": "at"
+    },
+    "quickActions": {
+      "title": "Quick Actions",
+      "newEntry": "New Entry",
+      "uploadMedia": "Upload Media",
+      "viewAuditLog": "View Audit Log",
+      "systemSettings": "System Settings"
+    },
+    "onboarding": {
+      "title": "Getting Started",
+      "description": "Complete these steps to set up your content platform.",
+      "steps": {
+        "createContentType": "Create your first content type",
+        "addContent": "Add your first content entry",
+        "uploadMedia": "Upload a media file",
+        "inviteUser": "Invite a team member"
+      }
+    },
+    "seo": {
+      "averageScore": "Avg SEO Score",
+      "noScores": "No SEO scores yet"
+    },
+    "forms": {
+      "submissionsToday": "submissions today",
+      "submissionsThisWeek": "this week"
     }
   }
 }

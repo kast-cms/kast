@@ -11,6 +11,7 @@ import { randomUUID } from 'crypto';
 import { extname } from 'path';
 import type { PaginationDto } from '../../common/dto/pagination.dto';
 import type { PaginatedResult } from '../../common/types/auth.types';
+import { validateMagicBytes } from '../../common/utils/mime-magic.util';
 import type { Env } from '../../config/env.schema';
 import { QueueAdapter } from '../queue/queue.adapter';
 import { QUEUE_NAMES } from '../queue/queue.constants';
@@ -66,6 +67,11 @@ export class MediaService {
     }
     if (!this.allowedMimes.has(file.mimetype)) {
       throw new UnprocessableEntityException(`MIME type ${file.mimetype} is not allowed`);
+    }
+    if (!validateMagicBytes(file.buffer, file.mimetype)) {
+      throw new UnprocessableEntityException(
+        'File type mismatch: magic bytes do not match declared MIME type',
+      );
     }
 
     const ext = extname(file.originalname);

@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { PluginRecord, UpsertPluginParams } from './dto/plugin.dto';
 
@@ -64,5 +65,26 @@ export class PluginRepository {
       data: { isActive },
     });
     return toRecord(row);
+  }
+
+  async getConfig(name: string): Promise<Record<string, unknown>> {
+    const plugin = await this.prisma.plugin.findUnique({ where: { name } });
+    if (!plugin) return {};
+    const cfg = await this.prisma.pluginConfig.findUnique({ where: { pluginId: plugin.id } });
+    if (!cfg) return {};
+    return cfg.data as Record<string, unknown>;
+  }
+
+  async setConfig(name: string, data: Record<string, unknown>): Promise<void> {
+    const plugin = await this.prisma.plugin.findUnique({ where: { name } });
+    if (!plugin) throw new NotFoundException(`Plugin "${name}" not found`);
+    // Cast to Prisma.InputJsonValue — Record<string, unknown> is structurally
+    // compatible but not assignable due to exactOptionalPropertyTypes strictness.
+    const jsonData = data as unknown as Prisma.InputJsonValue;
+    await this.prisma.pluginConfig.upsert({
+      where: { pluginId: plugin.id },
+      create: { pluginId: plugin.id, data: jsonData },
+      update: { data: jsonData },
+    });
   }
 }

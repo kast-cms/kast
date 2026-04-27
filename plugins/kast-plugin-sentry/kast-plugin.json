@@ -1,0 +1,16 @@
+{
+  "name": "kast-plugin-sentry",
+  "version": "0.1.0",
+  "displayName": "Sentry",
+  "description": "Capture and report errors to Sentry for production monitoring",
+  "permissions": [],
+  "hooks": [],
+  "adminPages": [
+    {
+      "label": "Sentry",
+      "path": "/plugins/sentry",
+      "icon": "ShieldAlert"
+    }
+  ],
+  "env": ["SENTRY_DSN", "SENTRY_ENVIRONMENT", "SENTRY_TRACES_SAMPLE_RATE"]
+}

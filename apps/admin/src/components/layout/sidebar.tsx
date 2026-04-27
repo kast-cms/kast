@@ -24,7 +24,9 @@ import {
   LayoutDashboard,
   ListTree,
   LogOut,
+  MonitorDot,
   Puzzle,
+  ScrollText,
   Settings,
   Shield,
   Trash2,
@@ -46,9 +48,13 @@ interface NavLinkItem {
   Icon: React.ComponentType<{ className?: string }>;
 }
 
-function useNavGroups(): NavGroup[] {
+function useNavGroups(isSuperAdmin: boolean): NavGroup[] {
   const t = useTranslations('nav');
   return [
+    {
+      label: 'Overview',
+      items: [{ href: '/', label: t('dashboard'), Icon: LayoutDashboard }],
+    },
     {
       label: 'Content',
       items: [
@@ -80,8 +86,10 @@ function useNavGroups(): NavGroup[] {
       items: [
         { href: '/plugins', label: t('plugins'), Icon: Puzzle },
         { href: '/trash', label: t('trash'), Icon: Trash2 },
+        { href: '/audit-log', label: t('auditLog'), Icon: ScrollText },
         { href: '/settings/locales', label: t('locales'), Icon: Languages },
         { href: '/settings', label: t('settings'), Icon: Settings },
+        ...(isSuperAdmin ? [{ href: '/queues', label: t('queueMonitor'), Icon: MonitorDot }] : []),
       ],
     },
   ];
@@ -90,7 +98,8 @@ function useNavGroups(): NavGroup[] {
 export function Sidebar(): JSX.Element {
   const pathname = usePathname();
   const { session, clearSession } = useSession();
-  const navGroups = useNavGroups();
+  const isSuperAdmin = session?.user.roles.includes('super_admin') ?? false;
+  const navGroups = useNavGroups(isSuperAdmin);
   const t = useTranslations('auth');
 
   const isActive = (href: string): boolean => pathname === href || pathname.startsWith(`${href}/`);

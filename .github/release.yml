@@ -1,0 +1,24 @@
+changelog:
+  exclude:
+    labels:
+      - skip-changelog
+  categories:
+    - title: Features
+      labels:
+        - 'type: feature'
+      prefix: 'feat'
+    - title: Bug Fixes
+      labels:
+        - 'type: bug'
+      prefix: 'fix'
+    - title: Performance
+      prefix: 'perf'
+    - title: Documentation
+      labels:
+        - 'type: docs'
+      prefix: 'docs'
+    - title: Chores
+      prefix: 'chore'
+    - title: Other Changes
+      labels:
+        - '*'

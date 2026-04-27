@@ -342,6 +342,7 @@ model User {
   refreshTokens    RefreshToken[]
   apiTokens        ApiToken[]
   agentTokens      AgentToken[]
+  passwordResetToken PasswordResetToken?
 
   auditLogs        AuditLog[]
   createdEntries   ContentEntry[]        @relation("CreatedEntries")
@@ -421,6 +422,19 @@ model OAuthAccount {
   @@unique([provider, providerId])
   @@index([userId])
   @@map("oauth_accounts")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String    @unique
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hash      String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([hash])
+  @@map("password_reset_tokens")
 }
 
 model RefreshToken {

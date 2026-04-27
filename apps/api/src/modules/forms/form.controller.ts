@@ -11,10 +11,9 @@ import {
   Query,
   Req,
   Res,
-  UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
 import { Public } from '../../common/decorators/public.decorator';
@@ -76,7 +75,6 @@ export class FormController {
 
   @Post(':id/submit')
   @Public()
-  @UseGuards(ThrottlerGuard)
   @Throttle({ public: { limit: 10, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Submit a form (public, rate limited 10/min per IP)' })

@@ -1,6 +1,7 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query, Res } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { AuditLog } from '@prisma/client';
+import type { Response } from 'express';
 import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
 import { Roles } from '../../common/decorators/roles.decorator';
 import type { PaginatedResult } from '../../common/types/auth.types';
@@ -18,6 +19,15 @@ export class AuditController {
   @ApiOperation({ summary: 'List audit logs' })
   findAll(@Query() query: AuditQueryDto): Promise<PaginatedResult<AuditLog>> {
     return this.auditService.findAll(query);
+  }
+
+  @Get('export')
+  @ApiOperation({ summary: 'Export audit logs as CSV (max 5 000 rows)' })
+  async exportCsv(@Query() query: AuditQueryDto, @Res() res: Response): Promise<void> {
+    const csv = await this.auditService.exportCsv(query);
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="audit-export.csv"');
+    res.send(csv);
   }
 
   @Get(':id')

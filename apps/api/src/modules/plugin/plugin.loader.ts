@@ -63,7 +63,7 @@ export class PluginLoaderService implements OnApplicationBootstrap {
       version: manifest.version,
       ...(manifest.description !== undefined ? { description: manifest.description } : {}),
     });
-    await instance.onLoad(this.buildContext());
+    await instance.onLoad(this.buildContext(manifest.name));
     this.loaded.set(manifest.name, manifest);
     this.logger.log(`Plugin "${manifest.name}" v${manifest.version} loaded`);
   }
@@ -123,13 +123,21 @@ export class PluginLoaderService implements OnApplicationBootstrap {
     }
   }
 
-  private buildContext(): KastPluginContext {
+  private buildContext(pluginName: string): KastPluginContext {
     const emitter = this.eventEmitter;
+    const repo = this.repo;
     return {
+      pluginName,
       on(event: PluginHook, handler: (payload: unknown) => void | Promise<void>): void {
         emitter.on(event as string, (payload: unknown) => {
           void handler(payload);
         });
+      },
+      getConfig(): Promise<Record<string, unknown>> {
+        return repo.getConfig(pluginName);
+      },
+      setConfig(data: Record<string, unknown>): Promise<void> {
+        return repo.setConfig(pluginName, data);
       },
     };
   }

@@ -1,0 +1,22 @@
+{
+  "name": "kast-plugin-r2",
+  "version": "0.1.0",
+  "displayName": "Cloudflare R2",
+  "description": "Store media assets in Cloudflare R2 (S3-compatible object storage)",
+  "permissions": ["media:read", "media:write"],
+  "hooks": [],
+  "adminPages": [
+    {
+      "label": "Cloudflare R2",
+      "path": "/plugins/r2",
+      "icon": "Cloud"
+    }
+  ],
+  "env": [
+    "R2_ACCOUNT_ID",
+    "R2_ACCESS_KEY_ID",
+    "R2_SECRET_ACCESS_KEY",
+    "R2_BUCKET_NAME",
+    "R2_PUBLIC_URL"
+  ]
+}

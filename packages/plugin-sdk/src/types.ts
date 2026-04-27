@@ -13,7 +13,11 @@ export enum PluginHook {
   CONTENT_CREATED = 'content.created',
   CONTENT_UPDATED = 'content.updated',
   CONTENT_DELETED = 'content.deleted',
+  CONTENT_PUBLISHED = 'content.published',
+  CONTENT_TRASHED = 'content.trashed',
+  CONTENT_UNPUBLISHED = 'content.unpublished',
   MEDIA_UPLOADED = 'media.uploaded',
+  MEDIA_DELETED = 'media.deleted',
 }
 
 /**
@@ -26,6 +30,20 @@ export interface KastPluginContext {
    * The handler fires each time the named event is emitted.
    */
   on(event: PluginHook, handler: (payload: unknown) => void | Promise<void>): void;
+
+  /**
+   * Retrieve persisted configuration for this plugin.
+   * Returns the `data` JSON blob stored in `PluginConfig`, or `{}` if none.
+   */
+  getConfig(): Promise<Record<string, unknown>>;
+
+  /**
+   * Persist configuration for this plugin.
+   */
+  setConfig(data: Record<string, unknown>): Promise<void>;
+
+  /** The plugin's name from its manifest. */
+  readonly pluginName: string;
 }
 
 /** Interface every Kast plugin must implement. */

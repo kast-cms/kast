@@ -1,5 +1,7 @@
 import { AgentTokensResource } from './agent-tokens-resource.js';
+import { AuditResource } from './audit-resource.js';
 import { AuthResource, ContentTypesResource, HealthResource } from './content-types-resource.js';
+import { DashboardResource } from './dashboard-resource.js';
 import { FormsResource } from './forms-resource.js';
 import { LocalesResource } from './locales-resource.js';
 import { MediaResource } from './media-resource.js';
@@ -7,6 +9,7 @@ import { MenusResource } from './menus-resource.js';
 import { PluginsResource } from './plugins-resource.js';
 import { RolesResource } from './roles-resource.js';
 import { SeoResource } from './seo-resource.js';
+import { SettingsResource } from './settings-resource.js';
 import { TokensResource } from './tokens-resource.js';
 import { TrashResource } from './trash-resource.js';
 import type {
@@ -49,6 +52,10 @@ export class KastClient {
 
   setAccessToken(token: string): void {
     this.accessToken = token;
+  }
+
+  getBaseUrl(): string {
+    return this.baseUrl;
   }
 
   private buildAuthOnlyHeaders(): Record<string, string> {
@@ -98,6 +105,20 @@ export class KastClient {
     const json = (await res.json()) as unknown;
     if (!res.ok) throw this.buildError(json, res.status);
     return json as T;
+  }
+
+  async requestBlob(path: string, options: RequestOptions = {}): Promise<Blob> {
+    const url = `${this.baseUrl}${path}`;
+    const headers = { ...this.buildAuthOnlyHeaders(), ...(options.headers ?? {}) };
+    const res = await this._fetch(url, {
+      method: options.method ?? 'GET',
+      headers,
+    });
+    if (!res.ok) {
+      const json = (await res.json()) as unknown;
+      throw this.buildError(json, res.status);
+    }
+    return res.blob();
   }
 
   get agentTokens(): AgentTokensResource {
@@ -171,6 +192,18 @@ export class KastClient {
 
   get versions(): VersionsResource {
     return new VersionsResource(this);
+  }
+
+  get settings(): SettingsResource {
+    return new SettingsResource(this);
+  }
+
+  get audit(): AuditResource {
+    return new AuditResource(this);
+  }
+
+  get dashboard(): DashboardResource {
+    return new DashboardResource(this);
   }
 }
 

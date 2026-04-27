@@ -32,6 +32,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Security audit
+        run: pnpm audit --audit-level=high
+
       - name: Generate Prisma client
         run: pnpm --filter @kast/api exec prisma generate
 
@@ -46,3 +49,9 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+      - name: Build CLI
+        run: pnpm --filter create-kast-app build
+
+      - name: CLI e2e
+        run: pnpm --filter create-kast-app test:e2e
