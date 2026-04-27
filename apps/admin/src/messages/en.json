@@ -15,7 +15,8 @@
     "trash": "Trash",
     "settings": "Settings",
     "locales": "Locales",
-    "auditLog": "Audit Log"
+    "auditLog": "Audit Log",
+    "dashboard": "Dashboard"
   },
   "auth": {
     "login": {
@@ -839,6 +840,75 @@
       "actor": "Actor",
       "ip": "IP Address",
       "timestamp": "Timestamp"
+    }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome back",
+    "stats": {
+      "publishedEntries": "Published Entries",
+      "draftEntries": "Draft Entries",
+      "mediaFiles": "Media Files",
+      "activeUsers": "Active Users",
+      "totalSize": "{size} MB total",
+      "scheduledEntries": "Scheduled",
+      "archivedEntries": "Archived"
+    },
+    "charts": {
+      "entryStatusTitle": "Entry Status",
+      "seoScoreTitle": "SEO Score Distribution",
+      "below50": "Below 50",
+      "between50and74": "50–74",
+      "above74": "75+",
+      "noData": "No data yet"
+    },
+    "activity": {
+      "title": "Recent Activity",
+      "empty": "No activity yet",
+      "agent": "Agent",
+      "dryRun": "Dry run"
+    },
+    "queueHealth": {
+      "title": "Queue Health",
+      "queue": "Queue",
+      "waiting": "Waiting",
+      "active": "Active",
+      "completed": "Completed",
+      "failed": "Failed",
+      "delayed": "Delayed",
+      "healthy": "Healthy",
+      "failedAlert": "Failed jobs detected",
+      "viewQueues": "View Queues"
+    },
+    "scheduled": {
+      "title": "Upcoming Scheduled",
+      "empty": "No scheduled entries",
+      "at": "at"
+    },
+    "quickActions": {
+      "title": "Quick Actions",
+      "newEntry": "New Entry",
+      "uploadMedia": "Upload Media",
+      "viewAuditLog": "View Audit Log",
+      "systemSettings": "System Settings"
+    },
+    "onboarding": {
+      "title": "Getting Started",
+      "description": "Complete these steps to set up your content platform.",
+      "steps": {
+        "createContentType": "Create your first content type",
+        "addContent": "Add your first content entry",
+        "uploadMedia": "Upload a media file",
+        "inviteUser": "Invite a team member"
+      }
+    },
+    "seo": {
+      "averageScore": "Avg SEO Score",
+      "noScores": "No SEO scores yet"
+    },
+    "forms": {
+      "submissionsToday": "submissions today",
+      "submissionsThisWeek": "this week"
     }
   }
 }

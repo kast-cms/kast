@@ -7,6 +7,22 @@ export type {
   AuditLogMeta,
 } from './audit-types.js';
 export { KastClient } from './client.js';
+export { DashboardResource } from './dashboard-resource.js';
+export type {
+  DashboardActivityEntry,
+  DashboardActivityUser,
+  DashboardContentByStatus,
+  DashboardContentByType,
+  DashboardContentStats,
+  DashboardFormStats,
+  DashboardMediaByMimeGroup,
+  DashboardMediaStats,
+  DashboardQueueHealth,
+  DashboardSeoScoreDistribution,
+  DashboardSeoStats,
+  DashboardStats,
+  DashboardUserStats,
+} from './dashboard-types.js';
 export type {
   CreateFormBody,
   FormDetail,

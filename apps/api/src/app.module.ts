@@ -9,6 +9,7 @@ import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ContentTypesModule } from './modules/content-types/content-types.module';
 import { ContentModule } from './modules/content/content.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { EmailModule } from './modules/email/email.module';
 import { FormModule } from './modules/forms/form.module';
 import { HealthModule } from './modules/health/health.module';
@@ -59,6 +60,7 @@ import { PrismaModule } from './prisma/prisma.module';
     PluginModule,
     FormModule,
     MenuModule,
+    DashboardModule,
   ],
 })
 export class AppModule {}

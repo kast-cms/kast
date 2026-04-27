@@ -51,6 +51,10 @@ function useNavGroups(): NavGroup[] {
   const t = useTranslations('nav');
   return [
     {
+      label: 'Overview',
+      items: [{ href: '/', label: t('dashboard'), Icon: LayoutDashboard }],
+    },
+    {
       label: 'Content',
       items: [
         { href: '/content-types', label: t('contentTypes'), Icon: Database },

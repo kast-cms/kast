@@ -15,7 +15,8 @@
     "trash": "المهملات",
     "settings": "الإعدادات",
     "locales": "اللغات",
-    "auditLog": "سجل التدقيق"
+    "auditLog": "سجل التدقيق",
+    "dashboard": "لوحة التحكم"
   },
   "auth": {
     "login": {
@@ -839,6 +840,75 @@
       "actor": "المنفذ",
       "ip": "عنوان IP",
       "timestamp": "التوقيت"
+    }
+  },
+  "dashboard": {
+    "title": "لوحة التحكم",
+    "welcome": "مرحباً بعودتك",
+    "stats": {
+      "publishedEntries": "المقالات المنشورة",
+      "draftEntries": "المسودات",
+      "mediaFiles": "ملفات الوسائط",
+      "activeUsers": "المستخدمون النشطون",
+      "totalSize": "الإجمالي {size} ميجابايت",
+      "scheduledEntries": "مجدولة",
+      "archivedEntries": "مؤرشفة"
+    },
+    "charts": {
+      "entryStatusTitle": "حالة المقالات",
+      "seoScoreTitle": "توزيع درجات SEO",
+      "below50": "أقل من 50",
+      "between50and74": "50–74",
+      "above74": "75+",
+      "noData": "لا توجد بيانات بعد"
+    },
+    "activity": {
+      "title": "النشاط الأخير",
+      "empty": "لا يوجد نشاط بعد",
+      "agent": "وكيل",
+      "dryRun": "تشغيل تجريبي"
+    },
+    "queueHealth": {
+      "title": "حالة قوائم الانتظار",
+      "queue": "القائمة",
+      "waiting": "في الانتظار",
+      "active": "نشط",
+      "completed": "مكتمل",
+      "failed": "فاشل",
+      "delayed": "مؤجل",
+      "healthy": "سليم",
+      "failedAlert": "تم اكتشاف مهام فاشلة",
+      "viewQueues": "عرض القوائم"
+    },
+    "scheduled": {
+      "title": "المقالات المجدولة القادمة",
+      "empty": "لا توجد مقالات مجدولة",
+      "at": "في"
+    },
+    "quickActions": {
+      "title": "إجراءات سريعة",
+      "newEntry": "مقالة جديدة",
+      "uploadMedia": "رفع وسائط",
+      "viewAuditLog": "سجل التدقيق",
+      "systemSettings": "إعدادات النظام"
+    },
+    "onboarding": {
+      "title": "البدء",
+      "description": "أكمل هذه الخطوات لإعداد منصة المحتوى الخاصة بك.",
+      "steps": {
+        "createContentType": "إنشاء أول نوع محتوى",
+        "addContent": "إضافة أول مقالة محتوى",
+        "uploadMedia": "رفع ملف وسائط",
+        "inviteUser": "دعوة أحد أعضاء الفريق"
+      }
+    },
+    "seo": {
+      "averageScore": "متوسط درجة SEO",
+      "noScores": "لا توجد درجات SEO بعد"
+    },
+    "forms": {
+      "submissionsToday": "تقديمات اليوم",
+      "submissionsThisWeek": "هذا الأسبوع"
     }
   }
 }

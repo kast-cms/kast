@@ -1,6 +1,7 @@
 import { AgentTokensResource } from './agent-tokens-resource.js';
 import { AuditResource } from './audit-resource.js';
 import { AuthResource, ContentTypesResource, HealthResource } from './content-types-resource.js';
+import { DashboardResource } from './dashboard-resource.js';
 import { FormsResource } from './forms-resource.js';
 import { LocalesResource } from './locales-resource.js';
 import { MediaResource } from './media-resource.js';
@@ -181,6 +182,10 @@ export class KastClient {
 
   get audit(): AuditResource {
     return new AuditResource(this);
+  }
+
+  get dashboard(): DashboardResource {
+    return new DashboardResource(this);
   }
 }
 
