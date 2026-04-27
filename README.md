@@ -17,9 +17,9 @@ cp .env.example .env
 docker-compose up
 ```
 
-**Admin:** http://localhost:3001/admin  
-**API:** http://localhost:3001/api/v1  
-**MCP:** http://localhost:3001/mcp
+**Admin:** http://localhost:3001  
+**API:** http://localhost:3000/api/v1  
+**MCP:** http://localhost:3000/mcp
 
 ---
 
@@ -52,19 +52,20 @@ kast/
 ├── apps/
 │   ├── api/          # NestJS backend
 │   ├── admin/        # Next.js admin panel
-│   ├── web-starter/  # Next.js frontend starter
-│   └── cli/          # create-kast-app CLI
+│   ├── web-blog/     # Next.js blog frontend
+│   ├── web-docs/     # Astro-powered documentation site
+│   └── docs/         # Internal docs (architecture, decisions)
 ├── packages/
-│   ├── core/         # @kast/core — shared types
 │   ├── sdk/          # @kast-cms/sdk — TypeScript client
 │   ├── plugin-sdk/   # @kast/plugin-sdk — plugin interface
-│   └── ui/           # @kast/ui — shared components
+│   └── create-kast-app/ # CLI scaffolding tool
 └── plugins/          # First-party plugins
-    ├── stripe/
-    ├── meilisearch/
-    ├── resend/
-    ├── cloudflare-r2/
-    └── sentry/
+    ├── kast-plugin-stripe/
+    ├── kast-plugin-meilisearch/
+    ├── kast-plugin-resend/
+    ├── kast-plugin-r2/
+    ├── kast-plugin-sentry/
+    └── kast-plugin-example/
 ```
 
 ---
@@ -123,8 +124,8 @@ Get a production Kast instance running in under 10 minutes:
 Docker images are published to Docker Hub on every release:
 
 ```bash
-docker pull kasthq/api:latest
-docker pull kasthq/admin:latest
+docker pull odaybakkour/kast-api:latest
+docker pull odaybakkour/kast-admin:latest
 ```
 
 ---
