@@ -38,6 +38,13 @@ const envSchema = z.object({
     .string()
     .default('image/jpeg,image/png,image/webp,image/gif,image/svg+xml,application/pdf'),
 
+  // OAuth
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+  GITHUB_CLIENT_ID: z.string().optional(),
+  GITHUB_CLIENT_SECRET: z.string().optional(),
+  SITE_URL: z.string().default('http://localhost:3000'),
+
   // SMTP (email queue)
   SMTP_HOST: z.string().default('localhost'),
   SMTP_PORT: z.coerce.number().int().default(1025),

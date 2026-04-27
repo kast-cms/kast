@@ -1,5 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import type { ApiToken, RefreshToken, User } from '@prisma/client';
+import type {
+  ApiToken,
+  OAuthAccount,
+  PasswordResetToken,
+  RefreshToken,
+  User,
+} from '@prisma/client';
 import { createHash, randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -76,5 +82,84 @@ export class AuthRepository {
 
   hashToken(raw: string): string {
     return createHash('sha256').update(raw).digest('hex');
+  }
+
+  findOAuthAccount(provider: string, providerId: string): Promise<OAuthAccount | null> {
+    return this.prisma.oAuthAccount.findUnique({
+      where: { provider_providerId: { provider, providerId } },
+    });
+  }
+
+  upsertOAuthAccount(
+    userId: string,
+    provider: string,
+    providerId: string,
+    email: string | null,
+  ): Promise<OAuthAccount> {
+    return this.prisma.oAuthAccount.upsert({
+      where: { provider_providerId: { provider, providerId } },
+      create: { userId, provider, providerId, email },
+      update: { email },
+    });
+  }
+
+  createUser(data: {
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
+    avatarUrl: string | null;
+    defaultRoleId: string;
+  }): Promise<User & { roles: { role: { name: string } }[] }> {
+    return this.prisma.user.create({
+      data: {
+        email: data.email,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        avatarUrl: data.avatarUrl,
+        isActive: true,
+        isVerified: true,
+        roles: { create: { roleId: data.defaultRoleId } },
+      },
+      include: { roles: { include: { role: { select: { name: true } } } } },
+    });
+  }
+
+  findDefaultRole(): Promise<{ id: string } | null> {
+    return this.prisma.role.findFirst({ where: { name: 'EDITOR' }, select: { id: true } });
+  }
+
+  upsertPasswordResetToken(
+    userId: string,
+    hash: string,
+    expiresAt: Date,
+  ): Promise<PasswordResetToken> {
+    return this.prisma.passwordResetToken.upsert({
+      where: { userId },
+      create: { userId, hash, expiresAt },
+      update: { hash, expiresAt, usedAt: null },
+    });
+  }
+
+  findPasswordResetToken(hash: string): Promise<PasswordResetToken | null> {
+    return this.prisma.passwordResetToken.findFirst({
+      where: { hash, usedAt: null, expiresAt: { gt: new Date() } },
+    });
+  }
+
+  markPasswordResetTokenUsed(id: string): Promise<PasswordResetToken> {
+    return this.prisma.passwordResetToken.update({
+      where: { id },
+      data: { usedAt: new Date() },
+    });
+  }
+
+  generateResetToken(): { raw: string; hash: string } {
+    const raw = randomBytes(32).toString('hex');
+    const hash = createHash('sha256').update(raw).digest('hex');
+    return { raw, hash };
+  }
+
+  generateHashOnly(raw: string): { hash: string } {
+    return { hash: createHash('sha256').update(raw).digest('hex') };
   }
 }

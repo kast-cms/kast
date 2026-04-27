@@ -27,7 +27,38 @@
       "submit": "Sign in",
       "submitting": "Signing in…",
       "errorInvalid": "Invalid email or password.",
+      "errorGeneric": "Something went wrong. Please try again.",
+      "forgotPassword": "Forgot password?",
+      "orContinueWith": "Or continue with",
+      "continueWithGoogle": "Continue with Google",
+      "continueWithGitHub": "Continue with GitHub"
+    },
+    "forgotPassword": {
+      "title": "Forgot your password?",
+      "subtitle": "Enter your email and we'll send you a reset link.",
+      "emailLabel": "Email address",
+      "emailPlaceholder": "you@example.com",
+      "submit": "Send reset link",
+      "submitting": "Sending…",
+      "successMessage": "If that email is registered, a reset link has been sent. Check your inbox.",
+      "backToLogin": "Back to sign in",
       "errorGeneric": "Something went wrong. Please try again."
+    },
+    "resetPassword": {
+      "title": "Set new password",
+      "subtitle": "Choose a strong password for your account.",
+      "passwordLabel": "New password",
+      "passwordPlaceholder": "At least 8 characters",
+      "confirmLabel": "Confirm password",
+      "confirmPlaceholder": "Repeat your new password",
+      "submit": "Reset password",
+      "submitting": "Resetting…",
+      "successMessage": "Your password has been reset. You can now sign in.",
+      "errorInvalid": "This reset link is invalid or has expired.",
+      "errorGeneric": "Something went wrong. Please try again.",
+      "passwordMismatch": "Passwords do not match.",
+      "missingToken": "No reset token found. Please request a new link.",
+      "backToLogin": "Back to sign in"
     },
     "logout": "Sign out"
   },
