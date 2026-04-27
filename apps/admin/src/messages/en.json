@@ -704,5 +704,57 @@
         "actions": "Actions"
       }
     }
+  },
+  "menus": {
+    "title": "Menus",
+    "subtitle": "Build navigation menus for your frontend.",
+    "new": "New Menu",
+    "edit": "Edit",
+    "loading": "Loading menus…",
+    "empty": "No menus yet.",
+    "deleteConfirm": "Delete menu \"{name}\"? This will remove all its items.",
+    "table": {
+      "name": "Name",
+      "slug": "Slug",
+      "items": "Items",
+      "actions": "Actions"
+    },
+    "builder": {
+      "newTitle": "New Menu",
+      "editTitle": "Edit Menu",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saving": "Saving…",
+      "saveError": "Failed to save menu.",
+      "fields": {
+        "name": "Name",
+        "namePlaceholder": "Main Navigation",
+        "slug": "Handle",
+        "slugPlaceholder": "main-nav"
+      },
+      "tree": {
+        "title": "Menu Items",
+        "empty": "No items yet.",
+        "addItem": "Add Item",
+        "delete": "Delete",
+        "edit": "Edit"
+      }
+    },
+    "itemForm": {
+      "label": "Label",
+      "labelPlaceholder": "Home",
+      "linkType": "Link Type",
+      "url": "URL",
+      "urlPlaceholder": "https://",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saving": "Saving…",
+      "types": {
+        "external_url": "External URL",
+        "anchor": "Anchor",
+        "content_entry": "Content Entry",
+        "custom": "Custom"
+      }
+    }
   }
 }

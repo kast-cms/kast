@@ -704,5 +704,57 @@
         "actions": "الإجراءات"
       }
     }
+  },
+  "menus": {
+    "title": "القوائم",
+    "subtitle": "أنشئ قوائم التنقل للواجهة الأمامية.",
+    "new": "قائمة جديدة",
+    "edit": "تعديل",
+    "loading": "جارٍ تحميل القوائم…",
+    "empty": "لا توجد قوائم بعد.",
+    "deleteConfirm": "حذف قائمة \"{name}\"؟ سيؤدي ذلك إلى إزالة جميع عناصرها.",
+    "table": {
+      "name": "الاسم",
+      "slug": "المعرف",
+      "items": "العناصر",
+      "actions": "الإجراءات"
+    },
+    "builder": {
+      "newTitle": "قائمة جديدة",
+      "editTitle": "تعديل القائمة",
+      "cancel": "إلغاء",
+      "save": "حفظ",
+      "saving": "جارٍ الحفظ…",
+      "saveError": "فشل حفظ القائمة.",
+      "fields": {
+        "name": "الاسم",
+        "namePlaceholder": "القائمة الرئيسية",
+        "slug": "المعرف",
+        "slugPlaceholder": "main-nav"
+      },
+      "tree": {
+        "title": "عناصر القائمة",
+        "empty": "لا توجد عناصر بعد.",
+        "addItem": "إضافة عنصر",
+        "delete": "حذف",
+        "edit": "تعديل"
+      }
+    },
+    "itemForm": {
+      "label": "التسمية",
+      "labelPlaceholder": "الرئيسية",
+      "linkType": "نوع الرابط",
+      "url": "الرابط",
+      "urlPlaceholder": "https://",
+      "cancel": "إلغاء",
+      "save": "حفظ",
+      "saving": "جارٍ الحفظ…",
+      "types": {
+        "external_url": "رابط خارجي",
+        "anchor": "مرساة",
+        "content_entry": "مدخلة محتوى",
+        "custom": "مخصص"
+      }
+    }
   }
 }

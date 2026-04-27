@@ -3,6 +3,7 @@ import { AuthResource, ContentTypesResource, HealthResource } from './content-ty
 import { FormsResource } from './forms-resource.js';
 import { LocalesResource } from './locales-resource.js';
 import { MediaResource } from './media-resource.js';
+import { MenusResource } from './menus-resource.js';
 import { PluginsResource } from './plugins-resource.js';
 import { RolesResource } from './roles-resource.js';
 import { SeoResource } from './seo-resource.js';
@@ -147,6 +148,10 @@ export class KastClient {
 
   get forms(): FormsResource {
     return new FormsResource(this);
+  }
+
+  get menus(): MenusResource {
+    return new MenusResource(this);
   }
 
   get locales(): LocalesResource {

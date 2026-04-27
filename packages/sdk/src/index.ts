@@ -19,6 +19,19 @@ export type {
   TextDirection,
   UpdateLocaleBody,
 } from './locale-types.js';
+export type {
+  CreateMenuBody,
+  CreateMenuItemBody,
+  MenuDetail,
+  MenuItemSummary,
+  MenuLinkType,
+  MenuSummary,
+  ReorderItem,
+  ReorderMenuItemsBody,
+  UpdateMenuBody,
+  UpdateMenuItemBody,
+} from './menu-types.js';
+export { MenusResource } from './menus-resource.js';
 export type { PluginRecord } from './plugin-types.js';
 export { PluginsResource } from './plugins-resource.js';
 export type {

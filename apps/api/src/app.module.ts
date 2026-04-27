@@ -15,6 +15,7 @@ import { HealthModule } from './modules/health/health.module';
 import { LocalesModule } from './modules/locales/locales.module';
 import { McpModule } from './modules/mcp/mcp.module';
 import { MediaModule } from './modules/media/media.module';
+import { MenuModule } from './modules/menus/menu.module';
 import { PluginModule } from './modules/plugin/plugin.module';
 import { PublishModule } from './modules/publish/publish.module';
 import { QueueModule } from './modules/queue/queue.module';
@@ -55,6 +56,7 @@ import { PrismaModule } from './prisma/prisma.module';
     AgentTokenModule,
     PluginModule,
     FormModule,
+    MenuModule,
   ],
 })
 export class AppModule {}
