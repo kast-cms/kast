@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
@@ -33,6 +34,7 @@ export class AuthController {
   @Post('login')
   @Public()
   @HttpCode(HttpStatus.OK)
+  @Throttle({ auth: { limit: 20, ttl: 900000 } })
   @ApiOperation({ summary: 'Login with email and password' })
   login(@Body() dto: LoginDto): Promise<{ data: TokenPair }> {
     return this.authService.login(dto).then((data) => ({ data }));
@@ -41,6 +43,7 @@ export class AuthController {
   @Post('refresh')
   @Public()
   @HttpCode(HttpStatus.OK)
+  @Throttle({ public: { limit: 60, ttl: 60000 } })
   @ApiOperation({ summary: 'Refresh access token' })
   refresh(@Body() dto: RefreshTokenDto): Promise<{ data: TokenPair }> {
     return this.authService.refresh(dto.refreshToken).then((data) => ({ data }));
@@ -75,6 +78,7 @@ export class AuthController {
 
   @Get('oauth/google')
   @Public()
+  @SkipThrottle()
   @UseGuards(AuthGuard('google'))
   @ApiOperation({ summary: 'Initiate Google OAuth login' })
   googleLogin(): void {
@@ -83,6 +87,7 @@ export class AuthController {
 
   @Get('oauth/google/callback')
   @Public()
+  @SkipThrottle()
   @UseGuards(AuthGuard('google'))
   @ApiOperation({ summary: 'Google OAuth callback' })
   async googleCallback(
@@ -95,6 +100,7 @@ export class AuthController {
 
   @Get('oauth/github')
   @Public()
+  @SkipThrottle()
   @UseGuards(AuthGuard('github'))
   @ApiOperation({ summary: 'Initiate GitHub OAuth login' })
   githubLogin(): void {
@@ -103,6 +109,7 @@ export class AuthController {
 
   @Get('oauth/github/callback')
   @Public()
+  @SkipThrottle()
   @UseGuards(AuthGuard('github'))
   @ApiOperation({ summary: 'GitHub OAuth callback' })
   async githubCallback(
@@ -118,6 +125,7 @@ export class AuthController {
   @Post('forgot-password')
   @Public()
   @HttpCode(HttpStatus.OK)
+  @Throttle({ auth: { limit: 5, ttl: 900000 } })
   @ApiOperation({ summary: 'Request a password reset email' })
   async forgotPassword(@Body() dto: ForgotPasswordDto): Promise<{ message: string }> {
     await this.authService.forgotPassword(dto.email);
@@ -127,6 +135,7 @@ export class AuthController {
   @Post('reset-password')
   @Public()
   @HttpCode(HttpStatus.OK)
+  @Throttle({ auth: { limit: 5, ttl: 900000 } })
   @ApiOperation({ summary: 'Reset password using token from email' })
   async resetPassword(@Body() dto: ResetPasswordDto): Promise<{ message: string }> {
     await this.authService.resetPassword(dto.token, dto.newPassword);

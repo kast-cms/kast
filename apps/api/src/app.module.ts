@@ -1,8 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { RolesGuard } from './common/guards/roles.guard';
 import { validateEnv } from './config/env.schema';
 import { AgentTokenModule } from './modules/agent-tokens/agent-token.module';
 import { AuditModule } from './modules/audit/audit.module';
@@ -67,6 +70,12 @@ import { PrismaModule } from './prisma/prisma.module';
     QueueBoardModule,
     SearchModule,
     StripeModule,
+  ],
+  providers: [
+    // Global guard order matters: throttle → jwt auth → roles
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
   ],
 })
 export class AppModule {}
