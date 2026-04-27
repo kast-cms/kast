@@ -635,5 +635,74 @@
       "enable": "تفعيل",
       "disable": "تعطيل"
     }
+  },
+  "forms": {
+    "title": "النماذج",
+    "description": "أنشئ وأدر نماذج قابلة للتضمين.",
+    "loading": "جارٍ تحميل النماذج…",
+    "empty": "لا توجد نماذج بعد.",
+    "deleteConfirm": "حذف النموذج \"{name}\"؟ لا يمكن التراجع عن هذا الإجراء.",
+    "status": {
+      "active": "نشط",
+      "inactive": "غير نشط"
+    },
+    "table": {
+      "name": "الاسم",
+      "slug": "المعرف",
+      "fields": "الحقول",
+      "submissions": "الإرسالات",
+      "status": "الحالة",
+      "actions": "الإجراءات"
+    },
+    "actions": {
+      "create": "نموذج جديد",
+      "createFirst": "أنشئ نموذجك الأول",
+      "edit": "تعديل",
+      "viewSubmissions": "الإرسالات"
+    },
+    "builder": {
+      "newTitle": "نموذج جديد",
+      "editTitle": "تعديل النموذج",
+      "cancel": "إلغاء",
+      "save": "حفظ",
+      "saving": "جارٍ الحفظ…",
+      "saveError": "فشل حفظ النموذج",
+      "fieldsSection": "الحقول",
+      "addField": "إضافة حقل",
+      "noFields": "لا توجد حقول بعد. انقر على \"إضافة حقل\" للبدء.",
+      "fields": {
+        "name": "الاسم",
+        "namePlaceholder": "مثال: نموذج-الاتصال",
+        "slug": "المعرف",
+        "slugPlaceholder": "مثال: contact-form",
+        "description": "الوصف",
+        "descriptionPlaceholder": "وصف اختياري",
+        "notifyEmail": "البريد الإلكتروني للإشعار",
+        "notifyEmailPlaceholder": "admin@example.com",
+        "isActive": "نشط"
+      },
+      "fieldLabel": {
+        "name": "اسم الحقل",
+        "namePlaceholder": "مثال: email",
+        "label": "التسمية",
+        "labelPlaceholder": "مثال: البريد الإلكتروني",
+        "type": "النوع",
+        "required": "مطلوب"
+      }
+    },
+    "submissions": {
+      "loading": "جارٍ التحميل…",
+      "empty": "لا توجد إرسالات بعد.",
+      "subtitle": "{total} إرسال",
+      "back": "رجوع",
+      "exportCsv": "تصدير CSV",
+      "deleteConfirm": "حذف هذه الإرسالة؟ لا يمكن التراجع.",
+      "prev": "السابق",
+      "next": "التالي",
+      "table": {
+        "date": "التاريخ",
+        "actions": "الإجراءات"
+      }
+    }
   }
 }

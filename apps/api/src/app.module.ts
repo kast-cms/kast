@@ -10,6 +10,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { ContentTypesModule } from './modules/content-types/content-types.module';
 import { ContentModule } from './modules/content/content.module';
 import { EmailModule } from './modules/email/email.module';
+import { FormModule } from './modules/forms/form.module';
 import { HealthModule } from './modules/health/health.module';
 import { LocalesModule } from './modules/locales/locales.module';
 import { McpModule } from './modules/mcp/mcp.module';
@@ -53,6 +54,7 @@ import { PrismaModule } from './prisma/prisma.module';
     WebhookModule,
     AgentTokenModule,
     PluginModule,
+    FormModule,
   ],
 })
 export class AppModule {}

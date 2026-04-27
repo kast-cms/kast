@@ -1,5 +1,6 @@
 import { AgentTokensResource } from './agent-tokens-resource.js';
 import { AuthResource, ContentTypesResource, HealthResource } from './content-types-resource.js';
+import { FormsResource } from './forms-resource.js';
 import { LocalesResource } from './locales-resource.js';
 import { MediaResource } from './media-resource.js';
 import { PluginsResource } from './plugins-resource.js';
@@ -142,6 +143,10 @@ export class KastClient {
 
   get seo(): SeoResource {
     return new SeoResource(this);
+  }
+
+  get forms(): FormsResource {
+    return new FormsResource(this);
   }
 
   get locales(): LocalesResource {

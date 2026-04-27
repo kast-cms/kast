@@ -1,5 +1,19 @@
 export { KastClient } from './client.js';
 export type {
+  CreateFormBody,
+  FormDetail,
+  FormFieldInput,
+  FormFieldSummary,
+  FormFieldType as FormFieldTypeSdk,
+  FormSubmissionSummary,
+  FormSummary,
+  ListSubmissionsParams,
+  PaginatedSubmissions,
+  SubmitFormBody,
+  UpdateFormBody,
+} from './form-types.js';
+export { FormsResource } from './forms-resource.js';
+export type {
   CreateLocaleBody,
   LocaleSummary,
   TextDirection,

@@ -635,5 +635,74 @@
       "enable": "Enable",
       "disable": "Disable"
     }
+  },
+  "forms": {
+    "title": "Forms",
+    "description": "Build and manage embeddable forms.",
+    "loading": "Loading forms…",
+    "empty": "No forms yet.",
+    "deleteConfirm": "Delete form \"{name}\"? This cannot be undone.",
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "table": {
+      "name": "Name",
+      "slug": "Slug",
+      "fields": "Fields",
+      "submissions": "Submissions",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "actions": {
+      "create": "New Form",
+      "createFirst": "Create your first form",
+      "edit": "Edit",
+      "viewSubmissions": "Submissions"
+    },
+    "builder": {
+      "newTitle": "New Form",
+      "editTitle": "Edit Form",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saving": "Saving…",
+      "saveError": "Failed to save form",
+      "fieldsSection": "Fields",
+      "addField": "Add Field",
+      "noFields": "No fields added yet. Click \"Add Field\" to start.",
+      "fields": {
+        "name": "Name",
+        "namePlaceholder": "e.g. contact-form",
+        "slug": "Slug",
+        "slugPlaceholder": "e.g. contact-form",
+        "description": "Description",
+        "descriptionPlaceholder": "Optional description",
+        "notifyEmail": "Notification Email",
+        "notifyEmailPlaceholder": "admin@example.com",
+        "isActive": "Active"
+      },
+      "fieldLabel": {
+        "name": "Field name",
+        "namePlaceholder": "e.g. email",
+        "label": "Label",
+        "labelPlaceholder": "e.g. Email address",
+        "type": "Type",
+        "required": "Required"
+      }
+    },
+    "submissions": {
+      "loading": "Loading submissions…",
+      "empty": "No submissions yet.",
+      "subtitle": "{total, plural, one {# submission} other {# submissions}}",
+      "back": "Back",
+      "exportCsv": "Export CSV",
+      "deleteConfirm": "Delete this submission? This cannot be undone.",
+      "prev": "Previous",
+      "next": "Next",
+      "table": {
+        "date": "Date",
+        "actions": "Actions"
+      }
+    }
   }
 }
