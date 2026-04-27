@@ -21,8 +21,10 @@ import { PluginModule } from './modules/plugin/plugin.module';
 import { PublishModule } from './modules/publish/publish.module';
 import { QueueBoardModule } from './modules/queue/queue-board.module';
 import { QueueModule } from './modules/queue/queue.module';
+import { SearchModule } from './modules/search/search.module';
 import { SeoModule } from './modules/seo/seo.module';
 import { SettingsModule } from './modules/settings/settings.module';
+import { StripeModule } from './modules/stripe/stripe.module';
 import { TrashModule } from './modules/trash/trash.module';
 import { WebhookModule } from './modules/webhook/webhook.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -63,6 +65,8 @@ import { PrismaModule } from './prisma/prisma.module';
     MenuModule,
     DashboardModule,
     QueueBoardModule,
+    SearchModule,
+    StripeModule,
   ],
 })
 export class AppModule {}

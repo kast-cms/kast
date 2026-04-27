@@ -1,0 +1,16 @@
+{
+  "name": "kast-plugin-resend",
+  "version": "0.1.0",
+  "displayName": "Resend",
+  "description": "Send transactional emails via Resend instead of SMTP",
+  "permissions": [],
+  "hooks": [],
+  "adminPages": [
+    {
+      "label": "Resend",
+      "path": "/plugins/resend",
+      "icon": "Mail"
+    }
+  ],
+  "env": ["RESEND_API_KEY", "RESEND_FROM_EMAIL", "RESEND_FROM_NAME"]
+}

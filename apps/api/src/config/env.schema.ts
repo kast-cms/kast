@@ -55,6 +55,33 @@ const envSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   SMTP_FROM: z.string().default('noreply@kast.io'),
+
+  // Resend (alternative email transport — used by kast-plugin-resend)
+  RESEND_API_KEY: z.string().optional(),
+  RESEND_FROM_EMAIL: z.string().optional(),
+  RESEND_FROM_NAME: z.string().optional(),
+
+  // Meilisearch (used by kast-plugin-meilisearch)
+  MEILISEARCH_HOST: z.string().optional(),
+  MEILISEARCH_MASTER_KEY: z.string().optional(),
+  MEILISEARCH_INDEX_PREFIX: z.string().default('kast_'),
+
+  // Cloudflare R2 (used by kast-plugin-r2)
+  R2_ACCOUNT_ID: z.string().optional(),
+  R2_ACCESS_KEY_ID: z.string().optional(),
+  R2_SECRET_ACCESS_KEY: z.string().optional(),
+  R2_BUCKET_NAME: z.string().optional(),
+  R2_PUBLIC_URL: z.string().optional(),
+
+  // Stripe (used by kast-plugin-stripe)
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  STRIPE_PRODUCT_TYPE_SLUG: z.string().default('product'),
+
+  // Sentry (used by kast-plugin-sentry)
+  SENTRY_DSN: z.string().optional(),
+  SENTRY_ENVIRONMENT: z.string().optional(),
+  SENTRY_TRACES_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(0.1),
 });
 
 export type Env = z.infer<typeof envSchema>;

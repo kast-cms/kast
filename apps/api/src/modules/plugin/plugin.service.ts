@@ -25,4 +25,9 @@ export class PluginService {
     const data = await this.repo.setActive(name, false);
     return { data };
   }
+
+  async getConfig(name: string): Promise<{ data: Record<string, unknown> }> {
+    const data = await this.repo.getConfig(name);
+    return { data };
+  }
 }

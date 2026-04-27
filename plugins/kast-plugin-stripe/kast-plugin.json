@@ -1,0 +1,16 @@
+{
+  "name": "kast-plugin-stripe",
+  "version": "0.1.0",
+  "displayName": "Stripe",
+  "description": "Sync product content types to Stripe and receive payment webhooks",
+  "permissions": ["content:read", "settings:read"],
+  "hooks": ["content.published", "content.updated", "content.trashed"],
+  "adminPages": [
+    {
+      "label": "Stripe",
+      "path": "/plugins/stripe",
+      "icon": "CreditCard"
+    }
+  ],
+  "env": ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_PRODUCT_TYPE_SLUG", "STRIPE_MODE"]
+}

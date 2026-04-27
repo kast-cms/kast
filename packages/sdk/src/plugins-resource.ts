@@ -20,4 +20,8 @@ export class PluginsResource {
       method: 'POST',
     });
   }
+
+  getConfig(name: string): Promise<ApiResponse<Record<string, unknown>>> {
+    return this.client.request(`/api/v1/plugins/${encodeURIComponent(name)}/config`);
+  }
 }

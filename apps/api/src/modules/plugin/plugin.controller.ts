@@ -33,4 +33,11 @@ export class PluginController {
   disable(@Param('name') name: string): Promise<{ data: PluginRecord }> {
     return this.service.disable(name);
   }
+
+  @Get(':name/config')
+  @Roles(SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get persisted configuration for a plugin' })
+  getConfig(@Param('name') name: string): Promise<{ data: Record<string, unknown> }> {
+    return this.service.getConfig(name);
+  }
 }

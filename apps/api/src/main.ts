@@ -47,7 +47,7 @@ function applySwagger(app: INestApplication): void {
 }
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create(AppModule, { bufferLogs: true, rawBody: true });
   const configService = app.get<ConfigService<Env>>(ConfigService);
 
   applyHelmet(app, configService.get('SITE_URL', { infer: true }) ?? 'http://localhost:3001');
@@ -72,7 +72,31 @@ async function bootstrap(): Promise<void> {
   );
 
   const httpAdapterHost = app.get<HttpAdapterHost>(HttpAdapterHost);
-  app.useGlobalFilters(new GlobalExceptionFilter(httpAdapterHost));
+
+  // Wire up Sentry error reporting if DSN is configured
+  const sentryDsn = configService.get<string>('SENTRY_DSN', { infer: true });
+  let sentryReporter: ((err: unknown, ctx: Record<string, string>) => void) | undefined;
+  if (sentryDsn) {
+    interface SentryModule {
+      init(opts: { dsn: string; environment: string; tracesSampleRate: number }): void;
+      captureException(err: unknown, ctx?: { extra?: Record<string, string> }): void;
+    }
+    try {
+      // @ts-ignore -- @sentry/node is an optional peer dependency
+      const Sentry = (await import('@sentry/node')) as unknown as SentryModule;
+      const sentryEnv =
+        configService.get<string>('SENTRY_ENVIRONMENT', { infer: true }) ?? 'production';
+      const sentrySampleRate = Number(
+        configService.get('SENTRY_TRACES_SAMPLE_RATE', { infer: true }) ?? 0.1,
+      );
+      Sentry.init({ dsn: sentryDsn, environment: sentryEnv, tracesSampleRate: sentrySampleRate });
+      sentryReporter = (err, ctx) => Sentry.captureException(err, { extra: ctx });
+    } catch {
+      // @sentry/node is optional — skip silently
+    }
+  }
+
+  app.useGlobalFilters(new GlobalExceptionFilter(httpAdapterHost, sentryReporter));
 
   const nodeEnv = configService.get<string>('NODE_ENV', { infer: true });
   if (nodeEnv !== 'production') {
