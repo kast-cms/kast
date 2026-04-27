@@ -20,6 +20,7 @@ import { PluginModule } from './modules/plugin/plugin.module';
 import { PublishModule } from './modules/publish/publish.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { SeoModule } from './modules/seo/seo.module';
+import { SettingsModule } from './modules/settings/settings.module';
 import { TrashModule } from './modules/trash/trash.module';
 import { WebhookModule } from './modules/webhook/webhook.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -52,6 +53,7 @@ import { PrismaModule } from './prisma/prisma.module';
     PublishModule,
     TrashModule,
     EmailModule,
+    SettingsModule,
     WebhookModule,
     AgentTokenModule,
     PluginModule,

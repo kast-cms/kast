@@ -809,5 +809,20 @@
       "daysUntilDeletion": "ينتهي في",
       "actions": "إجراءات"
     }
+  },
+  "settings": {
+    "title": "الإعدادات",
+    "subtitle": "تهيئة نظام KAST",
+    "tabs": {
+      "general": "عام",
+      "email": "البريد الإلكتروني",
+      "storage": "التخزين",
+      "security": "الأمان",
+      "seo": "تهيئة محركات البحث",
+      "content": "المحتوى"
+    },
+    "save": "حفظ",
+    "saving": "جارٍ الحفظ…",
+    "maintenanceBanner": "وضع الصيانة نشط. مسارات توصيل API العامة تُرجع 503."
   }
 }

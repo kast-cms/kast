@@ -809,5 +809,20 @@
       "daysUntilDeletion": "Expires In",
       "actions": "Actions"
     }
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Configure your KAST instance",
+    "tabs": {
+      "general": "General",
+      "email": "Email",
+      "storage": "Storage",
+      "security": "Security",
+      "seo": "SEO",
+      "content": "Content"
+    },
+    "save": "Save",
+    "saving": "Saving…",
+    "maintenanceBanner": "Maintenance mode is active. Public API delivery routes are returning 503."
   }
 }

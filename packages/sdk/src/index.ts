@@ -38,6 +38,13 @@ export type { PluginRecord } from './plugin-types.js';
 export { PluginsResource } from './plugins-resource.js';
 export { RolesResource } from './roles-resource.js';
 export { SeoResource } from './seo-resource.js';
+export { SettingsResource } from './settings-resource.js';
+export type {
+  GlobalSetting,
+  SettingPatchEntry,
+  TestSmtpBody,
+  UpdateSettingsBody,
+} from './settings-types.js';
 export { TokensResource } from './tokens-resource.js';
 export { TrashResource } from './trash-resource.js';
 export type { TrashListParams, TrashListResponse, TrashModel, TrashedItem } from './trash-types.js';

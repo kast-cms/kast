@@ -7,6 +7,7 @@ import { MenusResource } from './menus-resource.js';
 import { PluginsResource } from './plugins-resource.js';
 import { RolesResource } from './roles-resource.js';
 import { SeoResource } from './seo-resource.js';
+import { SettingsResource } from './settings-resource.js';
 import { TokensResource } from './tokens-resource.js';
 import { TrashResource } from './trash-resource.js';
 import type {
@@ -171,6 +172,10 @@ export class KastClient {
 
   get versions(): VersionsResource {
     return new VersionsResource(this);
+  }
+
+  get settings(): SettingsResource {
+    return new SettingsResource(this);
   }
 }
 
