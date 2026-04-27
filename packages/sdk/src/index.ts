@@ -1,3 +1,4 @@
+export { AgentTokensResource } from './agent-tokens-resource.js';
 export { KastClient } from './client.js';
 export type {
   CreateFormBody,
@@ -19,6 +20,7 @@ export type {
   TextDirection,
   UpdateLocaleBody,
 } from './locale-types.js';
+export { LocalesResource } from './locales-resource.js';
 export type {
   CreateMenuBody,
   CreateMenuItemBody,
@@ -34,6 +36,9 @@ export type {
 export { MenusResource } from './menus-resource.js';
 export type { PluginRecord } from './plugin-types.js';
 export { PluginsResource } from './plugins-resource.js';
+export { RolesResource } from './roles-resource.js';
+export { SeoResource } from './seo-resource.js';
+export { TokensResource } from './tokens-resource.js';
 export { TrashResource } from './trash-resource.js';
 export type { TrashListParams, TrashListResponse, TrashModel, TrashedItem } from './trash-types.js';
 export type {
@@ -94,6 +99,8 @@ export type {
   UserSummary,
   VersionListParams,
 } from './types.js';
+export { UsersResource } from './users-resource.js';
+export { VersionsResource } from './versions-resource.js';
 export { WebhooksResource } from './webhooks-resource.js';
 export type {
   CreateWebhookBody,

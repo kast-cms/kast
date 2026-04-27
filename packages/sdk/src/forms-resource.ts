@@ -65,4 +65,19 @@ export class FormsResource {
   exportCsvUrl(id: string): string {
     return `/api/v1/forms/${encodeURIComponent(id)}/submissions/export`;
   }
+
+  /** @alias findOne */
+  get(id: string): Promise<FormDetail> {
+    return this.findOne(id);
+  }
+
+  /** @alias listSubmissions */
+  getSubmissions(id: string, params?: ListSubmissionsParams): Promise<PaginatedSubmissions> {
+    return this.listSubmissions(id, params);
+  }
+
+  /** Fetch CSV export as a Blob */
+  exportCsv(id: string): Promise<Blob> {
+    return this.client.request(this.exportCsvUrl(id));
+  }
 }

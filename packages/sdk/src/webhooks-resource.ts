@@ -78,4 +78,14 @@ export class WebhooksResource {
       method: 'POST',
     });
   }
+
+  /** @alias findOne */
+  get(id: string): Promise<WebhookSummary> {
+    return this.findOne(id);
+  }
+
+  /** @alias deliveries */
+  getDeliveries(id: string): Promise<WebhookDeliverySummary[]> {
+    return this.deliveries(id);
+  }
 }

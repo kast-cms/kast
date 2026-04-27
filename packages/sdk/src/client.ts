@@ -24,6 +24,7 @@ import type {
   VersionListParams,
 } from './types.js';
 import { UsersResource } from './users-resource.js';
+import { VersionsResource } from './versions-resource.js';
 import { WebhooksResource } from './webhooks-resource.js';
 
 interface RequestOptions {
@@ -161,6 +162,15 @@ export class KastClient {
 
   get trash(): TrashResource {
     return new TrashResource(this);
+  }
+
+  /** @alias tokens — API token management */
+  get apiTokens(): TokensResource {
+    return new TokensResource(this);
+  }
+
+  get versions(): VersionsResource {
+    return new VersionsResource(this);
   }
 }
 

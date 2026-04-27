@@ -36,4 +36,12 @@ export class UsersResource {
   trash(id: string): Promise<ApiResponse<{ id: string; trashedAt: string }>> {
     return this.client.request(`/api/v1/users/${id}`, { method: 'DELETE' });
   }
+
+  suspend(id: string): Promise<ApiResponse<UserSummary>> {
+    return this.update(id, { isActive: false });
+  }
+
+  activate(id: string): Promise<ApiResponse<UserSummary>> {
+    return this.update(id, { isActive: true });
+  }
 }

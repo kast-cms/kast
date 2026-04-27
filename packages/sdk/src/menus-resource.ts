@@ -67,4 +67,14 @@ export class MenusResource {
       body,
     });
   }
+
+  /** @alias findOne */
+  get(id: string): Promise<MenuDetail> {
+    return this.findOne(id);
+  }
+
+  /** @alias reorder */
+  reorderItems(menuId: string, body: ReorderMenuItemsBody): Promise<void> {
+    return this.reorder(menuId, body);
+  }
 }

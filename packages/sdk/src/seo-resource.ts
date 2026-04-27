@@ -51,4 +51,9 @@ export class SeoResource {
   deleteRedirect(id: string): Promise<void> {
     return this.client.request(`/api/v1/seo/redirects/${id}`, { method: 'DELETE' });
   }
+
+  /** @alias listRedirects */
+  getRedirects(params?: { limit?: number; cursor?: string }): Promise<ApiListResponse<Redirect>> {
+    return this.listRedirects(params);
+  }
 }
