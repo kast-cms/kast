@@ -12,15 +12,24 @@ import { QUEUE_NAMES } from './queue.constants';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService<Env>) => {
-        const host = configService.get('REDIS_HOST', { infer: true }) ?? 'localhost';
-        const port = configService.get('REDIS_PORT', { infer: true }) ?? 6379;
-        const password = configService.get('REDIS_PASSWORD', { infer: true });
+        const redisUrl = configService.get('REDIS_URL', { infer: true });
+        let connection: { host: string; port: number; password?: string };
+
+        if (redisUrl) {
+          const parsed = new URL(redisUrl);
+          connection = {
+            host: parsed.hostname,
+            port: Number(parsed.port) || 6379,
+            ...(parsed.password ? { password: decodeURIComponent(parsed.password) } : {}),
+          };
+        } else {
+          const host = configService.get('REDIS_HOST', { infer: true }) ?? 'localhost';
+          const port = configService.get('REDIS_PORT', { infer: true }) ?? 6379;
+          const password = configService.get('REDIS_PASSWORD', { infer: true });
+          connection = { host, port, ...(password ? { password } : {}) };
+        }
         return {
-          connection: {
-            host,
-            port,
-            ...(password ? { password } : {}),
-          },
+          connection,
           defaultJobOptions: {
             attempts: 3,
             backoff: { type: 'exponential', delay: 1000 },

@@ -8,7 +8,8 @@ const envSchema = z.object({
   // Database
   DATABASE_URL: z.string().url(),
 
-  // Redis
+  // Redis — accepts either REDIS_URL (e.g. Railway/Render) or individual vars
+  REDIS_URL: z.string().optional(),
   REDIS_HOST: z.string().default('localhost'),
   REDIS_PORT: z.coerce.number().int().default(6379),
   REDIS_PASSWORD: z.string().optional(),
