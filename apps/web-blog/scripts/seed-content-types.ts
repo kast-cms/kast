@@ -6,8 +6,8 @@
  */
 import { KastClient } from '@kast/sdk';
 
-const apiUrl = process.env.KAST_API_URL;
-const adminToken = process.env.KAST_ADMIN_TOKEN;
+const apiUrl = process.env.KAST_API_URL ?? '';
+const adminToken = process.env.KAST_ADMIN_TOKEN ?? '';
 
 if (!apiUrl) {
   console.error('Missing KAST_API_URL environment variable');

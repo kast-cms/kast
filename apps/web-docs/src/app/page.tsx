@@ -6,8 +6,9 @@ export const revalidate = 60;
 export default async function HomePage() {
   const sidebar = await buildSidebar();
   // Redirect to first doc page if available
-  if (sidebar.length > 0 && sidebar[0].items.length > 0) {
-    const first = sidebar[0].items[0];
+  const firstCat = sidebar[0];
+  const first = firstCat?.items[0];
+  if (firstCat && first) {
     redirect(`/docs/${first.categorySlug}/${first.slug}`);
   }
 

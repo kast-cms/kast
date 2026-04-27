@@ -13,7 +13,7 @@ export async function getPosts(
     limit: '10',
     ...params,
   });
-  return { data: res.data as PostEntry[], nextCursor: res.nextCursor };
+  return { data: res.data as PostEntry[], ...(res.meta.cursor != null ? { nextCursor: res.meta.cursor } : {}) };
 }
 
 export async function getPostBySlug(slug: string): Promise<PostDetailEntry | null> {
@@ -58,7 +58,7 @@ export async function getPostsByCategory(
   });
   // Filter by category (client-side until server-side filtering is available)
   const filtered = (res.data as PostEntry[]).filter((p) => p.data.category === categorySlug);
-  return { data: filtered, nextCursor: res.nextCursor };
+  return { data: filtered, ...(res.meta.cursor != null ? { nextCursor: res.meta.cursor } : {}) };
 }
 
 export function estimateReadTime(body: string): number {

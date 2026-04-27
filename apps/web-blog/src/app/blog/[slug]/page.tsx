@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import { kast } from '@/lib/kast';
-import { getPostBySlug, estimateReadTime, BLOG_TYPE } from '@/lib/content';
+import { getPostBySlug, estimateReadTime } from '@/lib/content';
 import { RichText } from '@/components/rich-text';
 import { getPosts } from '@/lib/content';
 
@@ -32,7 +32,7 @@ export async function generateMetadata({ params }: PostPageProps): Promise<Metad
     if (seoRes.data) {
       seoTitle = seoRes.data.metaTitle ?? seoTitle;
       seoDescription = seoRes.data.metaDescription ?? seoDescription;
-      seoImage = seoRes.data.ogImage ?? seoImage;
+      // ogImageId is a media ID reference, not a URL — keep content coverImage as seoImage
     }
   } catch {
     // SEO meta not found — use content data defaults

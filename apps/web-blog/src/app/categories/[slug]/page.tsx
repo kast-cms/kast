@@ -34,7 +34,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   const category = categories.find((c) => c.data.slug === slug);
   if (!category) notFound();
 
-  const { data: posts, nextCursor } = await getPostsByCategory(slug, { cursor });
+  const { data: posts, nextCursor } = await getPostsByCategory(slug, cursor !== undefined ? { cursor } : {});
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">

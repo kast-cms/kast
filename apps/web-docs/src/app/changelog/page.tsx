@@ -15,7 +15,7 @@ interface ChangelogPageProps {
 
 export default async function ChangelogPage({ searchParams }: ChangelogPageProps) {
   const { cursor } = await searchParams;
-  const { data: entries, nextCursor } = await getChangelog({ cursor });
+  const { data: entries, nextCursor } = await getChangelog(cursor !== undefined ? { cursor } : {});
 
   return (
     <div className="max-w-3xl mx-auto px-8 py-16">

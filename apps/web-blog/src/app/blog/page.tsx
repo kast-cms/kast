@@ -18,7 +18,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
   const { cursor, category } = await searchParams;
 
   const [{ data: posts, nextCursor }, categories] = await Promise.all([
-    getPosts({ cursor, limit: '12' }),
+    getPosts({ ...(cursor !== undefined ? { cursor } : {}), limit: '12' }),
     getCategories(),
   ]);
 

@@ -71,7 +71,7 @@ export async function getChangelog(params: EntryListParams = {}): Promise<{
     limit: '20',
     ...params,
   });
-  return { data: res.data as ChangelogEntry[], nextCursor: res.nextCursor };
+  return { data: res.data as ChangelogEntry[], ...(res.meta.cursor != null ? { nextCursor: res.meta.cursor } : {}) };
 }
 
 /**
@@ -84,8 +84,8 @@ export function extractToc(html: string): TocHeading[] {
   let match: RegExpExecArray | null;
 
   while ((match = re.exec(html)) !== null) {
-    const level = parseInt(match[1].replace('h', ''), 10) as 2 | 3;
-    const text = match[2].replace(/<[^>]+>/g, '').trim();
+    const level = parseInt((match[1] ?? 'h2').replace('h', ''), 10) as 2 | 3;
+    const text = (match[2] ?? '').replace(/<[^>]+>/g, '').trim();
     const id = text
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')

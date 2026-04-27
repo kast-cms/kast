@@ -26,7 +26,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     let cursor: string | undefined;
     do {
-      const { data: posts, nextCursor } = await getPosts({ cursor, limit: '100' });
+      const { data: posts, nextCursor } = await getPosts({ ...(cursor !== undefined ? { cursor } : {}), limit: '100' });
       for (const post of posts) {
         urls.push({
           url: `${siteUrl}/blog/${post.data.slug}`,
