@@ -11,6 +11,6 @@
     "@kast/plugin-sdk": "workspace:*"
   },
   "devDependencies": {
-    "typescript": "catalog:"
+    "typescript": "^5.5.0"
   }
 }
