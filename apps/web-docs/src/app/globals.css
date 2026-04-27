@@ -1,0 +1,90 @@
+@import 'tailwindcss';
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --sidebar-width: 260px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Docs prose content */
+.prose {
+  @apply text-gray-800 dark:text-gray-200 leading-relaxed;
+}
+
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4 {
+  @apply font-bold text-gray-900 dark:text-white;
+  scroll-margin-top: 5rem;
+}
+
+.prose h1 { @apply text-3xl mt-8 mb-4; }
+.prose h2 { @apply text-2xl mt-10 mb-4 border-t border-gray-200 dark:border-gray-800 pt-8; }
+.prose h3 { @apply text-lg mt-6 mb-3; }
+
+.prose p {
+  @apply mb-4;
+}
+
+.prose a {
+  @apply text-blue-600 dark:text-blue-400 underline underline-offset-2;
+}
+
+.prose ul {
+  @apply list-disc list-outside ml-5 mb-4 space-y-1;
+}
+
+.prose ol {
+  @apply list-decimal list-outside ml-5 mb-4 space-y-1;
+}
+
+.prose blockquote {
+  @apply border-l-4 border-blue-500 pl-4 italic text-gray-600 dark:text-gray-400 my-6;
+}
+
+.prose code:not(pre code) {
+  @apply bg-gray-100 dark:bg-gray-800 rounded px-1.5 py-0.5 text-sm font-mono text-pink-600 dark:text-pink-400;
+}
+
+.prose pre {
+  @apply rounded-xl overflow-hidden my-6 text-sm;
+}
+
+.prose table {
+  @apply w-full text-sm mb-6;
+}
+
+.prose th {
+  @apply text-left font-semibold border-b border-gray-300 dark:border-gray-700 py-2 px-3 bg-gray-50 dark:bg-gray-900;
+}
+
+.prose td {
+  @apply border-b border-gray-200 dark:border-gray-800 py-2 px-3;
+}
+
+.prose img {
+  @apply rounded-xl my-6 max-w-full;
+}
+
+.prose hr {
+  @apply border-gray-200 dark:border-gray-800 my-8;
+}
+
+/* Callout / note */
+.prose .callout {
+  @apply rounded-lg p-4 my-4 flex gap-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900;
+}

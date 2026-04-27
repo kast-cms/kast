@@ -15,7 +15,8 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "node --test test/cli.e2e.mjs"
   },
   "dependencies": {
     "@clack/prompts": "^0.9.0",
