@@ -6,7 +6,7 @@ import type {
   SidebarCategory,
   TocHeading,
 } from '@/types';
-import type { EntryListParams } from '@kast/sdk';
+import type { EntryListParams } from '@kast-cms/sdk';
 
 export const DOC_TYPE = 'doc-page';
 export const CHANGELOG_TYPE = 'changelog-entry';

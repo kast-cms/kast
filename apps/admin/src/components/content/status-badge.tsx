@@ -1,7 +1,7 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
-import type { EntryStatus } from '@kast/sdk';
+import type { EntryStatus } from '@kast-cms/sdk';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 

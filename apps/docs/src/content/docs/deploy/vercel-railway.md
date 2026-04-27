@@ -26,12 +26,12 @@ Follow the [Railway deploy guide](./railway). Note your API URL (e.g. `https://k
 ## Step 2 — Set up the SDK in your Next.js project
 
 ```bash
-npm install @kast/sdk
+npm install @kast-cms/sdk
 ```
 
 ```ts
 // lib/kast.ts
-import { KastClient } from '@kast/sdk';
+import { KastClient } from '@kast-cms/sdk';
 
 export const kast = new KastClient({
   baseUrl: process.env.KAST_API_URL!,

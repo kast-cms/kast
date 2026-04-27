@@ -2,7 +2,7 @@
 
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
-import type { AgentTokenCreated, AgentTokenSummary, CreateAgentTokenBody } from '@kast/sdk';
+import type { AgentTokenCreated, AgentTokenSummary, CreateAgentTokenBody } from '@kast-cms/sdk';
 import { useCallback, useEffect, useState } from 'react';
 
 export interface UseAgentTokensReturn {

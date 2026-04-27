@@ -2,7 +2,7 @@
 
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
-import type { CreateRedirectBody, Redirect, SeoScore, UpdateRedirectBody } from '@kast/sdk';
+import type { CreateRedirectBody, Redirect, SeoScore, UpdateRedirectBody } from '@kast-cms/sdk';
 import { useCallback, useEffect, useState } from 'react';
 
 export interface UseSeoReturn {

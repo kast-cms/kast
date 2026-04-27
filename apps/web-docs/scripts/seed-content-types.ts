@@ -4,7 +4,7 @@
  * Usage:
  *   KAST_API_URL=http://localhost:3000 KAST_ADMIN_TOKEN=your-token pnpm seed
  */
-import { KastClient } from '@kast/sdk';
+import { KastClient } from '@kast-cms/sdk';
 
 const apiUrl = process.env.KAST_API_URL ?? '';
 const adminToken = process.env.KAST_ADMIN_TOKEN ?? '';

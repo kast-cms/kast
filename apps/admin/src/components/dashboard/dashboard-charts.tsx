@@ -1,6 +1,6 @@
 'use client';
 
-import type { DashboardContentStats, DashboardSeoStats } from '@kast/sdk';
+import type { DashboardContentStats, DashboardSeoStats } from '@kast-cms/sdk';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 

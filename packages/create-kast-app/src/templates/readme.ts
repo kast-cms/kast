@@ -37,7 +37,7 @@ open http://localhost:3001/admin
 │   └── admin/             # Next.js admin panel
 {{#if includeFrontend}}│   └── web/               # Next.js {{frontendStarter}} frontend
 {{/if}}├── packages/
-│   └── sdk/               # @kast/sdk — typed API client
+│   └── sdk/               # @kast-cms/sdk — typed API client
 ├── plugins/               # Installed Kast plugins
 ├── docker-compose.yml
 ├── .env.example

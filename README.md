@@ -56,7 +56,7 @@ kast/
 │   └── cli/          # create-kast-app CLI
 ├── packages/
 │   ├── core/         # @kast/core — shared types
-│   ├── sdk/          # @kast/sdk — TypeScript client
+│   ├── sdk/          # @kast-cms/sdk — TypeScript client
 │   ├── plugin-sdk/   # @kast/plugin-sdk — plugin interface
 │   └── ui/           # @kast/ui — shared components
 └── plugins/          # First-party plugins

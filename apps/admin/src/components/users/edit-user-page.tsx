@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
-import type { RoleSummary, UpdateUserBody, UserSummary } from '@kast/sdk';
+import type { RoleSummary, UpdateUserBody, UserSummary } from '@kast-cms/sdk';
 import { ArrowLeft } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';

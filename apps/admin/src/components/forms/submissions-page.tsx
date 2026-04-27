@@ -11,11 +11,54 @@ import {
 } from '@/components/ui/table';
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
-import type { FormSubmissionSummary } from '@kast/sdk';
+import type { FormSubmissionSummary } from '@kast-cms/sdk';
 import { ArrowLeft, Download, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState, type JSX } from 'react';
+import React, { useCallback, useEffect, useState, type JSX } from 'react';
+
+interface SubmissionsPaginationProps {
+  page: number;
+  totalPages: number;
+  t: ReturnType<typeof useTranslations<'forms.submissions'>>;
+  setPage: React.Dispatch<React.SetStateAction<number>>;
+}
+
+function SubmissionsPagination({
+  page,
+  totalPages,
+  t,
+  setPage,
+}: SubmissionsPaginationProps): JSX.Element | null {
+  if (totalPages <= 1) return null;
+  return (
+    <div className="flex items-center justify-end gap-2">
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={page <= 1}
+        onClick={() => {
+          setPage((p) => p - 1);
+        }}
+      >
+        {t('prev')}
+      </Button>
+      <span className="text-sm text-muted-foreground">
+        {page} / {totalPages}
+      </span>
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={page >= totalPages}
+        onClick={() => {
+          setPage((p) => p + 1);
+        }}
+      >
+        {t('next')}
+      </Button>
+    </div>
+  );
+}
 
 interface SubmissionsPageClientProps {
   formId: string;
@@ -159,33 +202,7 @@ export function SubmissionsPageClient({
             </Table>
           </div>
 
-          {totalPages > 1 && (
-            <div className="flex items-center justify-end gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={page <= 1}
-                onClick={() => {
-                  setPage((p) => p - 1);
-                }}
-              >
-                {t('prev')}
-              </Button>
-              <span className="text-sm text-muted-foreground">
-                {page} / {totalPages}
-              </span>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={page >= totalPages}
-                onClick={() => {
-                  setPage((p) => p + 1);
-                }}
-              >
-                {t('next')}
-              </Button>
-            </div>
-          )}
+          <SubmissionsPagination page={page} totalPages={totalPages} t={t} setPage={setPage} />
         </>
       )}
     </div>

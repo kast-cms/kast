@@ -1,6 +1,6 @@
 'use client';
 
-import type { DashboardStats } from '@kast/sdk';
+import type { DashboardStats } from '@kast-cms/sdk';
 import { FileText, Image, Users } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';

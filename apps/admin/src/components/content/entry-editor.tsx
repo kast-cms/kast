@@ -1,7 +1,7 @@
 'use client';
 
 import { Label } from '@/components/ui/label';
-import type { ContentEntryDetail, ContentTypeDetail } from '@kast/sdk';
+import type { ContentEntryDetail, ContentTypeDetail } from '@kast-cms/sdk';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useState, type JSX } from 'react';

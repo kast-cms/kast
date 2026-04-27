@@ -3,7 +3,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
-import type { TrashedItem, TrashModel } from '@kast/sdk';
+import type { TrashedItem, TrashModel } from '@kast-cms/sdk';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState, type JSX } from 'react';
 import { TrashTable } from './trash-table';

@@ -3,7 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import type { SeoIssue, SeoScore } from '@kast/sdk';
+import type { SeoIssue, SeoScore } from '@kast-cms/sdk';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 

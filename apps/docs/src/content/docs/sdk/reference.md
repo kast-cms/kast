@@ -8,7 +8,7 @@ sidebar:
 ## KastClient constructor
 
 ```ts
-import { KastClient } from '@kast/sdk';
+import { KastClient } from '@kast-cms/sdk';
 
 const kast = new KastClient({
   baseUrl: 'https://api.example.com', // required

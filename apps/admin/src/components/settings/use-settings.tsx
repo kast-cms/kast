@@ -2,7 +2,7 @@
 
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
-import type { GlobalSetting } from '@kast/sdk';
+import type { GlobalSetting } from '@kast-cms/sdk';
 import { useCallback, useEffect, useState } from 'react';
 
 export interface UseSettingsReturn {

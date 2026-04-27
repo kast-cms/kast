@@ -2,7 +2,7 @@
 
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
-import type { AuditLogEntry, AuditLogListParams, AuditLogMeta } from '@kast/sdk';
+import type { AuditLogEntry, AuditLogListParams, AuditLogMeta } from '@kast-cms/sdk';
 import { useEffect, useState } from 'react';
 
 export interface UseAuditLogReturn {

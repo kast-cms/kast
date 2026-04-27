@@ -1,6 +1,6 @@
 ---
 title: Installation
-description: Install and configure @kast/sdk in your project.
+description: Install and configure @kast-cms/sdk in your project.
 sidebar:
   order: 1
 ---
@@ -8,19 +8,19 @@ sidebar:
 ## Install
 
 ```bash
-npm install @kast/sdk
+npm install @kast-cms/sdk
 # or
-pnpm add @kast/sdk
+pnpm add @kast-cms/sdk
 # or
-yarn add @kast/sdk
+yarn add @kast-cms/sdk
 ```
 
-`@kast/sdk` ships as dual ESM/CJS with full TypeScript types. No additional type packages needed.
+`@kast-cms/sdk` ships as dual ESM/CJS with full TypeScript types. No additional type packages needed.
 
 ## Initialize
 
 ```ts
-import { KastClient } from '@kast/sdk';
+import { KastClient } from '@kast-cms/sdk';
 
 const kast = new KastClient({
   baseUrl: 'http://localhost:3000', // your Kast API URL
@@ -50,7 +50,7 @@ KAST_ADMIN_TOKEN=eyJ...  # for server-side admin operations
 
 ```ts
 // lib/kast.ts
-import { KastClient } from '@kast/sdk';
+import { KastClient } from '@kast-cms/sdk';
 
 export const kast = new KastClient({
   baseUrl: process.env.NEXT_PUBLIC_KAST_API_URL!,

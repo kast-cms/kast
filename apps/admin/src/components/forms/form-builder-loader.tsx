@@ -2,7 +2,7 @@
 
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
-import type { FormDetail } from '@kast/sdk';
+import type { FormDetail } from '@kast-cms/sdk';
 import { useEffect, useState, type JSX } from 'react';
 import { FormBuilder } from './form-builder';
 

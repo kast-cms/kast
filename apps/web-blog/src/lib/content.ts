@@ -1,6 +1,6 @@
 import { kast } from '@/lib/kast';
 import type { CategoryEntry, PostDetailEntry, PostEntry } from '@/types';
-import type { EntryListParams } from '@kast/sdk';
+import type { EntryListParams } from '@kast-cms/sdk';
 
 export const BLOG_TYPE = 'blog-post';
 export const CATEGORY_TYPE = 'blog-category';

@@ -74,7 +74,7 @@ await kast.auth.logout(refreshToken);
 All SDK methods throw a `KastApiError` on non-2xx responses:
 
 ```ts
-import { KastClient } from '@kast/sdk';
+import { KastClient } from '@kast-cms/sdk';
 
 try {
   await kast.auth.login('wrong@example.com', 'bad-password');

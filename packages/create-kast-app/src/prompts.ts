@@ -141,8 +141,8 @@ async function promptDeployment(): Promise<{
       message: 'Include frontend starter?',
       options: [
         { value: 'none', label: 'None' },
-        { value: 'blog', label: 'Blog template', hint: 'Next.js + @kast/sdk + ISR' },
-        { value: 'docs', label: 'Docs template', hint: 'Next.js + @kast/sdk + MDX' },
+        { value: 'blog', label: 'Blog template', hint: 'Next.js + @kast-cms/sdk + ISR' },
+        { value: 'docs', label: 'Docs template', hint: 'Next.js + @kast-cms/sdk + MDX' },
       ],
     }),
   ) as FrontendStarter;

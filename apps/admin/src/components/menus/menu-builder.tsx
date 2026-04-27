@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { CreateMenuItemBody, MenuDetail, MenuItemSummary } from '@kast/sdk';
+import type { CreateMenuItemBody, MenuDetail, MenuItemSummary } from '@kast-cms/sdk';
 import { Plus } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';

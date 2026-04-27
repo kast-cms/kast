@@ -1,5 +1,5 @@
 import { API_URL } from '@/config/env';
-import { KastClient } from '@kast/sdk';
+import { KastClient } from '@kast-cms/sdk';
 
 /**
  * Creates a KastClient instance for browser usage.

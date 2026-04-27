@@ -2,7 +2,7 @@
 
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
-import type { ContentEntryDetail, EntryStatus } from '@kast/sdk';
+import type { ContentEntryDetail, EntryStatus } from '@kast-cms/sdk';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface UseEntryEditorParams {

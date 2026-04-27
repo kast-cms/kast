@@ -5,20 +5,20 @@ sidebar:
   order: 5
 ---
 
-## Using @kast/sdk (recommended)
+## Using @kast-cms/sdk (recommended)
 
 Install the SDK in your frontend project:
 
 ```bash
-npm install @kast/sdk
+npm install @kast-cms/sdk
 # or
-pnpm add @kast/sdk
+pnpm add @kast-cms/sdk
 ```
 
 ### Initialize the client
 
 ```ts
-import { KastClient } from '@kast/sdk';
+import { KastClient } from '@kast-cms/sdk';
 
 const kast = new KastClient({
   baseUrl: process.env.NEXT_PUBLIC_KAST_API_URL ?? 'http://localhost:3000',
@@ -48,7 +48,7 @@ const { data: post } = await kast.content.get('blog-post', entryId, { locale: 'e
 
 ```tsx
 // app/blog/page.tsx
-import { KastClient } from '@kast/sdk';
+import { KastClient } from '@kast-cms/sdk';
 
 const kast = new KastClient({ baseUrl: process.env.KAST_API_URL! });
 
@@ -106,7 +106,7 @@ The `create-kast-app` CLI can scaffold a ready-to-use Next.js frontend alongside
 
 This creates `apps/web-blog/` or `apps/web-docs/` with:
 
-- Pages pre-wired to the Kast delivery API via `@kast/sdk`
+- Pages pre-wired to the Kast delivery API via `@kast-cms/sdk`
 - SEO metadata from `generateMetadata`
 - Sitemap and RSS feed
 - Navigation from Kast menus

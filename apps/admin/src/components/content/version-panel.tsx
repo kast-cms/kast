@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
-import type { ContentEntryVersion } from '@kast/sdk';
+import type { ContentEntryVersion } from '@kast-cms/sdk';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState, type JSX } from 'react';
 

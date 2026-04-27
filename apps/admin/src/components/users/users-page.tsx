@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { UserSummary } from '@kast/sdk';
+import type { UserSummary } from '@kast-cms/sdk';
 import { Pencil, Trash2, UserPlus } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';

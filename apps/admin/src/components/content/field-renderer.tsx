@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import type { ContentField } from '@kast/sdk';
+import type { ContentField } from '@kast-cms/sdk';
 import type { JSONContent } from '@tiptap/react';
 import type { JSX } from 'react';
 import { RichTextEditor } from './rich-text-editor';

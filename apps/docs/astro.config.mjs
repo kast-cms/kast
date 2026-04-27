@@ -86,7 +86,7 @@ export default defineConfig({
           ],
         },
         {
-          label: 'SDK (@kast/sdk)',
+          label: 'SDK (@kast-cms/sdk)',
           collapsed: true,
           items: [
             { slug: 'sdk/installation' },

@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/table';
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
-import type { PluginRecord } from '@kast/sdk';
+import type { PluginRecord } from '@kast-cms/sdk';
 import { Puzzle } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState, type JSX } from 'react';

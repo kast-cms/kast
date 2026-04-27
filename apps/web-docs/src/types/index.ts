@@ -1,4 +1,4 @@
-import type { ContentEntryDetail, ContentEntrySummary } from '@kast/sdk';
+import type { ContentEntryDetail, ContentEntrySummary } from '@kast-cms/sdk';
 
 /** Shape of a doc page's `data` field */
 export interface DocData {

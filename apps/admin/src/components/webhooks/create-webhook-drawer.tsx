@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import type { CreateWebhookBody } from '@kast/sdk';
+import type { CreateWebhookBody } from '@kast-cms/sdk';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 

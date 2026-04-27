@@ -1,7 +1,7 @@
 'use client';
 
 import { Checkbox } from '@/components/ui/checkbox';
-import type { MediaFileSummary } from '@kast/sdk';
+import type { MediaFileSummary } from '@kast-cms/sdk';
 import { FileIcon, FileText, Video } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import Image from 'next/image';

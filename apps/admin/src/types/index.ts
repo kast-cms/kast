@@ -92,4 +92,4 @@ export type {
   UpsertSeoMetaBody,
   UserListParams,
   UserSummary,
-} from '@kast/sdk';
+} from '@kast-cms/sdk';

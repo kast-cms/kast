@@ -58,7 +58,7 @@ importers:
       '@dnd-kit/utilities':
         specifier: ^3.2.2
         version: 3.2.2(react@19.2.5)
-      '@kast/sdk':
+      '@kast-cms/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
       '@radix-ui/react-avatar':
@@ -379,7 +379,7 @@ importers:
 
   apps/web-blog:
     dependencies:
-      '@kast/sdk':
+      '@kast-cms/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
       next:
@@ -416,7 +416,7 @@ importers:
 
   apps/web-docs:
     dependencies:
-      '@kast/sdk':
+      '@kast-cms/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
       next:

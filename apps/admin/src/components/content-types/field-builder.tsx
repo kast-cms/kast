@@ -20,7 +20,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { AddFieldBody, ContentField, ContentTypeDetail, UpdateFieldBody } from '@kast/sdk';
+import type { AddFieldBody, ContentField, ContentTypeDetail, UpdateFieldBody } from '@kast-cms/sdk';
 import { GripVertical, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useCallback, useState, type JSX } from 'react';
 import { FieldDrawer } from './field-drawer';

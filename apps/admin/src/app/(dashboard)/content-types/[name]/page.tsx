@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { createServerApiClient } from '@/lib/api';
-import type { ContentTypeDetail } from '@kast/sdk';
+import type { ContentTypeDetail } from '@kast-cms/sdk';
 import { ChevronLeft } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';

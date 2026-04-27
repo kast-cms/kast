@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { WebhookSummary } from '@kast/sdk';
+import type { WebhookSummary } from '@kast-cms/sdk';
 import { FlaskConical, List, Plus, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
