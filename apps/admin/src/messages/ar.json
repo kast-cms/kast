@@ -16,7 +16,8 @@
     "settings": "الإعدادات",
     "locales": "اللغات",
     "auditLog": "سجل التدقيق",
-    "dashboard": "لوحة التحكم"
+    "dashboard": "لوحة التحكم",
+    "queueMonitor": "مراقب قوائم الانتظار"
   },
   "auth": {
     "login": {

@@ -7,19 +7,20 @@ import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import type { Env } from './config/env.schema';
 
-function applyHelmet(app: INestApplication): void {
+function applyHelmet(app: INestApplication, siteUrl: string): void {
   app.use(
     helmet({
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'"],
           styleSrc: ["'self'", "'unsafe-inline'"],
           imgSrc: ["'self'", 'data:', 'https:'],
           connectSrc: ["'self'"],
-          fontSrc: ["'self'"],
+          fontSrc: ["'self'", 'data:'],
           objectSrc: ["'none'"],
           frameSrc: ["'none'"],
+          frameAncestors: [siteUrl],
           upgradeInsecureRequests: [],
         },
       },
@@ -49,7 +50,7 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   const configService = app.get<ConfigService<Env>>(ConfigService);
 
-  applyHelmet(app);
+  applyHelmet(app, configService.get('SITE_URL', { infer: true }) ?? 'http://localhost:3001');
 
   const corsOrigins = configService.get<string>('CORS_ORIGINS', { infer: true }) ?? '*';
   app.enableCors({

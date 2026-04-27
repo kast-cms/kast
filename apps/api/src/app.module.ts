@@ -19,6 +19,7 @@ import { MediaModule } from './modules/media/media.module';
 import { MenuModule } from './modules/menus/menu.module';
 import { PluginModule } from './modules/plugin/plugin.module';
 import { PublishModule } from './modules/publish/publish.module';
+import { QueueBoardModule } from './modules/queue/queue-board.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { SeoModule } from './modules/seo/seo.module';
 import { SettingsModule } from './modules/settings/settings.module';
@@ -61,6 +62,7 @@ import { PrismaModule } from './prisma/prisma.module';
     FormModule,
     MenuModule,
     DashboardModule,
+    QueueBoardModule,
   ],
 })
 export class AppModule {}

@@ -16,7 +16,8 @@
     "settings": "Settings",
     "locales": "Locales",
     "auditLog": "Audit Log",
-    "dashboard": "Dashboard"
+    "dashboard": "Dashboard",
+    "queueMonitor": "Queue Monitor"
   },
   "auth": {
     "login": {
