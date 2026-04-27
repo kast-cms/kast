@@ -32,9 +32,15 @@ body {
   scroll-margin-top: 5rem;
 }
 
-.prose h1 { @apply text-3xl mt-8 mb-4; }
-.prose h2 { @apply text-2xl mt-10 mb-4 border-t border-gray-200 dark:border-gray-800 pt-8; }
-.prose h3 { @apply text-lg mt-6 mb-3; }
+.prose h1 {
+  @apply text-3xl mt-8 mb-4;
+}
+.prose h2 {
+  @apply text-2xl mt-10 mb-4 border-t border-gray-200 dark:border-gray-800 pt-8;
+}
+.prose h3 {
+  @apply text-lg mt-6 mb-3;
+}
 
 .prose p {
   @apply mb-4;

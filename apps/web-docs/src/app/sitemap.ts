@@ -1,5 +1,5 @@
-import type { MetadataRoute } from 'next';
 import { getDocs } from '@/lib/content';
+import type { MetadataRoute } from 'next';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3003';
 
@@ -8,7 +8,12 @@ export const revalidate = 3600;
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const urls: MetadataRoute.Sitemap = [
     { url: siteUrl, lastModified: new Date(), changeFrequency: 'daily', priority: 1 },
-    { url: `${siteUrl}/changelog`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.7 },
+    {
+      url: `${siteUrl}/changelog`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.7,
+    },
   ];
 
   try {

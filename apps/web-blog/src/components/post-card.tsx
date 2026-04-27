@@ -1,12 +1,12 @@
-import Image from 'next/image';
 import type { PostEntry } from '@/types';
+import Image from 'next/image';
 
 interface PostCardProps {
   post: PostEntry;
   variant?: 'default' | 'featured';
 }
 
-export function PostCard({ post, variant = 'default' }: PostCardProps) {
+export function PostCard({ post, variant = 'default' }: PostCardProps): React.JSX.Element {
   const href = `/blog/${post.data.slug}`;
   const pubDate = post.data.publishedAt
     ? new Date(post.data.publishedAt).toLocaleDateString('en-US', {
@@ -42,7 +42,9 @@ export function PostCard({ post, variant = 'default' }: PostCardProps) {
             {post.data.title}
           </h3>
           {post.data.excerpt && (
-            <p className="mt-3 text-gray-600 dark:text-gray-400 line-clamp-3">{post.data.excerpt}</p>
+            <p className="mt-3 text-gray-600 dark:text-gray-400 line-clamp-3">
+              {post.data.excerpt}
+            </p>
           )}
           <div className="mt-6 flex items-center gap-3 text-sm text-gray-500 dark:text-gray-500">
             {post.data.author && <span>{post.data.author}</span>}
@@ -79,7 +81,9 @@ export function PostCard({ post, variant = 'default' }: PostCardProps) {
           {post.data.title}
         </h3>
         {post.data.excerpt && (
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{post.data.excerpt}</p>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+            {post.data.excerpt}
+          </p>
         )}
         <div className="mt-auto pt-4 flex items-center gap-3 text-xs text-gray-500 dark:text-gray-500">
           {post.data.author && <span>{post.data.author}</span>}

@@ -17,6 +17,8 @@ export default tseslint.config(
       'lint-staged.config.ts',
       'plugins/**',
       'apps/docs/**',
+      'apps/web-blog/**',
+      'apps/web-docs/**',
     ],
   },
 

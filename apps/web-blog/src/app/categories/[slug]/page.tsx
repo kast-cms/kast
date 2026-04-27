@@ -1,7 +1,7 @@
+import { PostCard } from '@/components/post-card';
+import { getCategories, getPostsByCategory } from '@/lib/content';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getCategories, getPostsByCategory } from '@/lib/content';
-import { PostCard } from '@/components/post-card';
 
 export const revalidate = 60;
 
@@ -10,7 +10,7 @@ interface CategoryPageProps {
   searchParams: Promise<{ cursor?: string }>;
 }
 
-export async function generateStaticParams() {
+export async function generateStaticParams(): Promise<Array<{ slug: string }>> {
   const categories = await getCategories();
   return categories.map((cat) => ({ slug: cat.data.slug }));
 }
@@ -26,7 +26,10 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
   };
 }
 
-export default async function CategoryPage({ params, searchParams }: CategoryPageProps) {
+export default async function CategoryPage({
+  params,
+  searchParams,
+}: CategoryPageProps): Promise<React.JSX.Element> {
   const { slug } = await params;
   const { cursor } = await searchParams;
 
@@ -34,7 +37,10 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   const category = categories.find((c) => c.data.slug === slug);
   if (!category) notFound();
 
-  const { data: posts, nextCursor } = await getPostsByCategory(slug, cursor !== undefined ? { cursor } : {});
+  const { data: posts, nextCursor } = await getPostsByCategory(
+    slug,
+    cursor !== undefined ? { cursor } : {},
+  );
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">

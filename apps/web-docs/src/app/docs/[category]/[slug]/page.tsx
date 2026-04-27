@@ -1,10 +1,10 @@
-import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
-import { buildSidebar, getDocBySlug, extractToc, injectHeadingIds, getDocs } from '@/lib/content';
-import { kast } from '@/lib/kast';
 import { DocsSidebar } from '@/components/docs-sidebar';
 import { DocsToc } from '@/components/docs-toc';
 import { RichText } from '@/components/rich-text';
+import { buildSidebar, extractToc, getDocBySlug, getDocs, injectHeadingIds } from '@/lib/content';
+import { kast } from '@/lib/kast';
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 
 export const revalidate = 60;
 
@@ -12,7 +12,7 @@ interface DocPageProps {
   params: Promise<{ category: string; slug: string }>;
 }
 
-export async function generateStaticParams() {
+export async function generateStaticParams(): Promise<Array<{ category: string; slug: string }>> {
   const docs = await getDocs();
   return docs.map((d) => ({
     category: d.data.categorySlug,
@@ -49,13 +49,10 @@ export async function generateMetadata({ params }: DocPageProps): Promise<Metada
   };
 }
 
-export default async function DocPage({ params }: DocPageProps) {
+export default async function DocPage({ params }: DocPageProps): Promise<React.JSX.Element> {
   const { category, slug } = await params;
 
-  const [doc, sidebar] = await Promise.all([
-    getDocBySlug(category, slug),
-    buildSidebar(),
-  ]);
+  const [doc, sidebar] = await Promise.all([getDocBySlug(category, slug), buildSidebar()]);
 
   if (!doc) notFound();
 
@@ -65,11 +62,7 @@ export default async function DocPage({ params }: DocPageProps) {
   return (
     <div className="flex min-h-screen">
       {/* Sidebar */}
-      <DocsSidebar
-        sidebar={sidebar}
-        activeCategorySlug={category}
-        activeSlug={slug}
-      />
+      <DocsSidebar sidebar={sidebar} activeCategorySlug={category} activeSlug={slug} />
 
       {/* Main content */}
       <main className="flex-1 min-w-0 px-8 py-10 max-w-3xl">
@@ -83,9 +76,7 @@ export default async function DocPage({ params }: DocPageProps) {
           <span className="text-gray-900 dark:text-white">{doc.data.title}</span>
         </nav>
 
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          {doc.data.title}
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{doc.data.title}</h1>
         {doc.data.excerpt && (
           <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">{doc.data.excerpt}</p>
         )}

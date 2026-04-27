@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
 import { getPosts } from '@/lib/content';
+import { NextResponse } from 'next/server';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3002';
 const siteName = process.env.NEXT_PUBLIC_SITE_NAME ?? 'My Blog';
@@ -7,7 +7,7 @@ const siteDescription = process.env.NEXT_PUBLIC_SITE_DESCRIPTION ?? 'A blog powe
 
 export const revalidate = 3600;
 
-export async function GET() {
+export async function GET(): Promise<Response> {
   const { data: posts } = await getPosts({ limit: '20' });
 
   const items = posts
@@ -16,8 +16,14 @@ export async function GET() {
         ? new Date(post.data.publishedAt).toUTCString()
         : new Date(post.createdAt).toUTCString();
 
-      const title = post.data.title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      const description = (post.data.excerpt ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const title = post.data.title
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+      const description = (post.data.excerpt ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
       const link = `${siteUrl}/blog/${post.data.slug}`;
 
       return `

@@ -4,7 +4,7 @@ interface CategoryPillProps {
   active?: boolean;
 }
 
-export function CategoryPill({ name, slug, active }: CategoryPillProps) {
+export function CategoryPill({ name, slug, active }: CategoryPillProps): React.JSX.Element {
   const href = slug ? `/categories/${slug}` : '/blog';
   return (
     <a

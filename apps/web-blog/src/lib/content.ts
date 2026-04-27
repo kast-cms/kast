@@ -1,5 +1,5 @@
 import { kast } from '@/lib/kast';
-import type { PostEntry, PostDetailEntry, CategoryEntry } from '@/types';
+import type { CategoryEntry, PostDetailEntry, PostEntry } from '@/types';
 import type { EntryListParams } from '@kast/sdk';
 
 export const BLOG_TYPE = 'blog-post';
@@ -13,7 +13,10 @@ export async function getPosts(
     limit: '10',
     ...params,
   });
-  return { data: res.data as PostEntry[], ...(res.meta.cursor != null ? { nextCursor: res.meta.cursor } : {}) };
+  return {
+    data: res.data as PostEntry[],
+    ...(res.meta.cursor != null ? { nextCursor: res.meta.cursor } : {}),
+  };
 }
 
 export async function getPostBySlug(slug: string): Promise<PostDetailEntry | null> {

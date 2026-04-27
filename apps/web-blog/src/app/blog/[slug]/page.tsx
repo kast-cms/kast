@@ -1,10 +1,9 @@
-import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
-import Image from 'next/image';
-import { kast } from '@/lib/kast';
-import { getPostBySlug, estimateReadTime } from '@/lib/content';
 import { RichText } from '@/components/rich-text';
-import { getPosts } from '@/lib/content';
+import { estimateReadTime, getPostBySlug, getPosts } from '@/lib/content';
+import { kast } from '@/lib/kast';
+import type { Metadata } from 'next';
+import Image from 'next/image';
+import { notFound } from 'next/navigation';
 
 interface PostPageProps {
   params: Promise<{ slug: string }>;
@@ -12,7 +11,7 @@ interface PostPageProps {
 
 export const revalidate = 60;
 
-export async function generateStaticParams() {
+export async function generateStaticParams(): Promise<Array<{ slug: string }>> {
   const { data: posts } = await getPosts({ limit: '100' });
   return posts.map((p) => ({ slug: p.data.slug }));
 }
@@ -64,7 +63,7 @@ export async function generateMetadata({ params }: PostPageProps): Promise<Metad
   };
 }
 
-export default async function PostPage({ params }: PostPageProps) {
+export default async function PostPage({ params }: PostPageProps): Promise<React.JSX.Element> {
   const { slug } = await params;
   const post = await getPostBySlug(slug);
 
@@ -89,9 +88,7 @@ export default async function PostPage({ params }: PostPageProps) {
             image: post.data.coverImage,
             datePublished: post.data.publishedAt ?? post.createdAt,
             dateModified: post.updatedAt,
-            author: post.data.author
-              ? { '@type': 'Person', name: post.data.author }
-              : undefined,
+            author: post.data.author ? { '@type': 'Person', name: post.data.author } : undefined,
             url: `${siteUrl}/blog/${slug}`,
           }),
         }}

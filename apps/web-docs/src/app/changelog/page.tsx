@@ -1,6 +1,6 @@
-import type { Metadata } from 'next';
-import { getChangelog } from '@/lib/content';
 import { ChangelogEntry } from '@/components/changelog-entry';
+import { getChangelog } from '@/lib/content';
+import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Changelog',
@@ -13,7 +13,9 @@ interface ChangelogPageProps {
   searchParams: Promise<{ cursor?: string }>;
 }
 
-export default async function ChangelogPage({ searchParams }: ChangelogPageProps) {
+export default async function ChangelogPage({
+  searchParams,
+}: ChangelogPageProps): Promise<React.JSX.Element> {
   const { cursor } = await searchParams;
   const { data: entries, nextCursor } = await getChangelog(cursor !== undefined ? { cursor } : {});
 
@@ -48,7 +50,10 @@ export default async function ChangelogPage({ searchParams }: ChangelogPageProps
             <span />
           )}
           {nextCursor && (
-            <a href={`/changelog?cursor=${nextCursor}`} className="text-sm text-blue-600 hover:underline">
+            <a
+              href={`/changelog?cursor=${nextCursor}`}
+              className="text-sm text-blue-600 hover:underline"
+            >
               Older releases →
             </a>
           )}

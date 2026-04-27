@@ -11,7 +11,7 @@ interface ChangelogEntryProps {
   entry: ChangelogEntryType;
 }
 
-export function ChangelogEntry({ entry }: ChangelogEntryProps) {
+export function ChangelogEntry({ entry }: ChangelogEntryProps): React.JSX.Element {
   const typeColor = entry.data.type ? TYPE_COLORS[entry.data.type] : TYPE_COLORS.patch;
   const releaseDate = new Date(entry.data.releasedAt).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -27,18 +27,13 @@ export function ChangelogEntry({ entry }: ChangelogEntryProps) {
       </div>
 
       <div className="flex flex-wrap items-center gap-3 mb-3">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-          v{entry.data.version}
-        </h2>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white">v{entry.data.version}</h2>
         {entry.data.type && (
           <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${typeColor}`}>
             {entry.data.type}
           </span>
         )}
-        <time
-          className="text-sm text-gray-500 dark:text-gray-400"
-          dateTime={entry.data.releasedAt}
-        >
+        <time className="text-sm text-gray-500 dark:text-gray-400" dateTime={entry.data.releasedAt}>
           {releaseDate}
         </time>
       </div>

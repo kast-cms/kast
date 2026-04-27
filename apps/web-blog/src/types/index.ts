@@ -1,4 +1,4 @@
-import type { ContentEntrySummary, ContentEntryDetail } from '@kast/sdk';
+import type { ContentEntryDetail, ContentEntrySummary } from '@kast/sdk';
 
 /** Shape of a blog post's `data` field */
 export interface PostData {

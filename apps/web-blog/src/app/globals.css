@@ -30,9 +30,15 @@ body {
   @apply font-bold text-gray-900 dark:text-white mt-8 mb-4;
 }
 
-.prose h1 { @apply text-3xl; }
-.prose h2 { @apply text-2xl; }
-.prose h3 { @apply text-xl; }
+.prose h1 {
+  @apply text-3xl;
+}
+.prose h2 {
+  @apply text-2xl;
+}
+.prose h3 {
+  @apply text-xl;
+}
 
 .prose p {
   @apply mb-4;

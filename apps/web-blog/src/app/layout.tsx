@@ -1,7 +1,7 @@
+import { SiteFooter } from '@/components/site-footer';
+import { SiteNav } from '@/components/site-nav';
 import type { Metadata } from 'next';
 import './globals.css';
-import { SiteNav } from '@/components/site-nav';
-import { SiteFooter } from '@/components/site-footer';
 
 const siteName = process.env.NEXT_PUBLIC_SITE_NAME ?? 'My Blog';
 const siteDescription = process.env.NEXT_PUBLIC_SITE_DESCRIPTION ?? 'A blog powered by Kast CMS';
@@ -30,11 +30,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }): React.JSX.Element {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen flex flex-col bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 antialiased">

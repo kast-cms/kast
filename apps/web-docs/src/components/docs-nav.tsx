@@ -1,6 +1,6 @@
 const siteName = process.env.NEXT_PUBLIC_SITE_NAME ?? 'My Docs';
 
-export function DocsNav() {
+export function DocsNav(): React.JSX.Element {
   return (
     <header className="sticky top-0 z-40 h-14 border-b border-gray-200 dark:border-gray-800 bg-white/90 dark:bg-gray-950/90 backdrop-blur">
       <div className="h-full flex items-center px-6 gap-6">

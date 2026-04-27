@@ -1,8 +1,8 @@
 import { kast } from '@/lib/kast';
 import type {
-  DocEntry,
-  DocDetailEntry,
   ChangelogEntry,
+  DocDetailEntry,
+  DocEntry,
   SidebarCategory,
   TocHeading,
 } from '@/types';
@@ -25,9 +25,7 @@ export async function getDocBySlug(
   slug: string,
 ): Promise<DocDetailEntry | null> {
   const docs = await getDocs();
-  const match = docs.find(
-    (d) => d.data.categorySlug === categorySlug && d.data.slug === slug,
-  );
+  const match = docs.find((d) => d.data.categorySlug === categorySlug && d.data.slug === slug);
   if (!match) return null;
   const detail = await kast.content.get(DOC_TYPE, match.id);
   return detail.data as DocDetailEntry;
@@ -71,7 +69,10 @@ export async function getChangelog(params: EntryListParams = {}): Promise<{
     limit: '20',
     ...params,
   });
-  return { data: res.data as ChangelogEntry[], ...(res.meta.cursor != null ? { nextCursor: res.meta.cursor } : {}) };
+  return {
+    data: res.data as ChangelogEntry[],
+    ...(res.meta.cursor != null ? { nextCursor: res.meta.cursor } : {}),
+  };
 }
 
 /**

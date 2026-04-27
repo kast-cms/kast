@@ -1,7 +1,7 @@
-import type { Metadata } from 'next';
-import { getPosts, getCategories } from '@/lib/content';
-import { PostCard } from '@/components/post-card';
 import { CategoryPill } from '@/components/category-pill';
+import { PostCard } from '@/components/post-card';
+import { getCategories, getPosts } from '@/lib/content';
+import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Blog',
@@ -14,7 +14,9 @@ interface BlogPageProps {
   searchParams: Promise<{ cursor?: string; category?: string }>;
 }
 
-export default async function BlogPage({ searchParams }: BlogPageProps) {
+export default async function BlogPage({
+  searchParams,
+}: BlogPageProps): Promise<React.JSX.Element> {
   const { cursor, category } = await searchParams;
 
   const [{ data: posts, nextCursor }, categories] = await Promise.all([
@@ -22,16 +24,12 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
     getCategories(),
   ]);
 
-  const filtered = category
-    ? posts.filter((p) => p.data.category === category)
-    : posts;
+  const filtered = category ? posts.filter((p) => p.data.category === category) : posts;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
       <h1 className="text-4xl font-bold mb-4">Blog</h1>
-      <p className="text-gray-600 dark:text-gray-400 mb-10">
-        Thoughts, stories, and ideas.
-      </p>
+      <p className="text-gray-600 dark:text-gray-400 mb-10">Thoughts, stories, and ideas.</p>
 
       {/* Category filter */}
       {categories.length > 0 && (

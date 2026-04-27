@@ -1,6 +1,6 @@
-import type { MetadataRoute } from 'next';
-import { kast } from '@/lib/kast';
 import { getPosts } from '@/lib/content';
+import { kast } from '@/lib/kast';
+import type { MetadataRoute } from 'next';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3002';
 
@@ -26,7 +26,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     let cursor: string | undefined;
     do {
-      const { data: posts, nextCursor } = await getPosts({ ...(cursor !== undefined ? { cursor } : {}), limit: '100' });
+      const { data: posts, nextCursor } = await getPosts({
+        ...(cursor !== undefined ? { cursor } : {}),
+        limit: '100',
+      });
       for (const post of posts) {
         urls.push({
           url: `${siteUrl}/blog/${post.data.slug}`,

@@ -5,8 +5,7 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'Kast CMS',
-      description:
-        'Open-source, AI-native headless CMS. Cast your content everywhere.',
+      description: 'Open-source, AI-native headless CMS. Cast your content everywhere.',
       logo: {
         light: './src/assets/logo-light.svg',
         dark: './src/assets/logo-dark.svg',

@@ -6,12 +6,12 @@
  *   pnpm --filter create-kast-app build && node --test test/cli.e2e.mjs
  */
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
-import { readFile, stat, mkdtemp, rm } from 'node:fs/promises';
-import { join, dirname } from 'node:path';
-import { tmpdir } from 'node:os';
-import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
+import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
+import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);

@@ -1,7 +1,7 @@
-import type { Metadata } from 'next';
-import { getPosts, getCategories } from '@/lib/content';
-import { PostCard } from '@/components/post-card';
 import { CategoryPill } from '@/components/category-pill';
+import { PostCard } from '@/components/post-card';
+import { getCategories, getPosts } from '@/lib/content';
+import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Home',
@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export const revalidate = 60;
 
-export default async function HomePage() {
+export default async function HomePage(): Promise<React.JSX.Element> {
   const [{ data: posts }, categories] = await Promise.all([
     getPosts({ limit: '6' }),
     getCategories(),

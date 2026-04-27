@@ -1,9 +1,10 @@
+import { DocsNav } from '@/components/docs-nav';
 import type { Metadata } from 'next';
 import './globals.css';
-import { DocsNav } from '@/components/docs-nav';
 
 const siteName = process.env.NEXT_PUBLIC_SITE_NAME ?? 'My Docs';
-const siteDescription = process.env.NEXT_PUBLIC_SITE_DESCRIPTION ?? 'Documentation powered by Kast CMS';
+const siteDescription =
+  process.env.NEXT_PUBLIC_SITE_DESCRIPTION ?? 'Documentation powered by Kast CMS';
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3003';
 
 export const metadata: Metadata = {
@@ -20,11 +21,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }): React.JSX.Element {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 antialiased">
