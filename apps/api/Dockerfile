@@ -20,7 +20,7 @@ ENV NODE_ENV=production
 RUN corepack enable && corepack prepare pnpm@9 --activate
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/api/package.json ./apps/api/
-RUN pnpm install --frozen-lockfile --filter @kast/api... --prod
+RUN pnpm install --frozen-lockfile --ignore-scripts --filter @kast/api... --prod
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
