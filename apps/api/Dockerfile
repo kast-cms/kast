@@ -18,12 +18,14 @@ RUN pnpm --filter @kast/plugin-sdk run build && \
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+ENV HUSKY=0
 RUN corepack enable && corepack prepare pnpm@9 --activate
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/api/package.json ./apps/api/
-RUN pnpm install --frozen-lockfile --ignore-scripts --filter @kast/api... --prod
+COPY packages/ ./packages/
+COPY apps/api/prisma ./apps/api/prisma
+RUN pnpm install --frozen-lockfile --filter @kast/api... --prod && \
+    pnpm --filter @kast/api run prisma:generate
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
-COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 EXPOSE 3000
 CMD ["node", "apps/api/dist/main.js"]
