@@ -10,7 +10,8 @@ RUN pnpm install --frozen-lockfile --filter @kast/admin...
 # ── Stage 2: build ─────────────────────────────────────────────────────────────
 FROM deps AS builder
 COPY . .
-RUN pnpm --filter @kast/admin run build
+RUN pnpm --filter @kast-cms/sdk run build && \
+    pnpm --filter @kast/admin run build
 
 # ── Stage 3: production image ──────────────────────────────────────────────────
 FROM node:20-alpine AS runner

@@ -84,8 +84,9 @@ jobs:
       matrix:
         include:
           - app: api
-            context: apps/api
+            context: .
             image: kasthq/api
+            dockerfile: apps/api/Dockerfile
           - app: admin
             context: .
             image: kasthq/admin
