@@ -28,4 +28,5 @@
 - [ ] Lint passes (`pnpm lint`)
 - [ ] Typecheck passes (`pnpm typecheck`)
 - [ ] PR title follows commit convention (`feat(scope): description`)
+- [ ] SDK types updated (if new API endpoints added)
 - [ ] Documentation updated (if API or behavior changed)
