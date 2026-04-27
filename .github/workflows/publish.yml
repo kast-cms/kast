@@ -85,11 +85,11 @@ jobs:
         include:
           - app: api
             context: .
-            image: kasthq/api
+            image: odaybakkour/kast-api
             dockerfile: apps/api/Dockerfile
           - app: admin
             context: .
-            image: kasthq/admin
+            image: odaybakkour/kast-admin
             dockerfile: apps/admin/Dockerfile
 
     steps:
