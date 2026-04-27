@@ -8,6 +8,7 @@ import { PluginsResource } from './plugins-resource.js';
 import { RolesResource } from './roles-resource.js';
 import { SeoResource } from './seo-resource.js';
 import { TokensResource } from './tokens-resource.js';
+import { TrashResource } from './trash-resource.js';
 import type {
   ApiListResponse,
   ApiResponse,
@@ -156,6 +157,10 @@ export class KastClient {
 
   get locales(): LocalesResource {
     return new LocalesResource(this);
+  }
+
+  get trash(): TrashResource {
+    return new TrashResource(this);
   }
 }
 

@@ -756,5 +756,27 @@
         "custom": "Custom"
       }
     }
+  },
+  "trash": {
+    "title": "Trash",
+    "subtitle": "Recover or permanently delete soft-deleted items. Items are auto-deleted after 30 days.",
+    "loading": "Loading…",
+    "empty": "No items in trash.",
+    "restore": "Restore",
+    "delete": "Delete Forever",
+    "deleteConfirm": "Permanently delete this item? This cannot be undone.",
+    "days": "{count, plural, one {# day} other {# days}}",
+    "tabs": {
+      "content": "Content",
+      "media": "Media",
+      "user": "Users",
+      "form": "Forms"
+    },
+    "columns": {
+      "name": "Name",
+      "trashedAt": "Trashed At",
+      "daysUntilDeletion": "Expires In",
+      "actions": "Actions"
+    }
   }
 }

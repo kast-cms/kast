@@ -27,6 +27,7 @@ export class ContentRepository {
     const limit = query.limit ?? 20;
     const where: Prisma.ContentEntryWhereInput = {
       contentTypeId,
+      trashedAt: null,
       ...(query.status ? { status: query.status } : {}),
     };
 

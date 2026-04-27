@@ -1,20 +1,20 @@
+import { TrashTabs } from '@/components/trash/trash-tabs';
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import type { JSX } from 'react';
 
 export const metadata: Metadata = { title: 'Trash' };
 
-export default function TrashPage(): JSX.Element {
+export default async function TrashPage(): Promise<JSX.Element> {
+  const t = await getTranslations('trash');
+
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Trash</h2>
-        <p className="text-[--color-muted-foreground]">
-          Recover or permanently delete soft-deleted content. Coming soon.
-        </p>
+        <h2 className="text-2xl font-bold tracking-tight">{t('title')}</h2>
+        <p className="text-[--color-muted-foreground]">{t('subtitle')}</p>
       </div>
-      <div className="rounded-lg border border-dashed border-[--color-border] p-12 text-center">
-        <p className="text-sm text-[--color-muted-foreground]">Trash is empty.</p>
-      </div>
+      <TrashTabs />
     </div>
   );
 }
