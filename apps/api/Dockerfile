@@ -10,7 +10,8 @@ RUN pnpm install --frozen-lockfile --filter @kast/api...
 # ── Stage 2: generate prisma + build ──────────────────────────────────────────
 FROM deps AS builder
 COPY . .
-RUN pnpm --filter @kast/api run prisma:generate && \
+RUN pnpm --filter @kast/plugin-sdk run build && \
+    pnpm --filter @kast/api run prisma:generate && \
     pnpm --filter @kast/api run build
 
 # ── Stage 3: production image ──────────────────────────────────────────────────
