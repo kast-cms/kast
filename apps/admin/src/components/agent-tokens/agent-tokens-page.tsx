@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { AgentTokenSummary } from '@kast/sdk';
+import type { AgentTokenSummary } from '@kast-cms/sdk';
 import { Plus, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';

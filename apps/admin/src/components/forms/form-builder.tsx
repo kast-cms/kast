@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
-import type { FormDetail, FormFieldInput } from '@kast/sdk';
+import type { FormDetail, FormFieldInput } from '@kast-cms/sdk';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useCallback, useState, type JSX } from 'react';
@@ -41,6 +41,96 @@ function getFormInit(initial: FormDetail | undefined): FormInit {
     notifyEmail: initial.notifyEmail ?? '',
     isActive: initial.isActive,
   };
+}
+
+interface FormMetaSectionProps {
+  name: string;
+  slug: string;
+  description: string;
+  notifyEmail: string;
+  isActive: boolean;
+  t: ReturnType<typeof useTranslations<'forms.builder'>>;
+  setName: (v: string) => void;
+  setSlug: (v: string) => void;
+  setDescription: (v: string) => void;
+  setNotifyEmail: (v: string) => void;
+  setIsActive: (v: boolean) => void;
+}
+
+function FormMetaSection({
+  name,
+  slug,
+  description,
+  notifyEmail,
+  isActive,
+  t,
+  setName,
+  setSlug,
+  setDescription,
+  setNotifyEmail,
+  setIsActive,
+}: FormMetaSectionProps): JSX.Element {
+  return (
+    <div className="grid gap-4 rounded-lg border p-6 md:grid-cols-2">
+      <div className="space-y-2">
+        <Label htmlFor="form-name">{t('fields.name')}</Label>
+        <Input
+          id="form-name"
+          value={name}
+          onChange={(e) => {
+            setName(e.target.value);
+          }}
+          placeholder={t('fields.namePlaceholder')}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="form-slug">{t('fields.slug')}</Label>
+        <Input
+          id="form-slug"
+          value={slug}
+          onChange={(e) => {
+            setSlug(e.target.value);
+          }}
+          placeholder={t('fields.slugPlaceholder')}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="form-desc">{t('fields.description')}</Label>
+        <Input
+          id="form-desc"
+          value={description}
+          onChange={(e) => {
+            setDescription(e.target.value);
+          }}
+          placeholder={t('fields.descriptionPlaceholder')}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="form-email">{t('fields.notifyEmail')}</Label>
+        <Input
+          id="form-email"
+          type="email"
+          value={notifyEmail}
+          onChange={(e) => {
+            setNotifyEmail(e.target.value);
+          }}
+          placeholder={t('fields.notifyEmailPlaceholder')}
+        />
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          id="form-active"
+          type="checkbox"
+          checked={isActive}
+          onChange={(e) => {
+            setIsActive(e.target.checked);
+          }}
+          className="h-4 w-4"
+        />
+        <Label htmlFor="form-active">{t('fields.isActive')}</Label>
+      </div>
+    </div>
+  );
 }
 
 interface FormBuilderProps {
@@ -138,65 +228,19 @@ export function FormBuilder({ initial }: FormBuilderProps): JSX.Element {
           {error}
         </p>
       )}
-      <div className="grid gap-4 rounded-lg border p-6 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="form-name">{t('fields.name')}</Label>
-          <Input
-            id="form-name"
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value);
-            }}
-            placeholder={t('fields.namePlaceholder')}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="form-slug">{t('fields.slug')}</Label>
-          <Input
-            id="form-slug"
-            value={slug}
-            onChange={(e) => {
-              setSlug(e.target.value);
-            }}
-            placeholder={t('fields.slugPlaceholder')}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="form-desc">{t('fields.description')}</Label>
-          <Input
-            id="form-desc"
-            value={description}
-            onChange={(e) => {
-              setDescription(e.target.value);
-            }}
-            placeholder={t('fields.descriptionPlaceholder')}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="form-email">{t('fields.notifyEmail')}</Label>
-          <Input
-            id="form-email"
-            type="email"
-            value={notifyEmail}
-            onChange={(e) => {
-              setNotifyEmail(e.target.value);
-            }}
-            placeholder={t('fields.notifyEmailPlaceholder')}
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <input
-            id="form-active"
-            type="checkbox"
-            checked={isActive}
-            onChange={(e) => {
-              setIsActive(e.target.checked);
-            }}
-            className="h-4 w-4"
-          />
-          <Label htmlFor="form-active">{t('fields.isActive')}</Label>
-        </div>
-      </div>
+      <FormMetaSection
+        name={name}
+        slug={slug}
+        description={description}
+        notifyEmail={notifyEmail}
+        isActive={isActive}
+        t={t}
+        setName={setName}
+        setSlug={setSlug}
+        setDescription={setDescription}
+        setNotifyEmail={setNotifyEmail}
+        setIsActive={setIsActive}
+      />
       <FormFieldsSection
         fields={fields}
         onAdd={addField}

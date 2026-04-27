@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/table';
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
-import type { MenuSummary } from '@kast/sdk';
+import type { MenuSummary } from '@kast-cms/sdk';
 import { ListTree, Plus, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';

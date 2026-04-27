@@ -11,7 +11,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import type { CreateRoleBody } from '@kast/sdk';
+import type { CreateRoleBody } from '@kast-cms/sdk';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 

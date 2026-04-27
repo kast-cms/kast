@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { TrashedItem, TrashModel } from '@kast/sdk';
+import type { TrashedItem, TrashModel } from '@kast-cms/sdk';
 import { RotateCcw, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';

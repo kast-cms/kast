@@ -62,15 +62,15 @@ jobs:
         run: pnpm --filter @kast/api exec prisma generate
 
       - name: Build packages
-        run: pnpm --filter create-kast-app --filter @kast/sdk build
+        run: pnpm --filter create-kast-app --filter @kast-cms/sdk build
 
       - name: Publish create-kast-app
         run: pnpm --filter create-kast-app publish --no-git-checks --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish @kast/sdk
-        run: pnpm --filter @kast/sdk publish --no-git-checks --access public
+      - name: Publish @kast-cms/sdk
+        run: pnpm --filter @kast-cms/sdk publish --no-git-checks --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -100,8 +100,8 @@ jobs:
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
       - name: Extract version tag
         id: tag

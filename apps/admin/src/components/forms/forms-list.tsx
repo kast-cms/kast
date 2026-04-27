@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/table';
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
-import type { FormSummary } from '@kast/sdk';
+import type { FormSummary } from '@kast-cms/sdk';
 import { FileText, Plus, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';

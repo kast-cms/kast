@@ -254,7 +254,7 @@ All packages in the monorepo are released together at the same version (lock-ste
    ```
 6. **The `publish.yml` workflow fires automatically** and:
    - Runs the CLI e2e smoke test
-   - Publishes `create-kast-app` and `@kast/sdk` to NPM
+   - Publishes `create-kast-app` and `@kast-cms/sdk` to NPM
    - Builds and pushes `kasthq/api` and `kasthq/admin` Docker images (`:latest` and `:<version>`)
    - Creates a GitHub Release with auto-generated release notes
 

@@ -1,4 +1,4 @@
-import { KastClient } from '@kast/sdk';
+import { KastClient } from '@kast-cms/sdk';
 
 if (!process.env.KAST_API_URL) {
   throw new Error('KAST_API_URL environment variable is required');

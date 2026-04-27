@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import type { ContentFieldType } from '@kast/sdk';
+import type { ContentFieldType } from '@kast-cms/sdk';
 import { useCallback, type ChangeEvent, type JSX } from 'react';
 
 interface FieldConfigProps {

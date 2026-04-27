@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
-import type { AddFieldBody, ContentField, ContentFieldType, UpdateFieldBody } from '@kast/sdk';
+import type { AddFieldBody, ContentField, ContentFieldType, UpdateFieldBody } from '@kast-cms/sdk';
 import { type ChangeEvent, type JSX } from 'react';
 import { FieldTypeConfig } from './field-type-config';
 import { useFieldDrawer } from './use-field-drawer';

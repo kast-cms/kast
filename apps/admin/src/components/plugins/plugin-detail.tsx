@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
-import type { PluginRecord } from '@kast/sdk';
+import type { PluginRecord } from '@kast-cms/sdk';
 import {
   AlertTriangle,
   CheckCircle,

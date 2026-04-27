@@ -8,7 +8,7 @@ import type {
   WebhookCreated,
   WebhookDeliverySummary,
   WebhookSummary,
-} from '@kast/sdk';
+} from '@kast-cms/sdk';
 import { useCallback, useEffect, useState } from 'react';
 
 export interface UseWebhooksReturn {

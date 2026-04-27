@@ -2,7 +2,7 @@
 
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
-import type { MenuDetail } from '@kast/sdk';
+import type { MenuDetail } from '@kast-cms/sdk';
 import { useEffect, useState, type JSX } from 'react';
 import { MenuBuilder } from './menu-builder';
 

@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { CreateRedirectBody, RedirectType } from '@kast/sdk';
+import type { CreateRedirectBody, RedirectType } from '@kast-cms/sdk';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 

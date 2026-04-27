@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { RoleSummary } from '@kast/sdk';
+import type { RoleSummary } from '@kast-cms/sdk';
 import { Plus, Shield, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';

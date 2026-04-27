@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
-import type { ContentTypeDetail } from '@kast/sdk';
+import type { ContentTypeDetail } from '@kast-cms/sdk';
 import { Trash2 } from 'lucide-react';
 import { useCallback, useState, type ChangeEvent, type FormEvent, type JSX } from 'react';
 

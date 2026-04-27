@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import type { ApiTokenCreated } from '@kast/sdk';
+import type { ApiTokenCreated } from '@kast-cms/sdk';
 import { Copy } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';

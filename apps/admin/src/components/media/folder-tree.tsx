@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import type { MediaFolder } from '@kast/sdk';
+import type { MediaFolder } from '@kast-cms/sdk';
 import { ChevronDown, ChevronRight, Folder, FolderOpen, Plus } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';

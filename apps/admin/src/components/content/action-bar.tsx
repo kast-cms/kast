@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import type { EntryStatus } from '@kast/sdk';
+import type { EntryStatus } from '@kast-cms/sdk';
 import { History } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';

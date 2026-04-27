@@ -2,7 +2,12 @@
 
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
-import type { MediaFileDetail, MediaFileSummary, MediaFolder, MediaListParams } from '@kast/sdk';
+import type {
+  MediaFileDetail,
+  MediaFileSummary,
+  MediaFolder,
+  MediaListParams,
+} from '@kast-cms/sdk';
 import { useCallback, useEffect, useState } from 'react';
 
 export interface UseMediaLibraryReturn {

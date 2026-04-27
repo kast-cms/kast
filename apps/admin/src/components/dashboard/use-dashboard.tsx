@@ -2,7 +2,7 @@
 
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
-import type { DashboardActivityEntry, DashboardQueueHealth, DashboardStats } from '@kast/sdk';
+import type { DashboardActivityEntry, DashboardQueueHealth, DashboardStats } from '@kast-cms/sdk';
 import { useEffect, useRef, useState } from 'react';
 
 export interface UseDashboardReturn {

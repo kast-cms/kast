@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { AuditLogEntry, AuditLogMeta } from '@kast/sdk';
+import type { AuditLogEntry, AuditLogMeta } from '@kast-cms/sdk';
 import { Search, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { type ChangeEvent, type JSX } from 'react';

@@ -1,7 +1,7 @@
 'use client';
 
 import { useSession } from '@/lib/session';
-import type { DashboardActivityEntry, DashboardQueueHealth, DashboardStats } from '@kast/sdk';
+import type { DashboardActivityEntry, DashboardQueueHealth, DashboardStats } from '@kast-cms/sdk';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 import { ActivityFeed } from './activity-feed';

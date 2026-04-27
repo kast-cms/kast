@@ -1,6 +1,6 @@
 'use client';
 
-import type { DashboardActivityEntry } from '@kast/sdk';
+import type { DashboardActivityEntry } from '@kast-cms/sdk';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 

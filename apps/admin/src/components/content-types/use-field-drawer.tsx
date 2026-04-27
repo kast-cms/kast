@@ -1,4 +1,4 @@
-import type { AddFieldBody, ContentField, ContentFieldType, UpdateFieldBody } from '@kast/sdk';
+import type { AddFieldBody, ContentField, ContentFieldType, UpdateFieldBody } from '@kast-cms/sdk';
 import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
 
 interface UseFieldDrawerParams {

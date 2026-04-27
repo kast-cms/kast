@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { ContentEntrySummary } from '@kast/sdk';
+import type { ContentEntrySummary } from '@kast-cms/sdk';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import type { JSX } from 'react';

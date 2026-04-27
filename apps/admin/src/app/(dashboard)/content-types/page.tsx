@@ -9,7 +9,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { createServerApiClient } from '@/lib/api';
-import type { ContentTypeSummary } from '@kast/sdk';
+import type { ContentTypeSummary } from '@kast-cms/sdk';
 import { Database, Plus } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';

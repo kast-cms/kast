@@ -2,7 +2,7 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import type { DashboardQueueHealth } from '@kast/sdk';
+import type { DashboardQueueHealth } from '@kast-cms/sdk';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import type { JSX } from 'react';

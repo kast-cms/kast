@@ -2,7 +2,7 @@
 
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
-import type { AssignPermissionsBody, CreateRoleBody, RoleDetail, RoleSummary } from '@kast/sdk';
+import type { AssignPermissionsBody, CreateRoleBody, RoleDetail, RoleSummary } from '@kast-cms/sdk';
 import { useCallback, useEffect, useState } from 'react';
 
 export interface UseRolesReturn {

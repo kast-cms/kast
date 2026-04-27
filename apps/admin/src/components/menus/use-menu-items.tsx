@@ -2,7 +2,7 @@
 
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
-import type { CreateMenuItemBody, MenuItemSummary, UpdateMenuItemBody } from '@kast/sdk';
+import type { CreateMenuItemBody, MenuItemSummary, UpdateMenuItemBody } from '@kast-cms/sdk';
 import { useCallback, useState } from 'react';
 
 interface UseMenuItemsResult {

@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import type { AuditLogEntry, AuditLogListParams } from '@kast/sdk';
+import type { AuditLogEntry, AuditLogListParams } from '@kast-cms/sdk';
 import { Download } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';

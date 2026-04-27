@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { CreateRedirectBody } from '@kast/sdk';
+import type { CreateRedirectBody } from '@kast-cms/sdk';
 import { Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
