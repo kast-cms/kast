@@ -1,4 +1,4 @@
-import { Controller, Get, HttpCode, HttpStatus, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -39,5 +39,16 @@ export class PluginController {
   @ApiOperation({ summary: 'Get persisted configuration for a plugin' })
   getConfig(@Param('name') name: string): Promise<{ data: Record<string, unknown> }> {
     return this.service.getConfig(name);
+  }
+
+  @Patch(':name/config')
+  @Roles(SYSTEM_ROLES.SUPER_ADMIN)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Update persisted configuration for a plugin' })
+  updateConfig(
+    @Param('name') name: string,
+    @Body() body: Record<string, unknown>,
+  ): Promise<{ data: Record<string, unknown> }> {
+    return this.service.updateConfig(name, body);
   }
 }

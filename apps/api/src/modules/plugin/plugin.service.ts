@@ -30,4 +30,13 @@ export class PluginService {
     const data = await this.repo.getConfig(name);
     return { data };
   }
+
+  async updateConfig(
+    name: string,
+    config: Record<string, unknown>,
+  ): Promise<{ data: Record<string, unknown> }> {
+    await this.repo.setConfig(name, config);
+    const data = await this.repo.getConfig(name);
+    return { data };
+  }
 }
