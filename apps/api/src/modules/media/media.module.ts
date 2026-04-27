@@ -12,6 +12,7 @@ import { MediaProcessor, STORAGE_ADAPTER } from './media.processor';
 import { MediaRepository } from './media.repository';
 import { MediaService } from './media.service';
 import { LocalStorageAdapter } from './storage/local-storage.adapter';
+import { R2StorageAdapter } from './storage/r2-storage.adapter';
 import { S3StorageAdapter } from './storage/s3-storage.adapter';
 
 @Module({
@@ -25,16 +26,20 @@ import { S3StorageAdapter } from './storage/s3-storage.adapter';
     MediaRepository,
     LocalStorageAdapter,
     S3StorageAdapter,
+    R2StorageAdapter,
     {
       provide: STORAGE_ADAPTER,
-      inject: [ConfigService, LocalStorageAdapter, S3StorageAdapter],
+      inject: [ConfigService, LocalStorageAdapter, S3StorageAdapter, R2StorageAdapter],
       useFactory: (
         config: ConfigService<Env>,
         local: LocalStorageAdapter,
         s3: S3StorageAdapter,
+        r2: R2StorageAdapter,
       ) => {
         const provider = config.get('STORAGE_PROVIDER', { infer: true });
-        return provider === 's3' ? s3 : local;
+        if (provider === 'r2') return r2;
+        if (provider === 's3') return s3;
+        return local;
       },
     },
     {
@@ -42,7 +47,7 @@ import { S3StorageAdapter } from './storage/s3-storage.adapter';
       inject: [MediaRepository, STORAGE_ADAPTER, ConfigService, QueueAdapter, EventEmitter2],
       useFactory: (
         repo: MediaRepository,
-        storage: LocalStorageAdapter | S3StorageAdapter,
+        storage: LocalStorageAdapter | S3StorageAdapter | R2StorageAdapter,
         config: ConfigService<Env>,
         queue: QueueAdapter,
         eventEmitter: EventEmitter2,

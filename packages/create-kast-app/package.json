@@ -1,0 +1,48 @@
+{
+  "name": "create-kast-app",
+  "version": "1.0.0",
+  "description": "Create a new Kast CMS project",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "create-kast-app": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "node --test test/cli.e2e.mjs"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.9.0",
+    "execa": "^9.0.0",
+    "handlebars": "^4.7.8",
+    "picocolors": "^1.1.0"
+  },
+  "devDependencies": {
+    "@types/handlebars": "^4.1.0",
+    "@types/node": "^22.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "kast",
+    "cms",
+    "scaffold",
+    "create-app"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kast-cms/kast.git",
+    "directory": "packages/create-kast-app"
+  },
+  "homepage": "https://docs.kast.dev"
+}

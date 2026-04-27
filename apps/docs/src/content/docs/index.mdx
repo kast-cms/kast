@@ -1,0 +1,52 @@
+---
+title: Kast CMS
+description: Open-source, AI-native headless CMS. Cast your content everywhere.
+template: splash
+hero:
+  tagline: Open-source. AI-native. Developer-first. Easy for everyone.
+  actions:
+    - text: Get Started
+      link: /getting-started/installation/
+      icon: right-arrow
+      variant: primary
+    - text: View on GitHub
+      link: https://github.com/kast-cms/kast
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## Why Kast?
+
+<CardGrid stagger>
+  <Card title="AI-native from day one" icon="puzzle">
+    A built-in MCP server exposes 15 tools so Claude and other AI agents can read, create, and
+    publish content with full audit logging and dry-run safety.
+  </Card>
+  <Card title="SEO built in, not bolted on" icon="star">
+    Every content entry gets an automatic SEO score. Sitemaps, canonical URLs, OG tags, and
+    structured data are first-class citizens — no plugin required.
+  </Card>
+  <Card title="RTL & i18n first-class" icon="translate">
+    Full right-to-left layout support from day one. Manage unlimited locales per entry, with
+    per-field locale fallbacks and an Arabic-tested admin UI.
+  </Card>
+  <Card title="One command to start" icon="rocket">
+    `npx create-kast-app my-site` scaffolds a complete project in under 3 minutes — Postgres, Redis,
+    API, and admin panel all wired up.
+  </Card>
+</CardGrid>
+
+## Quick Start
+
+```bash
+npx create-kast-app my-site
+cd my-site
+cp .env.example .env
+docker-compose up
+```
+
+Admin panel: **http://localhost:3001/admin**  
+REST API: **http://localhost:3001/api/v1**  
+MCP endpoint: **http://localhost:3001/mcp**

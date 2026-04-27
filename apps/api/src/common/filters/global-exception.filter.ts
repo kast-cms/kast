@@ -24,7 +24,10 @@ interface ErrorResponse {
 export class GlobalExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(GlobalExceptionFilter.name);
 
-  constructor(private readonly httpAdapterHost: HttpAdapterHost) {}
+  constructor(
+    private readonly httpAdapterHost: HttpAdapterHost,
+    private readonly onError?: (err: unknown, context: Record<string, string>) => void,
+  ) {}
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const { httpAdapter } = this.httpAdapterHost;
@@ -35,6 +38,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
     if (statusCode >= 500) {
       this.logger.error(exception instanceof Error ? exception.stack : String(exception));
+      this.onError?.(exception, { path: request.url, method: request.method });
     }
 
     const body: ErrorResponse = {

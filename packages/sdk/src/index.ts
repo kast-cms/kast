@@ -1,5 +1,28 @@
 export { AgentTokensResource } from './agent-tokens-resource.js';
+export { AuditResource } from './audit-resource.js';
+export type {
+  AuditLogEntry,
+  AuditLogListParams,
+  AuditLogListResponse,
+  AuditLogMeta,
+} from './audit-types.js';
 export { KastClient } from './client.js';
+export { DashboardResource } from './dashboard-resource.js';
+export type {
+  DashboardActivityEntry,
+  DashboardActivityUser,
+  DashboardContentByStatus,
+  DashboardContentByType,
+  DashboardContentStats,
+  DashboardFormStats,
+  DashboardMediaByMimeGroup,
+  DashboardMediaStats,
+  DashboardQueueHealth,
+  DashboardSeoScoreDistribution,
+  DashboardSeoStats,
+  DashboardStats,
+  DashboardUserStats,
+} from './dashboard-types.js';
 export type {
   CreateFormBody,
   FormDetail,
@@ -38,6 +61,13 @@ export type { PluginRecord } from './plugin-types.js';
 export { PluginsResource } from './plugins-resource.js';
 export { RolesResource } from './roles-resource.js';
 export { SeoResource } from './seo-resource.js';
+export { SettingsResource } from './settings-resource.js';
+export type {
+  GlobalSetting,
+  SettingPatchEntry,
+  TestSmtpBody,
+  UpdateSettingsBody,
+} from './settings-types.js';
 export { TokensResource } from './tokens-resource.js';
 export { TrashResource } from './trash-resource.js';
 export type { TrashListParams, TrashListResponse, TrashModel, TrashedItem } from './trash-types.js';
@@ -109,3 +139,5 @@ export type {
   WebhookDeliverySummary,
   WebhookSummary,
 } from './webhooks-resource.js';
+/** OAuth provider identifier — pass to `client.auth.getOAuthUrl()`. */
+export type OAuthProvider = 'google' | 'github';

@@ -1,0 +1,16 @@
+{
+  "name": "kast-plugin-meilisearch",
+  "version": "0.1.0",
+  "displayName": "Meilisearch",
+  "description": "Sync published content to Meilisearch for full-text search",
+  "permissions": ["content:read"],
+  "hooks": ["content.published", "content.updated", "content.trashed"],
+  "adminPages": [
+    {
+      "label": "Meilisearch",
+      "path": "/plugins/meilisearch",
+      "icon": "Search"
+    }
+  ],
+  "env": ["MEILISEARCH_HOST", "MEILISEARCH_MASTER_KEY", "MEILISEARCH_INDEX_PREFIX"]
+}

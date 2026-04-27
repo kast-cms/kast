@@ -1,0 +1,84 @@
+# Railway deployment configuration for Kast CMS
+# Deploy button: https://railway.app/template/kast
+#
+# This file defines two services (API + Admin) and two managed databases
+# (Postgres + Redis). Railway auto-links DATABASE_URL and REDIS_URL from
+# the provisioned plugins.
+
+[build]
+  builder = "nixpacks"
+
+# ── API Service ───────────────────────────────────────────────────────────────
+[[services]]
+  name      = "kast-api"
+  source    = "apps/api"
+  startCmd  = "node dist/main.js"
+
+  [services.build]
+    buildCommand = "pnpm --filter @kast/api run prisma:generate && pnpm --filter @kast/api run build"
+
+  [services.deploy]
+    healthcheckPath    = "/api/v1/health"
+    healthcheckTimeout = 300
+    restartPolicy      = "on-failure"
+
+  [[services.envVars]]
+    name      = "DATABASE_URL"
+    linkedVar = "DATABASE_URL"
+
+  [[services.envVars]]
+    name      = "REDIS_URL"
+    linkedVar = "REDIS_URL"
+
+  [[services.envVars]]
+    name     = "NODE_ENV"
+    value    = "production"
+
+  [[services.envVars]]
+    name     = "PORT"
+    value    = "3000"
+
+  # Required secrets — set in Railway dashboard after deploy
+  [[services.envVars]]
+    name     = "JWT_SECRET"
+    required = true
+
+  [[services.envVars]]
+    name     = "CORS_ORIGINS"
+    required = true
+
+# ── Admin Service ─────────────────────────────────────────────────────────────
+[[services]]
+  name     = "kast-admin"
+  source   = "apps/admin"
+  startCmd = "node .next/standalone/server.js"
+
+  [services.build]
+    buildCommand = "pnpm --filter @kast/admin build"
+
+  [services.deploy]
+    healthcheckPath    = "/admin"
+    healthcheckTimeout = 120
+    restartPolicy      = "on-failure"
+
+  [[services.envVars]]
+    name     = "NODE_ENV"
+    value    = "production"
+
+  [[services.envVars]]
+    name     = "PORT"
+    value    = "3001"
+
+  # Set to your deployed API service's Railway URL
+  [[services.envVars]]
+    name     = "NEXT_PUBLIC_API_URL"
+    required = true
+
+# ── Managed Databases ─────────────────────────────────────────────────────────
+[[databases]]
+  type = "postgres"
+  name = "postgres"
+
+[[databases]]
+  type = "redis"
+  name = "redis"

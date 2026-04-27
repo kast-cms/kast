@@ -50,4 +50,25 @@ export class AuditService {
     if (!log) throw new NotFoundException(`Audit log ${id} not found`);
     return log;
   }
+
+  async exportCsv(query: AuditQueryDto): Promise<string> {
+    const limit = 5000;
+    const { items } = await this.auditRepository.findAll({ ...query, limit });
+    const header = 'id,userId,agentTokenId,action,resource,resourceId,ipAddress,createdAt';
+    const rows = items.map((row) =>
+      [
+        row.id,
+        row.userId ?? '',
+        row.agentTokenId ?? '',
+        row.action,
+        row.resource,
+        row.resourceId ?? '',
+        row.ipAddress ?? '',
+        row.createdAt.toISOString(),
+      ]
+        .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+        .join(','),
+    );
+    return [header, ...rows].join('\n');
+  }
 }

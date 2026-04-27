@@ -1,8 +1,10 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ContentFieldType } from '@prisma/client';
 import type { Queue } from 'bullmq';
 import type { PaginatedResult } from '../../common/types/auth.types';
+import { sanitizeRichTextFields } from '../../common/utils/sanitize-rich-text.util';
 import { ContentTypesService } from '../content-types/content-types.service';
 import type { PublishJobData } from '../publish/publish.processor';
 import { QUEUE_NAMES } from '../queue/queue.constants';
@@ -54,7 +56,18 @@ export class ContentService {
     const locale = dto.locale;
     const slug = (dto.data['slug'] as string | undefined) ?? `${typeSlug}-${Date.now()}`;
     const extraLocaleCodes = ct.isLocalized ? await this.repo.findActiveLocaleCodes() : [];
-    const entry = await this.repo.create(ct.id, dto.data, locale, authorId, slug, extraLocaleCodes);
+    const richTextFields = ct.fields
+      .filter((f) => f.type === ContentFieldType.RICH_TEXT)
+      .map((f) => f.name);
+    const sanitizedData = sanitizeRichTextFields(dto.data, richTextFields);
+    const entry = await this.repo.create(
+      ct.id,
+      sanitizedData,
+      locale,
+      authorId,
+      slug,
+      extraLocaleCodes,
+    );
     this.eventEmitter.emit('content.created', {
       entryId: entry.id,
       typeSlug,
@@ -70,12 +83,16 @@ export class ContentService {
     dto: UpdateContentEntryDto,
     userId: string,
   ): Promise<{ data: EntryWithLocale }> {
-    await this.contentTypesService.findByName(typeSlug);
+    const ct = await this.contentTypesService.findByName(typeSlug);
     const entry = await this.repo.findById(id);
     if (!entry) throw new NotFoundException(`Content entry ${id} not found`);
 
     if (dto.data) {
       const locale = entry.locales[0]?.localeCode ?? 'en';
+      const richTextFields = ct.fields
+        .filter((f) => f.type === ContentFieldType.RICH_TEXT)
+        .map((f) => f.name);
+      const sanitizedData = sanitizeRichTextFields(dto.data, richTextFields);
       await this.repo.createVersion(
         id,
         (entry.locales[0]?.data ?? {}) as Record<string, unknown>,
@@ -83,7 +100,7 @@ export class ContentService {
         userId,
         entry.status,
       );
-      await this.repo.update(id, locale, dto.data);
+      await this.repo.update(id, locale, sanitizedData);
     }
 
     if (dto.status) await this.repo.updateStatus(id, dto.status);
