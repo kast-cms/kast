@@ -1,6 +1,6 @@
 {
   "name": "@kast-cms/sdk",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Official TypeScript SDK for the Kast CMS API",
   "license": "MIT",
   "type": "module",
