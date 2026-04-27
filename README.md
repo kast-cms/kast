@@ -110,6 +110,25 @@ Full documentation at [kastcms.com/docs](https://kastcms.com/docs)
 
 ---
 
+## Deploy
+
+Get a production Kast instance running in under 10 minutes:
+
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/kast)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/kast-cms/kast)
+[![Deploy to Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/kast-cms/kast&root-directory=apps/admin)
+
+> **Note:** Vercel deploys the admin panel only. Deploy the API separately on Railway or Render, then set `NEXT_PUBLIC_API_URL` in your Vercel project settings.
+
+Docker images are published to Docker Hub on every release:
+
+```bash
+docker pull kasthq/api:latest
+docker pull kasthq/admin:latest
+```
+
+---
+
 ## Contributing
 
 We welcome contributions! See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
