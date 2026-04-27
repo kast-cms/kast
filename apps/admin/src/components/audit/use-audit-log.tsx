@@ -10,7 +10,7 @@ export interface UseAuditLogReturn {
   meta: AuditLogMeta | null;
   loading: boolean;
   params: AuditLogListParams;
-  setParams: (p: Partial<AuditLogListParams>) => void;
+  setParams: (p: AuditLogListParams) => void;
 }
 
 export function useAuditLog(): UseAuditLogReturn {
@@ -37,8 +37,8 @@ export function useAuditLog(): UseAuditLogReturn {
       });
   }, [session?.accessToken, params]);
 
-  const setParams = (p: Partial<AuditLogListParams>): void => {
-    setParamsState((prev) => ({ ...prev, ...p }));
+  const setParams = (p: AuditLogListParams): void => {
+    setParamsState(p);
   };
 
   return { entries, meta, loading, params, setParams };
