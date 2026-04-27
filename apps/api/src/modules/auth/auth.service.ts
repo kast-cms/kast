@@ -151,6 +151,9 @@ export class AuthService {
   private async issueTokenPair(user: {
     id: string;
     email: string;
+    firstName: string | null;
+    lastName: string | null;
+    avatarUrl: string | null;
     roles: { role: { name: string } }[];
   }): Promise<TokenPair> {
     const roles = user.roles.map((ur) => ur.role.name);
