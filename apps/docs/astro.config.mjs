@@ -1,0 +1,158 @@
+import starlight from '@astrojs/starlight';
+import { defineConfig } from 'astro/config';
+
+export default defineConfig({
+  integrations: [
+    starlight({
+      title: 'Kast CMS',
+      description:
+        'Open-source, AI-native headless CMS. Cast your content everywhere.',
+      logo: {
+        light: './src/assets/logo-light.svg',
+        dark: './src/assets/logo-dark.svg',
+        replacesTitle: false,
+      },
+      social: [
+        { icon: 'github', label: 'GitHub', href: 'https://github.com/kast-cms/kast' },
+        { icon: 'discord', label: 'Discord', href: 'https://discord.gg/kast-cms' },
+        { icon: 'x.com', label: 'X / Twitter', href: 'https://x.com/kasthq' },
+      ],
+      editLink: {
+        baseUrl: 'https://github.com/kast-cms/kast/edit/main/apps/docs/',
+      },
+      lastUpdated: true,
+      tableOfContents: { minHeadingLevel: 2, maxHeadingLevel: 3 },
+      sidebar: [
+        {
+          label: 'Getting Started',
+          items: [
+            { slug: 'getting-started/installation' },
+            { slug: 'getting-started/quickstart' },
+            { slug: 'getting-started/first-content-type' },
+            { slug: 'getting-started/first-content-entry' },
+            { slug: 'getting-started/connecting-a-frontend' },
+          ],
+        },
+        {
+          label: 'Concepts',
+          collapsed: false,
+          items: [
+            { slug: 'concepts/content-modeling' },
+            { slug: 'concepts/status-lifecycle' },
+            { slug: 'concepts/localization' },
+            { slug: 'concepts/media-management' },
+            { slug: 'concepts/seo-module' },
+            { slug: 'concepts/versioning' },
+            { slug: 'concepts/trash-recovery' },
+          ],
+        },
+        {
+          label: 'Admin Panel',
+          collapsed: true,
+          items: [
+            { slug: 'admin-panel/overview' },
+            { slug: 'admin-panel/content-types' },
+            { slug: 'admin-panel/content-editor' },
+            { slug: 'admin-panel/media-library' },
+            { slug: 'admin-panel/users-roles' },
+            { slug: 'admin-panel/seo-manager' },
+            { slug: 'admin-panel/webhooks' },
+            { slug: 'admin-panel/forms' },
+            { slug: 'admin-panel/menus' },
+            { slug: 'admin-panel/audit-log' },
+            { slug: 'admin-panel/global-settings' },
+            { slug: 'admin-panel/queue-monitor' },
+          ],
+        },
+        {
+          label: 'API Reference',
+          collapsed: true,
+          items: [
+            { slug: 'api-reference/authentication' },
+            { slug: 'api-reference/content-types' },
+            { slug: 'api-reference/content-entries' },
+            { slug: 'api-reference/media' },
+            { slug: 'api-reference/seo' },
+            { slug: 'api-reference/locales' },
+            { slug: 'api-reference/users-roles' },
+            { slug: 'api-reference/webhooks' },
+            { slug: 'api-reference/forms' },
+            { slug: 'api-reference/menus' },
+            { slug: 'api-reference/mcp-server' },
+            { slug: 'api-reference/agent-tokens' },
+            { slug: 'api-reference/trash' },
+            { slug: 'api-reference/audit-log' },
+            { slug: 'api-reference/settings' },
+            { slug: 'api-reference/health' },
+          ],
+        },
+        {
+          label: 'SDK (@kast/sdk)',
+          collapsed: true,
+          items: [
+            { slug: 'sdk/installation' },
+            { slug: 'sdk/authentication' },
+            { slug: 'sdk/content-types' },
+            { slug: 'sdk/content-entries' },
+            { slug: 'sdk/media' },
+            { slug: 'sdk/seo' },
+            { slug: 'sdk/users-roles' },
+            { slug: 'sdk/webhooks' },
+            { slug: 'sdk/forms' },
+            { slug: 'sdk/menus' },
+            { slug: 'sdk/versions' },
+            { slug: 'sdk/trash' },
+            { slug: 'sdk/reference' },
+          ],
+        },
+        {
+          label: 'Plugin Development',
+          collapsed: true,
+          items: [
+            { slug: 'plugins/what-is-a-plugin' },
+            { slug: 'plugins/plugin-manifest' },
+            { slug: 'plugins/hooks-reference' },
+            { slug: 'plugins/building-your-first-plugin' },
+            { slug: 'plugins/admin-ui-panels' },
+            { slug: 'plugins/plugin-config' },
+            { slug: 'plugins/publishing-to-npm' },
+            { slug: 'plugins/first-party-plugins' },
+          ],
+        },
+        {
+          label: 'MCP & AI Agents',
+          collapsed: true,
+          items: [
+            { slug: 'mcp/connecting-claude' },
+            { slug: 'mcp/agent-tokens' },
+            { slug: 'mcp/tools-reference' },
+            { slug: 'mcp/dry-run-mode' },
+            { slug: 'mcp/agentsession-audit' },
+          ],
+        },
+        {
+          label: 'Deploy',
+          collapsed: true,
+          items: [
+            { slug: 'deploy/railway' },
+            { slug: 'deploy/render' },
+            { slug: 'deploy/vercel-railway' },
+            { slug: 'deploy/docker-compose' },
+            { slug: 'deploy/environment-variables' },
+          ],
+        },
+        {
+          label: 'Security',
+          collapsed: true,
+          items: [
+            { slug: 'security/rbac' },
+            { slug: 'security/token-types' },
+            { slug: 'security/security-checklist' },
+            { slug: 'security/responsible-disclosure' },
+          ],
+        },
+      ],
+      customCss: ['./src/styles/custom.css'],
+    }),
+  ],
+});
