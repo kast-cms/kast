@@ -34,7 +34,7 @@ services:
       retries: 5
 
   api:
-    image: ghcr.io/kast-cms/api:1.0.0
+    image: kasthq/api:latest
     restart: unless-stopped
     env_file: .env
     ports:
@@ -48,7 +48,7 @@ services:
       - uploads:/app/uploads
 
   admin:
-    image: ghcr.io/kast-cms/admin:1.0.0
+    image: kasthq/admin:latest
     restart: unless-stopped
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:{{apiPort}}/api/v1

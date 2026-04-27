@@ -3,6 +3,7 @@ export const PACKAGE_JSON_TEMPLATE = `{
   "private": true,
   "version": "0.0.1",
   "scripts": {
+    "dev": "docker-compose up",
     "up": "docker-compose up",
     "up:detach": "docker-compose up -d",
     "down": "docker-compose down",
