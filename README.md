@@ -18,7 +18,7 @@
 <br />
 
 [![npm: @kast-cms/sdk](https://img.shields.io/npm/v/@kast-cms/sdk?label=%40kast-cms%2Fsdk&style=flat-square&color=cb3837&logo=npm)](https://www.npmjs.com/package/@kast-cms/sdk)
-[![npm: @kast-cms/plugin-sdk](https://img.shields.io/npm/v/@kast-cms/plugin-sdk?label=%40kast%2Fplugin-sdk&style=flat-square&color=cb3837&logo=npm)](https://www.npmjs.com/package/@kast-cms/plugin-sdk)
+[![npm: @kast-cms/plugin-sdk](https://img.shields.io/npm/v/@kast-cms/plugin-sdk?label=%40kast-cms%2Fplugin-sdk&style=flat-square&color=cb3837&logo=npm)](https://www.npmjs.com/package/@kast-cms/plugin-sdk)
 [![npm: create-kast-app](https://img.shields.io/npm/v/create-kast-app?label=create-kast-app&style=flat-square&color=cb3837&logo=npm)](https://www.npmjs.com/package/create-kast-app)
 
 <br />
@@ -194,13 +194,13 @@ npx create-kast-app my-site
 
 First-party plugins, installable via the Kast admin:
 
-| Plugin                              | Description                          |
-| ----------------------------------- | ------------------------------------ |
-| `@kast-cms/kast-plugin-stripe`      | Payments and subscription management |
-| `@kast-cms/kast-plugin-meilisearch` | Full-text search with Meilisearch    |
-| `@kast-cms/kast-plugin-resend`      | Transactional email via Resend       |
-| `@kast-cms/kast-plugin-r2`          | Media storage on Cloudflare R2       |
-| `@kast-cms/kast-plugin-sentry`      | Error tracking and monitoring        |
+| Plugin                         | Description                          |
+| ------------------------------ | ------------------------------------ |
+| `@kast-cms/plugin-stripe`      | Payments and subscription management |
+| `@kast-cms/plugin-meilisearch` | Full-text search with Meilisearch    |
+| `@kast-cms/plugin-resend`      | Transactional email via Resend       |
+| `@kast-cms/plugin-r2`          | Media storage on Cloudflare R2       |
+| `@kast-cms/plugin-sentry`      | Error tracking and monitoring        |
 
 Build your own with [`@kast-cms/plugin-sdk`](https://www.npmjs.com/package/@kast-cms/plugin-sdk).
 

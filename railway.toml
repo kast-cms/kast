@@ -15,7 +15,7 @@
   startCmd  = "node dist/main.js"
 
   [services.build]
-    buildCommand = "pnpm --filter @kast/api run prisma:generate && pnpm --filter @kast/api run build"
+    buildCommand = "pnpm --filter @kast-cms/api run prisma:generate && pnpm --filter @kast-cms/api run build"
 
   [services.deploy]
     healthcheckPath    = "/api/v1/health"
@@ -54,7 +54,7 @@
   startCmd = "node .next/standalone/server.js"
 
   [services.build]
-    buildCommand = "pnpm --filter @kast/admin build"
+    buildCommand = "pnpm --filter @kast-cms/admin build"
 
   [services.deploy]
     healthcheckPath    = "/admin"
