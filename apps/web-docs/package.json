@@ -1,5 +1,5 @@
 {
-  "name": "@kast/web-docs",
+  "name": "@kast-cms/web-docs",
   "version": "0.1.0",
   "description": "Kast CMS — Next.js Docs Starter Template",
   "private": true,

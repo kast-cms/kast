@@ -178,18 +178,18 @@ Out of scope for v1:
 
 Goal: Working headless CMS. No admin UI yet. Developers integrate via API.
 
-| ID     | Deliverable                        | Module  |
-| ------ | ---------------------------------- | ------- |
-| PH1-01 | Monorepo setup + CI pipeline       | All     |
-| PH1-02 | NestJS core + Prisma + PostgreSQL  | All     |
-| PH1-03 | Content types API (CRUD)           | Schema  |
-| PH1-04 | Content entries API (CRUD)         | Content |
-| PH1-05 | Auth (email/password + JWT + RBAC) | Auth    |
-| PH1-06 | Media upload (local + S3)          | Media   |
-| PH1-07 | Audit log foundation               | Audit   |
-| PH1-08 | Docker image + Compose             | Install |
-| PH1-09 | @kast/sdk TypeScript client v0.1   | SDK     |
-| PH1-10 | BullMQ + Redis integration         | Queue   |
+| ID     | Deliverable                          | Module  |
+| ------ | ------------------------------------ | ------- |
+| PH1-01 | Monorepo setup + CI pipeline         | All     |
+| PH1-02 | NestJS core + Prisma + PostgreSQL    | All     |
+| PH1-03 | Content types API (CRUD)             | Schema  |
+| PH1-04 | Content entries API (CRUD)           | Content |
+| PH1-05 | Auth (email/password + JWT + RBAC)   | Auth    |
+| PH1-06 | Media upload (local + S3)            | Media   |
+| PH1-07 | Audit log foundation                 | Audit   |
+| PH1-08 | Docker image + Compose               | Install |
+| PH1-09 | @kast-cms/sdk TypeScript client v0.1 | SDK     |
+| PH1-10 | BullMQ + Redis integration           | Queue   |
 
 Phase 1 Exit Criteria:
 
@@ -361,9 +361,9 @@ $ npx create-kast-app
 ? Add more languages? Arabic (ar)
 ? Storage provider: Local filesystem (change later)
 ? Install plugins now?
-  [x] @kast/plugin-meilisearch (search)
-  [ ] @kast/plugin-stripe (payments)
-  [x] @kast/plugin-sentry (error tracking)
+  [x] @kast-cms/plugin-meilisearch (search)
+  [ ] @kast-cms/plugin-stripe (payments)
+  [x] @kast-cms/plugin-sentry (error tracking)
 
 Installing dependencies...
 Generating project structure...
@@ -1345,38 +1345,38 @@ The plugin system allows Kast to be extended with new capabilities — payment p
 
 ### Business Requirements
 
-| ID         | Requirement                                                                                                                                              |
-| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| BR-PLG-001 | Only SUPER_ADMIN can install, enable, disable, or uninstall plugins                                                                                      |
-| BR-PLG-002 | ADMIN can read plugin list and configuration (sensitive values redacted)                                                                                 |
-| BR-PLG-003 | Plugins must declare all permissions in their manifest before installation                                                                               |
-| BR-PLG-004 | SUPER_ADMIN must review and approve the declared permission list before a plugin is activated                                                            |
-| BR-PLG-005 | Plugins cannot access User, ApiToken, AgentToken, or AuditLog models                                                                                     |
-| BR-PLG-006 | Plugin config values (API keys, secrets) must be encrypted at rest using AES-256-GCM                                                                     |
-| BR-PLG-007 | System plugins (isSystemPlugin: true) cannot be disabled or uninstalled                                                                                  |
-| BR-PLG-008 | All plugin install, enable, disable, and uninstall events must be written to the audit log                                                               |
-| BR-PLG-009 | v1 ships with 5 first-party plugins: @kast/plugin-stripe, @kast/plugin-meilisearch, @kast/plugin-resend, @kast/plugin-cloudflare-r2, @kast/plugin-sentry |
+| ID         | Requirement                                                                                                                                                                  |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| BR-PLG-001 | Only SUPER_ADMIN can install, enable, disable, or uninstall plugins                                                                                                          |
+| BR-PLG-002 | ADMIN can read plugin list and configuration (sensitive values redacted)                                                                                                     |
+| BR-PLG-003 | Plugins must declare all permissions in their manifest before installation                                                                                                   |
+| BR-PLG-004 | SUPER_ADMIN must review and approve the declared permission list before a plugin is activated                                                                                |
+| BR-PLG-005 | Plugins cannot access User, ApiToken, AgentToken, or AuditLog models                                                                                                         |
+| BR-PLG-006 | Plugin config values (API keys, secrets) must be encrypted at rest using AES-256-GCM                                                                                         |
+| BR-PLG-007 | System plugins (isSystemPlugin: true) cannot be disabled or uninstalled                                                                                                      |
+| BR-PLG-008 | All plugin install, enable, disable, and uninstall events must be written to the audit log                                                                                   |
+| BR-PLG-009 | v1 ships with 5 first-party plugins: @kast-cms/plugin-stripe, @kast-cms/plugin-meilisearch, @kast-cms/plugin-resend, @kast-cms/plugin-cloudflare-r2, @kast-cms/plugin-sentry |
 
 ### User Stories
 
-| ID         | Story                                                                                                         |
-| ---------- | ------------------------------------------------------------------------------------------------------------- |
-| US-PLG-001 | As a SUPER_ADMIN, I want to install the Stripe plugin so the commerce module can process payments             |
-| US-PLG-002 | As a SUPER_ADMIN, I want to review exactly what permissions a plugin requires before I install it             |
-| US-PLG-003 | As a SUPER_ADMIN, I want to configure the Stripe plugin with my API keys so it connects to my Stripe account  |
-| US-PLG-004 | As an ADMIN, I want to see which plugins are installed and active so I understand the system's capabilities   |
-| US-PLG-005 | As a Developer, I want to build a plugin using @kast/plugin-sdk so I can extend Kast with custom integrations |
+| ID         | Story                                                                                                             |
+| ---------- | ----------------------------------------------------------------------------------------------------------------- |
+| US-PLG-001 | As a SUPER_ADMIN, I want to install the Stripe plugin so the commerce module can process payments                 |
+| US-PLG-002 | As a SUPER_ADMIN, I want to review exactly what permissions a plugin requires before I install it                 |
+| US-PLG-003 | As a SUPER_ADMIN, I want to configure the Stripe plugin with my API keys so it connects to my Stripe account      |
+| US-PLG-004 | As an ADMIN, I want to see which plugins are installed and active so I understand the system's capabilities       |
+| US-PLG-005 | As a Developer, I want to build a plugin using @kast-cms/plugin-sdk so I can extend Kast with custom integrations |
 
 ### Acceptance Criteria
 
-| ID         | Given                                    | When                    | Then                                                                                                     |
-| ---------- | ---------------------------------------- | ----------------------- | -------------------------------------------------------------------------------------------------------- |
-| AC-PLG-001 | SUPER_ADMIN installs @kast/plugin-stripe | Install confirmed       | Plugin record created with isActive=false. Permission review screen shown before activation.             |
-| AC-PLG-002 | SUPER_ADMIN views plugin permissions     | Before activating       | Full permission list shown: data access, hooks, network URLs, env vars, admin panels                     |
-| AC-PLG-003 | SUPER_ADMIN configures Stripe plugin     | API keys entered        | Values encrypted before storage. Config saved. Sensitive values shown as **_REDACTED_** in GET response. |
-| AC-PLG-004 | Plugin is active                         | It makes a network call | Only URLs declared in manifest.permissions.network are allowed. Undeclared URLs are blocked.             |
-| AC-PLG-005 | SUPER_ADMIN disables a plugin            | isActive set to false   | Plugin's hooks and admin panels immediately deregistered. No restart required.                           |
-| AC-PLG-006 | Plugin tries to read User model          | Access attempted        | Access denied with PERMISSION_DENIED. Plugin cannot access undeclared models.                            |
+| ID         | Given                                        | When                    | Then                                                                                                     |
+| ---------- | -------------------------------------------- | ----------------------- | -------------------------------------------------------------------------------------------------------- |
+| AC-PLG-001 | SUPER_ADMIN installs @kast-cms/plugin-stripe | Install confirmed       | Plugin record created with isActive=false. Permission review screen shown before activation.             |
+| AC-PLG-002 | SUPER_ADMIN views plugin permissions         | Before activating       | Full permission list shown: data access, hooks, network URLs, env vars, admin panels                     |
+| AC-PLG-003 | SUPER_ADMIN configures Stripe plugin         | API keys entered        | Values encrypted before storage. Config saved. Sensitive values shown as **_REDACTED_** in GET response. |
+| AC-PLG-004 | Plugin is active                             | It makes a network call | Only URLs declared in manifest.permissions.network are allowed. Undeclared URLs are blocked.             |
+| AC-PLG-005 | SUPER_ADMIN disables a plugin                | isActive set to false   | Plugin's hooks and admin panels immediately deregistered. No restart required.                           |
+| AC-PLG-006 | Plugin tries to read User model              | Access attempted        | Access denied with PERMISSION_DENIED. Plugin cannot access undeclared models.                            |
 
 ### Admin UI — Plugins
 
@@ -1394,7 +1394,7 @@ Layout:
 
 Install Plugin flow:
 
-1. Enter plugin name (e.g. @kast/plugin-stripe) + version
+1. Enter plugin name (e.g. @kast-cms/plugin-stripe) + version
 2. Kast fetches plugin manifest from npm
 3. Permission review screen:
    - "This plugin requests the following permissions:"
@@ -1418,7 +1418,7 @@ Plugin configure modal:
 
 | ID         | Scenario                       | Behavior                                                                                                                        |
 | ---------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| ER-PLG-001 | Plugin not found on npm        | "Plugin @kast/plugin-unknown not found. Check the package name."                                                                |
+| ER-PLG-001 | Plugin not found on npm        | "Plugin @kast-cms/plugin-unknown not found. Check the package name."                                                            |
 | ER-PLG-002 | Plugin version incompatible    | "Plugin v2.0.0 requires Kast >= 2.0.0. You have 1.0.0."                                                                         |
 | ER-PLG-003 | Plugin install fails (network) | "Could not download plugin. Check your internet connection."                                                                    |
 | ER-PLG-004 | Uninstall system plugin        | 403 "System plugins cannot be uninstalled"                                                                                      |
@@ -2158,12 +2158,12 @@ All admin UI pages must conform to WCAG 2.1 Level AA.
 
 ### Developer Experience Metrics
 
-| Metric                                                | Target                                       |
-| ----------------------------------------------------- | -------------------------------------------- |
-| Time to create a content type and publish first entry | Under 10 minutes without documentation       |
-| Time to connect Claude.ai to Kast MCP                 | Under 5 minutes with docs                    |
-| SDK type-safety errors in CI                          | Zero — all field types correct by default    |
-| Plugin development to first working plugin            | Under 2 hours with @kast/plugin-sdk and docs |
+| Metric                                                | Target                                           |
+| ----------------------------------------------------- | ------------------------------------------------ |
+| Time to create a content type and publish first entry | Under 10 minutes without documentation           |
+| Time to connect Claude.ai to Kast MCP                 | Under 5 minutes with docs                        |
+| SDK type-safety errors in CI                          | Zero — all field types correct by default        |
+| Plugin development to first working plugin            | Under 2 hours with @kast-cms/plugin-sdk and docs |
 
 ### Editor Experience Metrics
 

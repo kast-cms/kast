@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   title: 'Home',
 };
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 export default async function HomePage(): Promise<React.JSX.Element> {
   const [{ data: posts }, categories] = await Promise.all([

@@ -1,4 +1,4 @@
-import { IKastPlugin, KastPluginContext, PluginHook } from '@kast/plugin-sdk';
+import { IKastPlugin, KastPluginContext, PluginHook } from '@kast-cms/plugin-sdk';
 
 interface ContentPayload {
   entryId: string;
@@ -27,13 +27,11 @@ interface KastEntry {
 
 export class StripePlugin implements IKastPlugin {
   private secretKey = '';
-  private webhookSecret = '';
   private productTypeSlug = 'product';
   private stripeApiBase = 'https://api.stripe.com/v1';
 
   async onLoad(ctx: KastPluginContext): Promise<void> {
     this.secretKey = process.env['STRIPE_SECRET_KEY'] ?? '';
-    this.webhookSecret = process.env['STRIPE_WEBHOOK_SECRET'] ?? '';
     this.productTypeSlug = process.env['STRIPE_PRODUCT_TYPE_SLUG'] ?? 'product';
 
     if (!this.secretKey) {

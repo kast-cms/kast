@@ -1,5 +1,5 @@
 {
-  "name": "@kast/web-blog",
+  "name": "@kast-cms/web-blog",
   "version": "0.1.0",
   "description": "Kast CMS — Next.js Blog Starter Template",
   "private": true,

@@ -1,7 +1,7 @@
 import { buildSidebar } from '@/lib/content';
 import { redirect } from 'next/navigation';
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 export default async function HomePage(): Promise<React.JSX.Element> {
   const sidebar = await buildSidebar();

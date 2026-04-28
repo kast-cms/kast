@@ -15,7 +15,7 @@
     "baseUrl": "./",
     "incremental": true,
     "paths": {
-      "@kast/api/*": ["src/*"]
+      "@kast-cms/api/*": ["src/*"]
     }
   },
   "include": ["src/**/*", "test/**/*", "prisma/**/*"],

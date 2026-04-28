@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   description: 'All articles',
 };
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 interface BlogPageProps {
   searchParams: Promise<{ cursor?: string; category?: string }>;

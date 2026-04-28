@@ -120,11 +120,11 @@ async function promptStorageAndPlugins(): Promise<{
     await multiselect({
       message: 'Install plugins (space to select):',
       options: [
-        { value: 'meilisearch', label: '@kast/plugin-meilisearch', hint: 'full-text search' },
-        { value: 'stripe', label: '@kast/plugin-stripe', hint: 'commerce' },
-        { value: 'resend', label: '@kast/plugin-resend', hint: 'email' },
-        { value: 'r2', label: '@kast/plugin-r2', hint: 'Cloudflare R2 storage' },
-        { value: 'sentry', label: '@kast/plugin-sentry', hint: 'error tracking' },
+        { value: 'meilisearch', label: '@kast-cms/plugin-meilisearch', hint: 'full-text search' },
+        { value: 'stripe', label: '@kast-cms/plugin-stripe', hint: 'commerce' },
+        { value: 'resend', label: '@kast-cms/plugin-resend', hint: 'email' },
+        { value: 'r2', label: '@kast-cms/plugin-r2', hint: 'Cloudflare R2 storage' },
+        { value: 'sentry', label: '@kast-cms/plugin-sentry', hint: 'error tracking' },
       ],
       required: false,
     }),

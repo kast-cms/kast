@@ -2177,7 +2177,7 @@ List all installed plugins.
   "data": [
     {
       "id": "clplug001",
-      "name": "@kast/plugin-stripe",
+      "name": "@kast-cms/plugin-stripe",
       "displayName": "Stripe Payments",
       "version": "1.2.0",
       "isActive": true,
@@ -2200,7 +2200,7 @@ Install a plugin by name and version.
 
 ```ts
 {
-  name: string; // "@kast/plugin-meilisearch"
+  name: string; // "@kast-cms/plugin-meilisearch"
   version: string; // "1.0.0"
 }
 ```
@@ -2219,7 +2219,7 @@ Enable an installed plugin.
 
 ```json
 {
-  "data": { "name": "@kast/plugin-stripe", "isActive": true }
+  "data": { "name": "@kast-cms/plugin-stripe", "isActive": true }
 }
 ```
 
@@ -2233,7 +2233,7 @@ Disable a plugin without uninstalling it.
 
 ```json
 {
-  "data": { "name": "@kast/plugin-stripe", "isActive": false }
+  "data": { "name": "@kast-cms/plugin-stripe", "isActive": false }
 }
 ```
 
@@ -2258,7 +2258,7 @@ Get plugin configuration (sensitive values are redacted).
 ```json
 {
   "data": {
-    "pluginName": "@kast/plugin-stripe",
+    "pluginName": "@kast-cms/plugin-stripe",
     "config": {
       "publicKey": "pk_live_...",
       "secretKey": "sk_live_***REDACTED***",

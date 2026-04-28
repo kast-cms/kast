@@ -110,7 +110,7 @@ When you open a PR, fill in the template:
 
 ## How to Write a Plugin
 
-Kast plugins extend the CMS without touching core code. They live in the `plugins/` directory and use `@kast/plugin-sdk`.
+Kast plugins extend the CMS without touching core code. They live in the `plugins/` directory and use `@kast-cms/plugin-sdk`.
 
 ### 1. Scaffold your plugin
 
@@ -120,10 +120,10 @@ cd plugins/kast-plugin-<name>
 pnpm init
 ```
 
-Add `@kast/plugin-sdk` as a dependency:
+Add `@kast-cms/plugin-sdk` as a dependency:
 
 ```bash
-pnpm add @kast/plugin-sdk
+pnpm add @kast-cms/plugin-sdk
 ```
 
 ### 2. Create the manifest
@@ -167,7 +167,7 @@ Every plugin must have a `kast-plugin.json` at its root:
 ### 3. Implement `IKastPlugin`
 
 ```typescript
-import { IKastPlugin, KastPluginContext, PluginHook } from '@kast/plugin-sdk';
+import { IKastPlugin, KastPluginContext, PluginHook } from '@kast-cms/plugin-sdk';
 
 export class MyPlugin implements IKastPlugin {
   async onLoad(ctx: KastPluginContext): Promise<void> {

@@ -51,7 +51,7 @@ interface MediaHookPayload {
 ## Subscribe to a hook
 
 ```ts
-import { IKastPlugin, KastPluginContext, PluginHook } from '@kast/plugin-sdk';
+import { IKastPlugin, KastPluginContext, PluginHook } from '@kast-cms/plugin-sdk';
 
 export class MyPlugin implements IKastPlugin {
   async onLoad(ctx: KastPluginContext): Promise<void> {

@@ -7,8 +7,8 @@ export default defineConfig({
       title: 'Kast CMS',
       description: 'Open-source, AI-native headless CMS. Cast your content everywhere.',
       logo: {
-        light: './src/assets/logo-light.svg',
-        dark: './src/assets/logo-dark.svg',
+        light: './src/assets/logo-light.png',
+        dark: './src/assets/logo-dark.png',
         replacesTitle: false,
       },
       social: [

@@ -30,7 +30,7 @@
    - [WS-15 Forms Module (PH2-12)](#ws-15-forms-module-ph2-12)
    - [WS-16 Menus Module (PH2-13)](#ws-16-menus-module-ph2-13)
    - [WS-17 Trash + 30-day Recovery (PH2-14)](#ws-17-trash--30-day-recovery-ph2-14)
-   - [WS-18 `@kast/sdk` v0.2](#ws-18-kastsdk-v02)
+   - [WS-18 `@kast-cms/sdk` v0.2](#ws-18-kastsdk-v02)
 5. [Sprint Breakdown (10 weeks)](#5-sprint-breakdown-10-weeks)
 6. [Phase 2 Exit Criteria](#6-phase-2-exit-criteria)
 7. [Cross-Cutting Requirements Compliance](#7-cross-cutting-requirements-compliance)
@@ -53,7 +53,7 @@ Phase 1 delivered the API spine. Phase 2 makes it usable by editors, AI agents, 
 - A live SEO score pipeline: entry saved → BullMQ `kast.seo` queue → score written back → displayed in editor before publish.
 - All 6 BullMQ queues (`kast.webhook`, `kast.media`, `kast.seo`, `kast.publish`, `kast.trash`, `kast.email`) running real processors with retry + dead-letter.
 - RTL admin UI rendering correctly for Arabic and all RTL locales. CSS logical properties throughout.
-- `@kast/sdk` v0.2 with typed access to every Phase 2 endpoint.
+- `@kast-cms/sdk` v0.2 with typed access to every Phase 2 endpoint.
 - CI extended with `apps/admin` typecheck, lint, and e2e (Playwright smoke tests against the full stack).
 
 ---
@@ -101,7 +101,7 @@ The following are intentionally **not** built in Phase 2:
 | PH2-12 | Forms module                           | WS-15      | S9     |
 | PH2-13 | Menus module                           | WS-16      | S9     |
 | PH2-14 | Trash + 30-day recovery                | WS-17      | S9     |
-| —      | `@kast/sdk` v0.2                       | WS-18      | S10    |
+| —      | `@kast-cms/sdk` v0.2                   | WS-18      | S10    |
 
 ---
 
@@ -121,7 +121,7 @@ Each workstream lists: **objective**, **tech decisions**, **scope**, **out-of-sc
 - **Tailwind CSS v4** — CSS logical properties throughout for RTL compatibility (`ms-`, `me-`, `ps-`, `pe-` instead of `ml-`, `mr-`, `pl-`, `pr-`).
 - **shadcn/ui** — component library built on Radix UI. All components customized to use logical properties. Dark mode ready.
 - **next-intl** — i18n strings for the admin UI itself. Ships in English; Arabic added in WS-8.
-- **@kast/sdk** — all API calls go through the typed SDK, never raw `fetch` in components.
+- **@kast-cms/sdk** — all API calls go through the typed SDK, never raw `fetch` in components.
 - **Auth:** `next-auth` is **not** used. Instead, access token stored in memory (React context) and refresh token in an `HttpOnly` cookie managed by the Next.js API route `/api/auth/refresh`. Session state is minimal — just the decoded JWT payload.
 
 **Scope:**
@@ -142,12 +142,12 @@ Each workstream lists: **objective**, **tech decisions**, **scope**, **out-of-sc
 
 **Acceptance:**
 
-- `pnpm --filter @kast/admin dev` boots at `localhost:3001/admin` with valid env.
+- `pnpm --filter @kast-cms/admin dev` boots at `localhost:3001/admin` with valid env.
 - `/admin/login` authenticates against the Phase 1 API and redirects to `/admin/content-types`.
 - `/admin/setup` renders when no users exist; creates SUPER_ADMIN and redirects.
 - Navigating without a session redirects to `/admin/login`.
 - All CSS uses logical properties (no `ml-`, `mr-`, `pl-`, `pr-` anywhere in codebase — enforced by ESLint plugin `eslint-plugin-logical-css`).
-- `pnpm --filter @kast/admin typecheck` and `pnpm --filter @kast/admin lint` pass.
+- `pnpm --filter @kast-cms/admin typecheck` and `pnpm --filter @kast-cms/admin lint` pass.
 
 **Tasks:**
 
@@ -780,7 +780,7 @@ Handled by `kast.webhook` processor (WS-11): 5 attempts, exponential backoff. De
 
 ```json
 {
-  "name": "@kast/plugin-meilisearch",
+  "name": "@kast-cms/plugin-meilisearch",
   "version": "1.0.0",
   "displayName": "Meilisearch",
   "description": "Full-text search via Meilisearch",
@@ -808,7 +808,7 @@ Handled by `kast.webhook` processor (WS-11): 5 attempts, exponential backoff. De
 - Hooks are delivered via NestJS EventEmitter — plugins subscribe in `onLoad`.
 - Admin UI pages declared in the manifest are rendered by a plugin shell route in `apps/admin/plugins/[pluginId]/page.tsx` that loads the plugin's remote entry via Module Federation (Phase 3 full implementation; Phase 2 just establishes the route shell).
 
-**`@kast/plugin-sdk` package:**
+**`@kast-cms/plugin-sdk` package:**
 
 New package `packages/plugin-sdk/` with:
 
@@ -840,7 +840,7 @@ New package `packages/plugin-sdk/` with:
 
 **Tasks:**
 
-1. `feat(sdk): scaffold @kast/plugin-sdk package with IKastPlugin interface and types`
+1. `feat(sdk): scaffold @kast-cms/plugin-sdk package with IKastPlugin interface and types`
 2. `feat(api): plugin loader — scan plugins/ directory at startup`
 3. `feat(api): plugin lifecycle (onLoad, hook subscription via EventEmitter)`
 4. `feat(api): plugin permission enforcement (declared vs. granted)`
@@ -1064,7 +1064,7 @@ Menu items have `parentId` (nullable) and `order` (int). The `GET /menus/:handle
 
 ---
 
-### WS-18 `@kast/sdk` v0.2
+### WS-18 `@kast-cms/sdk` v0.2
 
 **Objective:** Update the TypeScript SDK to cover every Phase 2 API endpoint with full type safety, so a developer using the SDK never needs to write a raw `fetch` call.
 
@@ -1091,11 +1091,11 @@ New `KastClient` method groups added in `packages/sdk/src/`:
 
 - Bump `packages/sdk/package.json` version to `0.2.0`.
 - All new types exported from `packages/sdk/src/index.ts`.
-- Regenerate OpenAPI client types from the NestJS Swagger spec (`pnpm --filter @kast/api swagger:export` → `pnpm --filter @kast/sdk types:generate`).
+- Regenerate OpenAPI client types from the NestJS Swagger spec (`pnpm --filter @kast-cms/api swagger:export` → `pnpm --filter @kast-cms/sdk types:generate`).
 
 **Acceptance:**
 
-- A Node.js script using only `@kast/sdk` can: authenticate, create a content type, create an entry, upload a media file, publish the entry, submit a form, and list the audit log — all with correct TypeScript types and zero `any`.
+- A Node.js script using only `@kast-cms/sdk` can: authenticate, create a content type, create an entry, upload a media file, publish the entry, submit a form, and list the audit log — all with correct TypeScript types and zero `any`.
 - SDK e2e test suite (new file `packages/sdk/tests/e2e.phase2.ts`) runs against the full Docker Compose stack and passes in CI.
 
 **Tasks:**
@@ -1114,18 +1114,18 @@ New `KastClient` method groups added in `packages/sdk/src/`:
 
 Each sprint = 1 week. Multiple workstreams run in parallel where dependencies allow.
 
-| Sprint  | Theme                                | Workstreams in Flight | Exit Demo                                                                                                           |
-| ------- | ------------------------------------ | --------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| **S1**  | Admin Shell                          | WS-1                  | `pnpm --filter @kast/admin dev` boots at `localhost:3001/admin`; login works; sidebar renders with stub nav links   |
-| **S2**  | Content Modeling UI                  | WS-2                  | Create a `blog-post` content type with 5 fields via the admin UI; fields saved, reordered, and rendered correctly   |
-| **S3**  | Editorial UI                         | WS-3                  | Create, edit, and save a `blog-post` entry via the UI; rich text renders; media picker opens                        |
-| **S4**  | Media + Users                        | WS-4, WS-5            | Upload 3 images via drag-and-drop; invite a user with EDITOR role; custom role created                              |
-| **S5**  | SEO + Publish Workflow               | WS-6, WS-9            | SEO score badge visible in entry editor; publish action transitions status; schedule publish enqueues BullMQ job    |
-| **S6**  | MCP + Agent Tokens                   | WS-7, WS-14           | Claude.ai connects to `/mcp`; all 15 tools listed; agent token with scoped permissions created and enforced         |
-| **S7**  | i18n + BullMQ Queues                 | WS-8, WS-11           | Admin UI switches to Arabic RTL; all 6 BullMQ queues have running processors; image upload triggers WebP conversion |
-| **S8**  | Webhooks + Version History           | WS-12, WS-10          | Webhook fires on content publish with HMAC signature; version history panel shows past saves; revert works          |
-| **S9**  | Forms + Menus + Trash                | WS-15, WS-16, WS-17   | Contact form submits and appears in submissions list; main-nav menu built with nested items; trashed entry restored |
-| **S10** | Plugin System + SDK v0.2 + Hardening | WS-13, WS-18          | Example plugin loads and receives hooks; `@kast/sdk` v0.2 e2e suite passes; CI green on all checks                  |
+| Sprint  | Theme                                | Workstreams in Flight | Exit Demo                                                                                                             |
+| ------- | ------------------------------------ | --------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| **S1**  | Admin Shell                          | WS-1                  | `pnpm --filter @kast-cms/admin dev` boots at `localhost:3001/admin`; login works; sidebar renders with stub nav links |
+| **S2**  | Content Modeling UI                  | WS-2                  | Create a `blog-post` content type with 5 fields via the admin UI; fields saved, reordered, and rendered correctly     |
+| **S3**  | Editorial UI                         | WS-3                  | Create, edit, and save a `blog-post` entry via the UI; rich text renders; media picker opens                          |
+| **S4**  | Media + Users                        | WS-4, WS-5            | Upload 3 images via drag-and-drop; invite a user with EDITOR role; custom role created                                |
+| **S5**  | SEO + Publish Workflow               | WS-6, WS-9            | SEO score badge visible in entry editor; publish action transitions status; schedule publish enqueues BullMQ job      |
+| **S6**  | MCP + Agent Tokens                   | WS-7, WS-14           | Claude.ai connects to `/mcp`; all 15 tools listed; agent token with scoped permissions created and enforced           |
+| **S7**  | i18n + BullMQ Queues                 | WS-8, WS-11           | Admin UI switches to Arabic RTL; all 6 BullMQ queues have running processors; image upload triggers WebP conversion   |
+| **S8**  | Webhooks + Version History           | WS-12, WS-10          | Webhook fires on content publish with HMAC signature; version history panel shows past saves; revert works            |
+| **S9**  | Forms + Menus + Trash                | WS-15, WS-16, WS-17   | Contact form submits and appears in submissions list; main-nav menu built with nested items; trashed entry restored   |
+| **S10** | Plugin System + SDK v0.2 + Hardening | WS-13, WS-18          | Example plugin loads and receives hooks; `@kast-cms/sdk` v0.2 e2e suite passes; CI green on all checks                |
 
 ---
 
@@ -1143,7 +1143,7 @@ Lifted directly from [KAST_PRD.md §4](../architecture/KAST_PRD.md), expanded to
 | EX-6  | Trashed items are recoverable within 30 days                             | e2e: trash entry → restore → verify in content list                            |
 | EX-7  | All 6 BullMQ queues have active processors with retry config             | Integration test: trigger each queue job; verify retry on failure              |
 | EX-8  | Plugin system loads a conformant plugin at startup                       | Startup test: example plugin loaded; hook receives events                      |
-| EX-9  | `@kast/sdk` v0.2 e2e suite passes against full Docker Compose stack      | CI: sdk e2e job passes                                                         |
+| EX-9  | `@kast-cms/sdk` v0.2 e2e suite passes against full Docker Compose stack  | CI: sdk e2e job passes                                                         |
 | EX-10 | `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e` all green    | CI: all checks pass on the merge commit closing Phase 2                        |
 
 ---

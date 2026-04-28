@@ -1,5 +1,5 @@
 {
-  "name": "@kast/docs",
+  "name": "@kast-cms/docs",
   "version": "1.0.0",
   "private": true,
   "type": "module",

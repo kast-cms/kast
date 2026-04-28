@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd ../.. && pnpm --filter @kast/admin build",
+  "buildCommand": "cd ../.. && pnpm --filter @kast-cms/admin build",
   "outputDirectory": ".next",
   "framework": "nextjs",
   "installCommand": "cd ../.. && pnpm install --frozen-lockfile",

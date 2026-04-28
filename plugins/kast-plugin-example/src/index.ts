@@ -1,4 +1,4 @@
-import { type IKastPlugin, type KastPluginContext, PluginHook } from '@kast/plugin-sdk';
+import { type IKastPlugin, type KastPluginContext, PluginHook } from '@kast-cms/plugin-sdk';
 
 export class ExamplePlugin implements IKastPlugin {
   async onLoad(ctx: KastPluginContext): Promise<void> {

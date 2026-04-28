@@ -11,7 +11,7 @@ Any npm package that follows the Kast plugin conventions can be installed and us
 
 1. `kast-plugin.json` at the package root (published as part of the npm package).
 2. A compiled `dist/index.js` with a default export implementing `IKastPlugin`.
-3. `@kast/plugin-sdk` as a peer dependency.
+3. `@kast-cms/plugin-sdk` as a peer dependency.
 
 ## package.json for an npm plugin
 
@@ -24,7 +24,7 @@ Any npm package that follows the Kast plugin conventions can be installed and us
   "types": "dist/index.d.ts",
   "files": ["dist", "kast-plugin.json", "README.md"],
   "peerDependencies": {
-    "@kast/plugin-sdk": "^0.3.0"
+    "@kast-cms/plugin-sdk": "^0.3.0"
   }
 }
 ```

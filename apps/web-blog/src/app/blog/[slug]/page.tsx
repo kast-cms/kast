@@ -9,11 +9,15 @@ interface PostPageProps {
   params: Promise<{ slug: string }>;
 }
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 export async function generateStaticParams(): Promise<Array<{ slug: string }>> {
-  const { data: posts } = await getPosts({ limit: '100' });
-  return posts.map((p) => ({ slug: p.data.slug }));
+  try {
+    const { data: posts } = await getPosts({ limit: '100' });
+    return posts.map((p) => ({ slug: p.data.slug }));
+  } catch {
+    return [];
+  }
 }
 
 export async function generateMetadata({ params }: PostPageProps): Promise<Metadata> {

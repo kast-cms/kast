@@ -12,12 +12,16 @@ export const DOC_TYPE = 'doc-page';
 export const CHANGELOG_TYPE = 'changelog-entry';
 
 export async function getDocs(params: EntryListParams = {}): Promise<DocEntry[]> {
-  const res = await kast.content.list(DOC_TYPE, {
-    status: 'PUBLISHED',
-    limit: '200',
-    ...params,
-  });
-  return res.data as DocEntry[];
+  try {
+    const res = await kast.content.list(DOC_TYPE, {
+      status: 'PUBLISHED',
+      limit: '200',
+      ...params,
+    });
+    return res.data as DocEntry[];
+  } catch {
+    return [];
+  }
 }
 
 export async function getDocBySlug(
@@ -64,15 +68,19 @@ export async function getChangelog(params: EntryListParams = {}): Promise<{
   data: ChangelogEntry[];
   nextCursor?: string;
 }> {
-  const res = await kast.content.list(CHANGELOG_TYPE, {
-    status: 'PUBLISHED',
-    limit: '20',
-    ...params,
-  });
-  return {
-    data: res.data as ChangelogEntry[],
-    ...(res.meta.cursor != null ? { nextCursor: res.meta.cursor } : {}),
-  };
+  try {
+    const res = await kast.content.list(CHANGELOG_TYPE, {
+      status: 'PUBLISHED',
+      limit: '20',
+      ...params,
+    });
+    return {
+      data: res.data as ChangelogEntry[],
+      ...(res.meta.cursor != null ? { nextCursor: res.meta.cursor } : {}),
+    };
+  } catch {
+    return { data: [] };
+  }
 }
 
 /**

@@ -26,7 +26,7 @@ Create `package.json`:
     "build": "tsc"
   },
   "dependencies": {
-    "@kast/plugin-sdk": "workspace:*"
+    "@kast-cms/plugin-sdk": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.4.0"
@@ -69,7 +69,7 @@ Create `kast-plugin.json`:
 Create `src/index.ts`:
 
 ```ts
-import { IKastPlugin, KastPluginContext, PluginHook } from '@kast/plugin-sdk';
+import { IKastPlugin, KastPluginContext, PluginHook } from '@kast-cms/plugin-sdk';
 
 export class SlackNotifyPlugin implements IKastPlugin {
   async onLoad(ctx: KastPluginContext): Promise<void> {

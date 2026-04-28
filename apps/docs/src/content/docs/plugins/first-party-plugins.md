@@ -7,7 +7,7 @@ sidebar:
 
 Kast ships six plugins in the `plugins/` directory of the monorepo. Each has a `README.md` with full details.
 
-## kast-plugin-meilisearch
+## @kast-cms/kast-plugin-meilisearch
 
 Syncs published content entries to Meilisearch for full-text search.
 
@@ -23,7 +23,7 @@ Each content type becomes a separate index: `kast_blog-post`, `kast_product`, et
 
 ---
 
-## kast-plugin-r2
+## @kast-cms/kast-plugin-r2
 
 Stores uploaded media in Cloudflare R2 instead of local disk.
 
@@ -37,7 +37,7 @@ Stores uploaded media in Cloudflare R2 instead of local disk.
 
 ---
 
-## kast-plugin-resend
+## @kast-cms/kast-plugin-resend
 
 Sends transactional emails (form notifications, invite emails) via [Resend](https://resend.com).
 
@@ -48,7 +48,7 @@ Sends transactional emails (form notifications, invite emails) via [Resend](http
 
 ---
 
-## kast-plugin-sentry
+## @kast-cms/kast-plugin-sentry
 
 Captures unhandled errors from the Kast API and forwards them to Sentry.
 
@@ -59,7 +59,7 @@ Captures unhandled errors from the Kast API and forwards them to Sentry.
 
 ---
 
-## kast-plugin-stripe
+## @kast-cms/kast-plugin-stripe
 
 Listens to Stripe webhooks and syncs product/price data as content entries.
 
@@ -71,7 +71,7 @@ Listens to Stripe webhooks and syncs product/price data as content entries.
 
 ---
 
-## kast-plugin-example
+## @kast-cms/kast-plugin-example
 
 A minimal reference plugin with a single `content.created` hook. Use it as a starting point when building your own plugin.
 
@@ -79,7 +79,7 @@ No env vars required.
 
 ```ts
 // plugins/kast-plugin-example/src/index.ts
-import { IKastPlugin, KastPluginContext, PluginHook } from '@kast/plugin-sdk';
+import { IKastPlugin, KastPluginContext, PluginHook } from '@kast-cms/plugin-sdk';
 
 export class ExamplePlugin implements IKastPlugin {
   async onLoad(ctx: KastPluginContext): Promise<void> {

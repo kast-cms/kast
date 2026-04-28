@@ -33,13 +33,13 @@ The loader:
 
 Kast ships with six ready-to-use plugins:
 
-| Plugin                    | Purpose                             |
-| ------------------------- | ----------------------------------- |
-| `kast-plugin-meilisearch` | Full-text search sync               |
-| `kast-plugin-r2`          | Cloudflare R2 media storage         |
-| `kast-plugin-resend`      | Transactional email via Resend      |
-| `kast-plugin-sentry`      | Error monitoring via Sentry         |
-| `kast-plugin-stripe`      | Stripe product/price sync           |
-| `kast-plugin-example`     | Minimal example for getting started |
+| Plugin                              | Purpose                             |
+| ----------------------------------- | ----------------------------------- |
+| `@kast-cms/kast-plugin-meilisearch` | Full-text search sync               |
+| `@kast-cms/kast-plugin-r2`          | Cloudflare R2 media storage         |
+| `@kast-cms/kast-plugin-resend`      | Transactional email via Resend      |
+| `@kast-cms/kast-plugin-sentry`      | Error monitoring via Sentry         |
+| `@kast-cms/kast-plugin-stripe`      | Stripe product/price sync           |
+| `@kast-cms/kast-plugin-example`     | Minimal example for getting started |
 
 See [First-party plugins](./first-party-plugins) for configuration details.

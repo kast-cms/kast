@@ -1,5 +1,5 @@
 {
-  "name": "@kast/api",
+  "name": "@kast-cms/api",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -25,7 +25,7 @@
     "@bull-board/express": "^7.0.0",
     "@bull-board/nestjs": "^7.0.0",
     "@bull-board/ui": "^7.0.0",
-    "@kast/plugin-sdk": "workspace:*",
+    "@kast-cms/plugin-sdk": "workspace:*",
     "@nestjs/bullmq": "^10.2.3",
     "@nestjs/common": "^11.0.11",
     "@nestjs/config": "^3.3.0",
