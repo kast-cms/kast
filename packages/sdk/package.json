@@ -1,6 +1,6 @@
 {
   "name": "@kast-cms/sdk",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Official TypeScript SDK for the Kast CMS API",
   "license": "MIT",
   "type": "module",
@@ -23,6 +23,23 @@
     "tsup": "^8.0.0",
     "typescript": "^5.7.0"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "keywords": [
+    "kast",
+    "cms",
+    "sdk",
+    "typescript",
+    "headless-cms"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kast-cms/kast.git",
+    "directory": "packages/sdk"
+  },
+  "homepage": "https://docs.kast.dev",
   "engines": {
     "node": ">=18"
   }
