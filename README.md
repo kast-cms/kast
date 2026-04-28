@@ -13,7 +13,7 @@
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D20-339933?style=flat-square&logo=node.js)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178c6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![pnpm](https://img.shields.io/badge/pnpm-9-f69220?style=flat-square&logo=pnpm)](https://pnpm.io/)
-[![Docker](https://img.shields.io/badge/Docker-ready-2496ed?style=flat-square&logo=docker)](https://hub.docker.com/u/odaybakkour)
+[![Docker](https://img.shields.io/badge/GHCR-ready-2496ed?style=flat-square&logo=docker)](https://github.com/orgs/kast-cms/packages)
 
 <br />
 
@@ -36,9 +36,12 @@ Kast is a modern headless CMS built on **NestJS + Next.js** with a built-in **MC
 ```bash
 npx create-kast-app my-site
 cd my-site
-cp .env.example .env
-docker-compose up
+# .env is copied automatically — edit it with your DB credentials
+pnpm run db:migrate
+pnpm run dev
 ```
+
+> **Production with Docker?** A `docker-compose.yml` is included in the generated project. Run `docker-compose up` after filling in `.env`.
 
 | Service            | URL                          |
 | ------------------ | ---------------------------- |
@@ -124,7 +127,7 @@ Most headless CMSes were built for an era before AI agents, before Arabic-first 
     </tr>
     <tr>
       <td><strong>Docker images published</strong></td>
-      <td align="center">✅ <a href="https://hub.docker.com/u/odaybakkour">Docker Hub</a></td>
+      <td align="center">✅ <a href="https://github.com/orgs/kast-cms/packages">GHCR</a></td>
       <td align="center">✅</td>
       <td align="center">❌</td>
       <td align="center">✅</td>
@@ -152,7 +155,7 @@ Most headless CMSes were built for an era before AI agents, before Arabic-first 
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│                    Kast CMS v1                      │
+│                  Kast CMS v1.0.2                    │
 ├──────────────┬──────────────┬───────────────────────┤
 │   API        │   Admin      │   Frontend            │
 │   NestJS     │   Next.js 15 │   Next.js / Any       │
@@ -269,12 +272,24 @@ Get a production instance running in under 10 minutes:
 
 ### Docker
 
+Images are hosted on GitHub Container Registry (GHCR):
+
 ```bash
-docker pull odaybakkour/kast-api:latest
-docker pull odaybakkour/kast-admin:latest
+# Latest stable release
+docker pull ghcr.io/kast-cms/kast-api:latest
+docker pull ghcr.io/kast-cms/kast-admin:latest
+
+# Edge build (latest main branch commit)
+docker pull ghcr.io/kast-cms/kast-api:edge
+docker pull ghcr.io/kast-cms/kast-admin:edge
 ```
 
-Images are published automatically on every release via GitHub Actions.
+| Tag | Published on |
+| --- | --- |
+| `latest` / `1.x.x` | Every `v*` release tag |
+| `edge` | Every merge to `main` |
+
+Images are built and pushed automatically via GitHub Actions.
 
 ---
 
