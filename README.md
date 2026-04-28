@@ -284,10 +284,10 @@ docker pull ghcr.io/kast-cms/kast-api:edge
 docker pull ghcr.io/kast-cms/kast-admin:edge
 ```
 
-| Tag | Published on |
-| --- | --- |
+| Tag                | Published on           |
+| ------------------ | ---------------------- |
 | `latest` / `1.x.x` | Every `v*` release tag |
-| `edge` | Every merge to `main` |
+| `edge`             | Every merge to `main`  |
 
 Images are built and pushed automatically via GitHub Actions.
 
