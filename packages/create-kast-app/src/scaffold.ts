@@ -3,6 +3,7 @@ import { cp, readFile, writeFile } from 'fs/promises';
 import Handlebars from 'handlebars';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import { detectPmVersion } from './checks.js';
 import {
   DOCKER_COMPOSE_TEMPLATE,
   ENV_EXAMPLE_TEMPLATE,
@@ -27,6 +28,7 @@ const TEMPLATE_DIR = join(__dirname, '..', 'template');
 interface TemplateContext {
   projectName: string;
   packageManager: PackageManager;
+  pmVersion: string;
   installCmd: string;
   apiPort: number;
   i18n: boolean;
@@ -56,10 +58,33 @@ function installCmd(pm: PackageManager): string {
   return 'pnpm install';
 }
 
-function buildContext(opts: ProjectOptions): TemplateContext {
+async function resolvePmVersion(pm: PackageManager): Promise<string> {
+  // 1. Try to parse from npm_config_user_agent (set by all major PMs)
+  const fromAgent = detectPmVersion(pm);
+  if (fromAgent) return fromAgent;
+  // 2. Fall back to running `<pm> --version`
+  try {
+    const { stdout } = await execa(pm, ['--version']);
+    const match = /(\d+\.\d+\.\d+)/.exec(stdout.trim());
+    if (match?.[1]) return match[1];
+  } catch {
+    // ignore
+  }
+  // 3. Last-resort known stable versions
+  const fallbacks: Record<PackageManager, string> = {
+    pnpm: '9.0.0',
+    npm: '10.0.0',
+    yarn: '1.22.0',
+    bun: '1.0.0',
+  };
+  return fallbacks[pm];
+}
+
+function buildContext(opts: ProjectOptions, pmVersion: string): TemplateContext {
   return {
     projectName: opts.projectName,
     packageManager: opts.packageManager,
+    pmVersion,
     installCmd: installCmd(opts.packageManager),
     apiPort: opts.apiPort,
     i18n: opts.i18n,
@@ -146,7 +171,8 @@ export async function scaffoldProject(
   targetDir: string,
   scaffoldOpts: ScaffoldOptions = {},
 ): Promise<void> {
-  const ctx = buildContext(opts);
+  const pmVersion = await resolvePmVersion(opts.packageManager);
+  const ctx = buildContext(opts, pmVersion);
 
   // 1. Copy static source template tree into target directory
   await cp(TEMPLATE_DIR, targetDir, {
