@@ -124,13 +124,14 @@ function getGeneratedFiles(ctx: TemplateContext, opts: ProjectOptions): FileEntr
 // ── Run package manager install ────────────────────────────────────────────────
 
 async function runInstall(pm: PackageManager, cwd: string): Promise<void> {
-  const [bin, ...args] = pm === 'npm'
-    ? ['npm', 'install']
-    : pm === 'yarn'
-      ? ['yarn', 'install']
-      : pm === 'bun'
-        ? ['bun', 'install']
-        : ['pnpm', 'install'];
+  const [bin, ...args] =
+    pm === 'npm'
+      ? ['npm', 'install']
+      : pm === 'yarn'
+        ? ['yarn', 'install']
+        : pm === 'bun'
+          ? ['bun', 'install']
+          : ['pnpm', 'install'];
   await execa(bin, args, { cwd, stdio: 'inherit' });
 }
 

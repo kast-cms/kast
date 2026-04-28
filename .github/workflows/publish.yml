@@ -3,9 +3,9 @@ name: Publish
 on:
   push:
     branches:
-      - main   # builds :edge images on every merge to main
+      - main # builds :edge images on every merge to main
     tags:
-      - 'v*'   # builds :latest + :x.y.z images on release tags
+      - 'v*' # builds :latest + :x.y.z images on release tags
 
 concurrency:
   group: publish-${{ github.ref }}
@@ -92,7 +92,7 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: read
-      packages: write  # needed to push to GHCR
+      packages: write # needed to push to GHCR
     strategy:
       matrix:
         include:

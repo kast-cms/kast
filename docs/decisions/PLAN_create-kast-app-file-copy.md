@@ -48,6 +48,7 @@ template/
 ```
 
 Files that stay as Handlebars templates (generated, not copied):
+
 - `package.json` — needs `projectName`, `packageManager`
 - `pnpm-workspace.yaml` / workspace file for the chosen PM
 - `.env.example` / `.env`
@@ -90,13 +91,14 @@ New flow:
 ```
 
 Helper functions needed:
+
 - `copyTemplate(src, dest)` — `fs.cp(src, dest, { recursive: true })`
 - `renderAndWrite(templateStr, ctx, destPath)` — existing Handlebars render
 - `runInstall(pm, cwd)` — execa wrapper that calls the right install command per PM:
   - pnpm → `pnpm install`
-  - npm  → `npm install`
-  - yarn → `yarn install`  
-  - bun  → `bun install`
+  - npm → `npm install`
+  - yarn → `yarn install`
+  - bun → `bun install`
 
 ### 4. `package.json` template — become PM-aware
 
@@ -108,8 +110,8 @@ The generated root `package.json` will use the chosen PM's dev script:
     "dev": "turbo dev",
     "build": "turbo build",
     "db:migrate": "pnpm --filter @kast-cms/api prisma:migrate",
-    "db:seed":    "pnpm --filter @kast-cms/api prisma:seed",
-    "docker:up":  "docker-compose up -d"
+    "db:seed": "pnpm --filter @kast-cms/api prisma:seed",
+    "docker:up": "docker-compose up -d"
   },
   "packageManager": "{{packageManager}}@{{packageManagerVersion}}"
 }
@@ -120,18 +122,21 @@ The generated root `package.json` will use the chosen PM's dev script:
 ### 5. `docker-compose.yml` — demoted to optional reference
 
 Still generated (so power-users can `docker-compose up` in production) but:
+
 - API and admin images point to the GitHub repo's registry rather than a hardcoded Docker Hub tag
 - README shows the **source** workflow as the primary path, Docker as secondary
 
 ### 6. Success message updates
 
 Replace:
+
 ```
 $ nano .env
 $ docker-compose up
 ```
 
 With:
+
 ```
 $ cd my-app
 $ cp .env.example .env      # edit JWT_SECRET
@@ -163,6 +168,7 @@ export default defineConfig({
 ```
 
 Add to `package.json`:
+
 ```json
 "files": ["dist", "template", "README.md"]
 ```
@@ -180,19 +186,19 @@ Tests that currently assert `docker-compose.yml` exists and references `odaybakk
 
 ## Files to Create / Modify
 
-| File | Action |
-|---|---|
-| `packages/create-kast-app/src/types.ts` | Add `PackageManager` type and field |
-| `packages/create-kast-app/src/prompts.ts` | Add PM prompt + auto-detect |
-| `packages/create-kast-app/src/scaffold.ts` | Full rewrite — file copy + install |
-| `packages/create-kast-app/src/checks.ts` | Add `detectPackageManager()` |
-| `packages/create-kast-app/src/templates/package-json.ts` | PM-aware template |
-| `packages/create-kast-app/src/templates/docker-compose.ts` | Change image refs |
-| `packages/create-kast-app/src/index.ts` | Update `printSuccess()` |
-| `packages/create-kast-app/package.json` | Add `template` to `files` |
-| `packages/create-kast-app/tsup.config.ts` | No change needed (template is static) |
-| `packages/create-kast-app/template/` | **New** — full source tree |
-| `packages/create-kast-app/test/cli.e2e.mjs` | Update assertions |
+| File                                                       | Action                                |
+| ---------------------------------------------------------- | ------------------------------------- |
+| `packages/create-kast-app/src/types.ts`                    | Add `PackageManager` type and field   |
+| `packages/create-kast-app/src/prompts.ts`                  | Add PM prompt + auto-detect           |
+| `packages/create-kast-app/src/scaffold.ts`                 | Full rewrite — file copy + install    |
+| `packages/create-kast-app/src/checks.ts`                   | Add `detectPackageManager()`          |
+| `packages/create-kast-app/src/templates/package-json.ts`   | PM-aware template                     |
+| `packages/create-kast-app/src/templates/docker-compose.ts` | Change image refs                     |
+| `packages/create-kast-app/src/index.ts`                    | Update `printSuccess()`               |
+| `packages/create-kast-app/package.json`                    | Add `template` to `files`             |
+| `packages/create-kast-app/tsup.config.ts`                  | No change needed (template is static) |
+| `packages/create-kast-app/template/`                       | **New** — full source tree            |
+| `packages/create-kast-app/test/cli.e2e.mjs`                | Update assertions                     |
 
 ---
 
@@ -207,12 +213,12 @@ Tests that currently assert `docker-compose.yml` exists and references `odaybakk
 
 ## Risks & Mitigations
 
-| Risk | Mitigation |
-|---|---|
-| Template size bloats npm package | `.npmignore` excludes `node_modules`, `dist`, `.next`, `prisma/migrations` from template copy |
-| PM auto-detect is wrong | Always ask the user — auto-detect is just the pre-selected default, not forced |
-| `pnpm install` during scaffold takes too long | Show a spinner; document offline/no-install flag |
-| Template diverges from monorepo source | CI job: after build, `diff template/apps/api apps/api --exclude=node_modules` |
+| Risk                                          | Mitigation                                                                                    |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Template size bloats npm package              | `.npmignore` excludes `node_modules`, `dist`, `.next`, `prisma/migrations` from template copy |
+| PM auto-detect is wrong                       | Always ask the user — auto-detect is just the pre-selected default, not forced                |
+| `pnpm install` during scaffold takes too long | Show a spinner; document offline/no-install flag                                              |
+| Template diverges from monorepo source        | CI job: after build, `diff template/apps/api apps/api --exclude=node_modules`                 |
 
 ---
 

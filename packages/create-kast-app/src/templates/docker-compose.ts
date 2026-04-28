@@ -92,4 +92,3 @@ volumes:
   meilisearch_data:
 {{/if}}
 `;
-

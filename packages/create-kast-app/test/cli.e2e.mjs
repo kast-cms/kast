@@ -66,10 +66,7 @@ test('--skip-interactive generates expected project structure', async (t) => {
     await exists(join(projectDir, 'apps', 'api', 'src', 'main.ts')),
     'apps/api/src/main.ts must exist',
   );
-  assert.ok(
-    await exists(join(projectDir, 'apps', 'admin', 'src')),
-    'apps/admin/src must exist',
-  );
+  assert.ok(await exists(join(projectDir, 'apps', 'admin', 'src')), 'apps/admin/src must exist');
   assert.ok(
     await exists(join(projectDir, 'packages', 'sdk', 'src')),
     'packages/sdk/src must exist',
@@ -127,10 +124,7 @@ test('package.json is valid JSON with correct project name and turbo dev script'
   const pkg = JSON.parse(raw);
   assert.equal(pkg.name, name, 'package.json name should match project name');
   assert.ok(pkg.scripts?.['dev'], 'package.json should have a dev script');
-  assert.ok(
-    pkg.scripts['dev'].includes('turbo'),
-    'dev script should use turbo',
-  );
+  assert.ok(pkg.scripts['dev'].includes('turbo'), 'dev script should use turbo');
   assert.ok(pkg.scripts?.['db:migrate'], 'package.json should have db:migrate script');
 });
 
@@ -149,4 +143,3 @@ test('exits with code 1 when project directory already exists', async (t) => {
     assert.ok(err.code !== 0, 'Should exit with non-zero code when directory exists');
   }
 });
-
