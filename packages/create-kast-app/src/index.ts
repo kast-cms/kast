@@ -31,6 +31,7 @@ function resolveOptions(args: string[]): ProjectOptions | null {
 }
 
 function printSuccess(opts: ProjectOptions): void {
+  const pm = opts.packageManager;
   const apiUrl = `http://localhost:${opts.apiPort}/api/v1`;
   process.stdout.write(
     [
@@ -39,13 +40,15 @@ function printSuccess(opts: ProjectOptions): void {
       '',
       `  ${pc.bold('Next steps:')}`,
       `  ${pc.dim('$')} cd ${opts.projectName}`,
-      `  ${pc.dim('$')} ${pc.cyan('nano .env')}  ${pc.dim('# Set JWT_SECRET and review settings')}`,
-      `  ${pc.dim('$')} ${pc.cyan('docker-compose up')}`,
+      `  ${pc.dim('$')} ${pc.cyan('cp .env.example .env')}  ${pc.dim('# Set JWT_SECRET at minimum')}`,
+      `  ${pc.dim('$')} ${pc.cyan(`${pm} run db:migrate`)}`,
+      `  ${pc.dim('$')} ${pc.cyan(`${pm} run dev`)}`,
       '',
       `  Admin:  ${pc.underline('http://localhost:3001/admin')}`,
       `  API:    ${pc.underline(apiUrl)}`,
       `  MCP:    ${pc.underline(`http://localhost:${opts.apiPort}/mcp`)}`,
       '',
+      `  ${pc.dim('Tip: docker-compose.yml is available for production deployments.')}`,
       `  Documentation: ${pc.underline('https://docs.kast.dev')}`,
       '',
     ].join('\n'),
@@ -55,6 +58,7 @@ function printSuccess(opts: ProjectOptions): void {
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const projectNameArg = args.find((a) => !a.startsWith('-'));
+  const skipInstall = args.includes('--skip-install');
 
   const options = resolveOptions(args) ?? (await runInteractivePrompts(projectNameArg));
   const targetDir = resolve(process.cwd(), options.projectName);
@@ -68,7 +72,7 @@ async function main(): Promise<void> {
   }
 
   process.stdout.write(`\n  ${pc.dim('◇')} Scaffolding project files...\n`);
-  await scaffoldProject(options, targetDir);
+  await scaffoldProject(options, targetDir, { skipInstall });
   printSuccess(options);
 }
 

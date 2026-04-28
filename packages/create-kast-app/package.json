@@ -1,6 +1,6 @@
 {
   "name": "create-kast-app",
-  "version": "1.0.2",
+  "version": "2.0.0",
   "description": "Create a new Kast CMS project",
   "license": "MIT",
   "type": "module",
@@ -10,6 +10,7 @@
   "main": "./dist/index.js",
   "files": [
     "dist",
+    "template",
     "README.md"
   ],
   "scripts": {

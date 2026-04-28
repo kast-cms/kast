@@ -19,6 +19,7 @@ export default tseslint.config(
       'apps/docs/**',
       'apps/web-blog/**',
       'apps/web-docs/**',
+      'packages/create-kast-app/template/**',
     ],
   },
 
