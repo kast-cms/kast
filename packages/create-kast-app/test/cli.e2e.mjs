@@ -68,7 +68,7 @@ test('docker-compose.yml contains postgres and redis services', async (t) => {
   const compose = await readFile(join(tmp, 'compose-test', 'docker-compose.yml'), 'utf-8');
   assert.ok(compose.includes('postgres'), 'docker-compose should include postgres service');
   assert.ok(compose.includes('redis'), 'docker-compose should include redis service');
-  assert.ok(compose.includes('kasthq/api'), 'docker-compose should reference kasthq/api image');
+  assert.ok(compose.includes('odaybakkour/kast-api'), 'docker-compose should reference odaybakkour/kast-api image');
 });
 
 test('.env.example contains required variables', async (t) => {
