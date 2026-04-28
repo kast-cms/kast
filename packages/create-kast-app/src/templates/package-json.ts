@@ -18,7 +18,7 @@ export const PACKAGE_JSON_TEMPLATE = `{
   "engines": {
     "node": ">=20"
   },
-  "packageManager": "{{packageManager}}@latest"{{#unless isPnpm}},
+  "packageManager": "{{packageManager}}@{{pmVersion}}"{{#unless isPnpm}},
   "workspaces": [
     "apps/*",
     "packages/*",

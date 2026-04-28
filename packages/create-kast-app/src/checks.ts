@@ -43,3 +43,14 @@ export function detectPackageManager(): PackageManager {
   if (agent.startsWith('npm')) return 'npm';
   return 'pnpm';
 }
+
+/**
+ * Extract the version of the invoking package manager from npm_config_user_agent.
+ * e.g. "pnpm/9.14.2 npm/? node/v20.18.1 ..." → "9.14.2"
+ * Returns null if the version cannot be parsed.
+ */
+export function detectPmVersion(pm: PackageManager): string | null {
+  const agent = process.env['npm_config_user_agent'] ?? '';
+  const match = new RegExp(`${pm}\\/(\\d+\\.\\d+\\.\\d+)`).exec(agent);
+  return match?.[1] ?? null;
+}
