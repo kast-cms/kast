@@ -62,7 +62,7 @@ jobs:
         run: pnpm --filter @kast-cms/api exec prisma generate
 
       - name: Build packages
-        run: pnpm --filter create-kast-app --filter @kast-cms/sdk build
+        run: pnpm --filter create-kast-app --filter @kast-cms/sdk --filter @kast-cms/plugin-sdk build
 
       - name: Publish create-kast-app
         run: pnpm --filter create-kast-app publish --no-git-checks --access public
@@ -71,6 +71,11 @@ jobs:
 
       - name: Publish @kast-cms/sdk
         run: pnpm --filter @kast-cms/sdk publish --no-git-checks --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish @kast-cms/plugin-sdk
+        run: pnpm --filter @kast-cms/plugin-sdk publish --no-git-checks --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
