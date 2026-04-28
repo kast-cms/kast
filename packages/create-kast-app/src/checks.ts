@@ -1,4 +1,5 @@
 import { createServer } from 'net';
+import type { PackageManager } from './types.js';
 
 const MIN_NODE_VERSION = 20;
 
@@ -27,4 +28,18 @@ export function isPortAvailable(port: number): Promise<boolean> {
     });
     server.listen(port, '127.0.0.1');
   });
+}
+
+/**
+ * Detect which package manager was used to invoke the CLI by reading the
+ * npm_config_user_agent env var that npm/yarn/pnpm/bun all set at runtime.
+ * Falls back to 'pnpm' when undetectable.
+ */
+export function detectPackageManager(): PackageManager {
+  const agent = process.env['npm_config_user_agent'] ?? '';
+  if (agent.startsWith('pnpm')) return 'pnpm';
+  if (agent.startsWith('yarn')) return 'yarn';
+  if (agent.startsWith('bun')) return 'bun';
+  if (agent.startsWith('npm')) return 'npm';
+  return 'pnpm';
 }

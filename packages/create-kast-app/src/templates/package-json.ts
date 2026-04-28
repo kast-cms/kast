@@ -3,24 +3,32 @@ export const PACKAGE_JSON_TEMPLATE = `{
   "private": true,
   "version": "0.0.1",
   "scripts": {
-    "dev": "docker-compose up",
-    "up": "docker-compose up",
-    "up:detach": "docker-compose up -d",
-    "down": "docker-compose down",
-    "logs": "docker-compose logs -f",
-    "logs:api": "docker-compose logs -f api",
-    "ps": "docker-compose ps"
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "typecheck": "turbo typecheck",
+    "lint": "turbo lint",
+    "db:generate": "{{packageManager}} --filter @kast-cms/api run prisma:generate",
+    "db:migrate": "{{packageManager}} --filter @kast-cms/api run prisma:migrate",
+    "db:migrate:prod": "{{packageManager}} --filter @kast-cms/api run prisma:migrate:prod",
+    "db:seed": "{{packageManager}} --filter @kast-cms/api run prisma:seed",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f"
   },
   "engines": {
-    "node": ">=20",
-    "pnpm": ">=9"
+    "node": ">=20"
   },
-  "packageManager": "pnpm@9.0.0"
+  "packageManager": "{{packageManager}}@latest"{{#unless isPnpm}},
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "plugins/*"
+  ]{{/unless}}
 }
 `;
 
-export const PNPM_WORKSPACE_TEMPLATE = `packages:
+export const WORKSPACE_TEMPLATE = `{{#if isPnpm}}packages:
   - 'apps/*'
   - 'packages/*'
   - 'plugins/*'
-`;
+{{/if}}`;

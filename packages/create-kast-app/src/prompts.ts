@@ -1,7 +1,13 @@
 import { cancel, confirm, intro, isCancel, multiselect, outro, select, text } from '@clack/prompts';
 import pc from 'picocolors';
-import { isPortAvailable } from './checks.js';
-import type { DeployTarget, FrontendStarter, ProjectOptions, StorageProvider } from './types.js';
+import { detectPackageManager, isPortAvailable } from './checks.js';
+import type {
+  DeployTarget,
+  FrontendStarter,
+  PackageManager,
+  ProjectOptions,
+  StorageProvider,
+} from './types.js';
 
 const BANNER = `
   ██╗  ██╗ █████╗ ███████╗████████╗
@@ -24,6 +30,7 @@ function abortIfCancelled<T>(value: T | symbol): T {
 export function getDefaultOptions(projectName: string): ProjectOptions {
   return {
     projectName,
+    packageManager: detectPackageManager(),
     apiPort: 3000,
     i18n: false,
     defaultLocale: 'en',
@@ -47,6 +54,22 @@ async function promptProjectName(initial?: string): Promise<string> {
       },
     }),
   );
+}
+
+async function promptPackageManager(): Promise<PackageManager> {
+  const detected = detectPackageManager();
+  return abortIfCancelled(
+    await select({
+      message: 'Package manager:',
+      options: [
+        { value: 'pnpm', label: 'pnpm', hint: 'recommended' },
+        { value: 'npm', label: 'npm' },
+        { value: 'yarn', label: 'yarn' },
+        { value: 'bun', label: 'bun' },
+      ],
+      initialValue: detected,
+    }),
+  ) as PackageManager;
 }
 
 async function promptApiPort(): Promise<number> {
@@ -165,6 +188,7 @@ export async function runInteractivePrompts(initialName?: string): Promise<Proje
   intro(pc.bgCyan(pc.black(' create-kast-app ')));
 
   const projectName = await promptProjectName(initialName);
+  const packageManager = await promptPackageManager();
   const apiPort = await promptApiPort();
   const { i18n, extraLocales } = await promptI18n();
   const { storageProvider, plugins } = await promptStorageAndPlugins();
@@ -174,6 +198,7 @@ export async function runInteractivePrompts(initialName?: string): Promise<Proje
 
   return {
     projectName,
+    packageManager,
     apiPort,
     i18n,
     defaultLocale: 'en',

@@ -1,6 +1,12 @@
 // docker-compose.yml Handlebars template for generated projects.
-// Generated projects use the pre-built Docker Hub images (odaybakkour/kast-api, odaybakkour/kast-admin).
-export const DOCKER_COMPOSE_TEMPLATE = `version: '3.9'
+// This file is provided for PRODUCTION deployments using pre-built images.
+// For local development, use: <pm> run dev  (starts the source directly)
+export const DOCKER_COMPOSE_TEMPLATE = `# ── Production Docker Compose ─────────────────────────────────────────────────
+# Use this file to run Kast CMS with the pre-built Docker images.
+# For local development, run: {{packageManager}} run dev
+#
+# Images are built from: https://github.com/kast-cms/kast
+# ─────────────────────────────────────────────────────────────────────────────
 
 services:
   postgres:
@@ -34,7 +40,7 @@ services:
       retries: 5
 
   api:
-    image: odaybakkour/kast-api:latest
+    image: ghcr.io/kast-cms/kast-api:latest
     restart: unless-stopped
     env_file: .env
     ports:
@@ -48,7 +54,7 @@ services:
       - uploads:/app/uploads
 
   admin:
-    image: odaybakkour/kast-admin:latest
+    image: ghcr.io/kast-cms/kast-admin:latest
     restart: unless-stopped
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:{{apiPort}}/api/v1
@@ -58,7 +64,7 @@ services:
       - api
 {{#if includeFrontend}}
   web:
-    image: ghcr.io/kast-cms/web-{{frontendStarter}}:1.0.0
+    image: ghcr.io/kast-cms/web-{{frontendStarter}}:latest
     restart: unless-stopped
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:{{apiPort}}/api/v1

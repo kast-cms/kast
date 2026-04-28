@@ -1,0 +1,915 @@
+{
+  "nav": {
+    "contentTypes": "Content Types",
+    "content": "Content",
+    "media": "Media",
+    "users": "Users",
+    "roles": "Roles",
+    "apiTokens": "API Tokens",
+    "agentTokens": "Agent Tokens",
+    "plugins": "Plugins",
+    "seo": "SEO",
+    "webhooks": "Webhooks",
+    "forms": "Forms",
+    "menus": "Menus",
+    "trash": "Trash",
+    "settings": "Settings",
+    "locales": "Locales",
+    "auditLog": "Audit Log",
+    "dashboard": "Dashboard",
+    "queueMonitor": "Queue Monitor"
+  },
+  "auth": {
+    "login": {
+      "title": "Sign in to Kast",
+      "subtitle": "Enter your credentials to access the admin panel",
+      "emailLabel": "Email address",
+      "emailPlaceholder": "you@example.com",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "••••••••",
+      "submit": "Sign in",
+      "submitting": "Signing in…",
+      "errorInvalid": "Invalid email or password.",
+      "errorGeneric": "Something went wrong. Please try again.",
+      "forgotPassword": "Forgot password?",
+      "orContinueWith": "Or continue with",
+      "continueWithGoogle": "Continue with Google",
+      "continueWithGitHub": "Continue with GitHub"
+    },
+    "forgotPassword": {
+      "title": "Forgot your password?",
+      "subtitle": "Enter your email and we'll send you a reset link.",
+      "emailLabel": "Email address",
+      "emailPlaceholder": "you@example.com",
+      "submit": "Send reset link",
+      "submitting": "Sending…",
+      "successMessage": "If that email is registered, a reset link has been sent. Check your inbox.",
+      "backToLogin": "Back to sign in",
+      "errorGeneric": "Something went wrong. Please try again."
+    },
+    "resetPassword": {
+      "title": "Set new password",
+      "subtitle": "Choose a strong password for your account.",
+      "passwordLabel": "New password",
+      "passwordPlaceholder": "At least 8 characters",
+      "confirmLabel": "Confirm password",
+      "confirmPlaceholder": "Repeat your new password",
+      "submit": "Reset password",
+      "submitting": "Resetting…",
+      "successMessage": "Your password has been reset. You can now sign in.",
+      "errorInvalid": "This reset link is invalid or has expired.",
+      "errorGeneric": "Something went wrong. Please try again.",
+      "passwordMismatch": "Passwords do not match.",
+      "missingToken": "No reset token found. Please request a new link.",
+      "backToLogin": "Back to sign in"
+    },
+    "logout": "Sign out"
+  },
+  "setup": {
+    "title": "Welcome to Kast",
+    "subtitle": "Create your first admin account to get started.",
+    "firstNameLabel": "First name",
+    "lastNameLabel": "Last name",
+    "emailLabel": "Email address",
+    "passwordLabel": "Password",
+    "confirmPasswordLabel": "Confirm password",
+    "submit": "Create account",
+    "submitting": "Creating account…",
+    "passwordMismatch": "Passwords do not match.",
+    "errorGeneric": "Something went wrong. Please try again."
+  },
+  "common": {
+    "loading": "Loading…",
+    "error": "Something went wrong",
+    "retry": "Try again",
+    "cancel": "Cancel",
+    "save": "Save",
+    "saving": "Saving…",
+    "delete": "Delete",
+    "edit": "Edit",
+    "view": "View",
+    "search": "Search",
+    "noResults": "No results found.",
+    "comingSoon": "Coming soon"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "description": "The page you're looking for doesn't exist or has been moved.",
+    "back": "Back to dashboard"
+  },
+  "error": {
+    "title": "Something went wrong",
+    "description": "An unexpected error occurred. Please try again.",
+    "retry": "Try again"
+  },
+  "contentTypes": {
+    "title": "Content Types",
+    "description": "Define the structure of your content.",
+    "createButton": "Create content type",
+    "emptyTitle": "No content types yet",
+    "emptyDescription": "Get started by creating your first content type.",
+    "table": {
+      "displayName": "Display Name",
+      "apiId": "API ID",
+      "fields": "Fields",
+      "entries": "Entries",
+      "updated": "Last Updated",
+      "actions": ""
+    },
+    "badges": {
+      "system": "System"
+    },
+    "new": {
+      "title": "Create content type",
+      "description": "Define a new content type for your project.",
+      "displayNameLabel": "Display Name",
+      "displayNamePlaceholder": "Blog Post",
+      "apiIdLabel": "API ID",
+      "apiIdPlaceholder": "blog-post",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "A short description (optional)",
+      "iconLabel": "Icon (emoji)",
+      "iconPlaceholder": "📝",
+      "submit": "Create",
+      "submitting": "Creating…"
+    },
+    "edit": {
+      "title": "Edit content type",
+      "submit": "Save changes",
+      "submitting": "Saving…",
+      "deleteButton": "Delete content type"
+    },
+    "fields": {
+      "title": "Fields",
+      "addField": "Add field",
+      "emptyTitle": "No fields yet",
+      "emptyDescription": "Add your first field to define the structure.",
+      "required": "Required",
+      "localized": "Localized",
+      "unique": "Unique",
+      "hidden": "Hidden",
+      "position": "Position"
+    },
+    "fieldTypes": {
+      "TEXT": "Text",
+      "RICH_TEXT": "Rich Text",
+      "NUMBER": "Number",
+      "BOOLEAN": "Boolean",
+      "DATE": "Date",
+      "MEDIA": "Media",
+      "RELATION": "Relation",
+      "JSON": "JSON",
+      "EMAIL": "Email",
+      "URL": "URL",
+      "ENUM": "Enum",
+      "UID": "UID"
+    },
+    "fieldDrawer": {
+      "addTitle": "Add field",
+      "editTitle": "Edit field",
+      "nameLabel": "Field name (API ID)",
+      "namePlaceholder": "title",
+      "displayNameLabel": "Display name",
+      "displayNamePlaceholder": "Title",
+      "typeLabel": "Field type",
+      "selectType": "Select a type",
+      "configSection": "Configuration",
+      "togglesSection": "Options",
+      "save": "Save field",
+      "saving": "Saving…"
+    },
+    "deleteDialog": {
+      "title": "Delete content type",
+      "description": "This action cannot be undone. All entries and fields associated with this content type will be permanently deleted.",
+      "confirmLabel": "Type the API ID to confirm:",
+      "confirmPlaceholder": "Type {{apiId}} to confirm",
+      "deleteButton": "Delete permanently",
+      "deleting": "Deleting…"
+    }
+  },
+  "content": {
+    "title": "Content",
+    "description": "Browse and manage your content entries.",
+    "newEntry": "New entry",
+    "emptyTitle": "No entries yet",
+    "emptyDescription": "Create your first entry for this content type.",
+    "searchPlaceholder": "Search entries…",
+    "filterStatus": "Status",
+    "filterLocale": "Locale",
+    "allStatuses": "All statuses",
+    "allLocales": "All locales",
+    "loadMore": "Load more",
+    "table": {
+      "title": "Title",
+      "status": "Status",
+      "locale": "Locale",
+      "author": "Author",
+      "updated": "Last Updated",
+      "actions": ""
+    },
+    "status": {
+      "DRAFT": "Draft",
+      "PUBLISHED": "Published",
+      "ARCHIVED": "Archived",
+      "SCHEDULED": "Scheduled"
+    },
+    "bulk": {
+      "selected": "{{count}} selected",
+      "publish": "Publish",
+      "unpublish": "Unpublish",
+      "trash": "Move to Trash",
+      "confirmTrash": "Move {{count}} entries to trash?",
+      "confirmPublish": "Publish {{count}} entries?",
+      "confirmUnpublish": "Unpublish {{count}} entries?"
+    },
+    "editor": {
+      "newTitle": "New entry",
+      "editTitle": "Edit entry",
+      "saveDraft": "Save draft",
+      "saving": "Saving…",
+      "publish": "Publish",
+      "publishing": "Publishing…",
+      "unpublish": "Unpublish",
+      "unpublishing": "Unpublishing…",
+      "archive": "Archive",
+      "archiving": "Archiving…",
+      "restore": "Restore to Draft",
+      "restoring": "Restoring…",
+      "schedule": "Schedule",
+      "cancelSchedule": "Cancel Schedule",
+      "cancelling": "Cancelling…",
+      "scheduledFor": "Scheduled for {date}",
+      "autosaved": "Draft saved",
+      "unsavedChanges": "Unsaved changes",
+      "localeTab": "{{locale}}"
+    },
+    "seo": {
+      "panelTitle": "SEO",
+      "metaTitle": "Meta title",
+      "metaDescription": "Meta description",
+      "ogImage": "OG image",
+      "canonicalUrl": "Canonical URL",
+      "score": "SEO score",
+      "scoreStub": "SEO scoring will be available after WS-6."
+    },
+    "media": {
+      "pickerTitle": "Select media",
+      "selectButton": "Select",
+      "searchPlaceholder": "Search files…",
+      "noFiles": "No files found.",
+      "uploadHint": "Upload files in the Media Library."
+    },
+    "schedule": {
+      "title": "Schedule Publish",
+      "publishAt": "Publish at",
+      "hint": "Choose a future date and time.",
+      "cancel": "Cancel",
+      "confirm": "Schedule",
+      "scheduling": "Scheduling…"
+    },
+    "versions": {
+      "title": "Version History",
+      "empty": "No versions yet.",
+      "version": "Version {number}",
+      "by": "by {name}",
+      "revert": "Revert",
+      "reverting": "Reverting…",
+      "confirmTitle": "Revert to Version {number}?",
+      "confirmDescription": "This will overwrite the current draft content. The entry will be set to Draft.",
+      "confirm": "Revert",
+      "cancel": "Cancel"
+    }
+  },
+  "mediaLibrary": {
+    "title": "Media Library",
+    "description": "Upload and manage your media files.",
+    "searchPlaceholder": "Search files…",
+    "noFiles": "No files found.",
+    "upload": "Upload",
+    "filter": {
+      "allTypes": "All types",
+      "images": "Images",
+      "videos": "Videos",
+      "documents": "Documents"
+    },
+    "sort": {
+      "date": "Date uploaded",
+      "name": "Name",
+      "size": "Size"
+    },
+    "folder": {
+      "allFiles": "All files",
+      "new": "New folder",
+      "namePlaceholder": "Folder name",
+      "create": "Create"
+    },
+    "detail": {
+      "altText": "Alt text",
+      "altTextPlaceholder": "Describe this image…",
+      "save": "Save",
+      "saving": "Saving…",
+      "size": "Size",
+      "type": "Type",
+      "dimensions": "Dimensions",
+      "uploaded": "Uploaded",
+      "url": "URL",
+      "usedIn": "Used in {{count}} entries",
+      "trash": "Move to trash",
+      "trashDisabled": "In use — cannot trash"
+    },
+    "uploadZone": {
+      "title": "Upload files",
+      "tabFile": "Upload file",
+      "tabUrl": "From URL",
+      "dropHere": "Drop files here",
+      "or": "or",
+      "browse": "Browse files",
+      "uploading": "Uploading…",
+      "urlHint": "Enter a URL to download and store the file.",
+      "import": "Import"
+    }
+  },
+  "users": {
+    "title": "Users",
+    "description": "Manage admin users and their access.",
+    "invite": "Invite user",
+    "searchPlaceholder": "Search by name or email…",
+    "filterByRole": "All roles",
+    "table": {
+      "name": "Name",
+      "email": "Email",
+      "roles": "Roles",
+      "status": "Status",
+      "lastLogin": "Last login",
+      "actions": "Actions"
+    },
+    "status": {
+      "active": "Active",
+      "invited": "Invited",
+      "suspended": "Suspended"
+    },
+    "inviteDialog": {
+      "title": "Invite user",
+      "email": "Email address",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "roles": "Roles",
+      "submit": "Send invite",
+      "submitting": "Sending…",
+      "cancel": "Cancel"
+    },
+    "editPage": {
+      "title": "Edit user",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "roles": "Roles",
+      "active": "Account active",
+      "save": "Save changes",
+      "saving": "Saving…",
+      "back": "Back to users",
+      "cannotSelfSuspend": "You cannot suspend your own account."
+    },
+    "noUsers": "No users found.",
+    "never": "Never"
+  },
+  "roles": {
+    "title": "Roles",
+    "description": "Configure permission roles. System roles are read-only.",
+    "createRole": "Create role",
+    "system": "System",
+    "custom": "Custom",
+    "table": {
+      "role": "Role",
+      "users": "Users",
+      "permissions": "Permissions",
+      "type": "Type",
+      "actions": "Actions"
+    },
+    "createDialog": {
+      "title": "Create custom role",
+      "name": "Slug",
+      "namePlaceholder": "content-manager",
+      "displayName": "Display name",
+      "displayNamePlaceholder": "Content Manager",
+      "description": "Description",
+      "submit": "Create role",
+      "submitting": "Creating…",
+      "cancel": "Cancel"
+    },
+    "permissions": {
+      "title": "Permissions — {{name}}",
+      "readOnly": "System role permissions are read-only.",
+      "actions": {
+        "read": "Read",
+        "create": "Create",
+        "update": "Update",
+        "delete": "Delete",
+        "publish": "Publish"
+      },
+      "resources": {
+        "content": "Content",
+        "media": "Media",
+        "seo": "SEO",
+        "content-types": "Content Types",
+        "users": "Users",
+        "roles": "Roles",
+        "tokens": "API Tokens"
+      },
+      "save": "Save permissions",
+      "saving": "Saving…",
+      "viewEdit": "Permissions",
+      "delete": "Delete",
+      "deleteConfirm": "Delete role \"{{name}}\"? This cannot be undone."
+    },
+    "noRoles": "No roles found."
+  },
+  "apiTokens": {
+    "title": "API Tokens",
+    "description": "Create and manage API keys for programmatic access.",
+    "create": "Create token",
+    "table": {
+      "name": "Name",
+      "prefix": "Prefix",
+      "scope": "Scope",
+      "lastUsed": "Last used",
+      "expires": "Expires",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "scope": {
+      "READ_ONLY": "Read only",
+      "FULL_ACCESS": "Full access",
+      "SCOPED": "Scoped"
+    },
+    "status": {
+      "active": "Active",
+      "revoked": "Revoked"
+    },
+    "createDialog": {
+      "title": "Create API token",
+      "name": "Token name",
+      "namePlaceholder": "sdk-staging",
+      "scope": "Scope",
+      "scopeReadOnly": "Read only — GET requests only",
+      "scopeFullAccess": "Full access — all endpoints",
+      "scopeScoped": "Scoped — custom permissions",
+      "expiry": "Expires at",
+      "expiryHint": "Leave empty for no expiry.",
+      "submit": "Create token",
+      "submitting": "Creating…",
+      "cancel": "Cancel"
+    },
+    "revealDialog": {
+      "title": "Token created",
+      "warning": "This token will only be shown once. Copy it now and store it securely.",
+      "copy": "Copy",
+      "copied": "Copied!",
+      "done": "Done"
+    },
+    "noTokens": "No tokens yet.",
+    "never": "Never",
+    "noExpiry": "No expiry",
+    "revoke": "Revoke",
+    "revokeConfirm": "Revoke token \"{{name}}\"? Any services using it will lose access."
+  },
+  "seo": {
+    "title": "SEO",
+    "description": "Manage redirects, sitemap, and SEO scores.",
+    "tabs": {
+      "redirects": "Redirects",
+      "sitemap": "Sitemap"
+    },
+    "score": {
+      "label": "SEO Score",
+      "issuesTitle": "SEO Issues",
+      "noIssues": "No issues found.",
+      "noScore": "No score yet — trigger validation to generate one.",
+      "validate": "Run validation",
+      "validating": "Validating…",
+      "severity": {
+        "ERROR": "Error",
+        "WARNING": "Warning",
+        "INFO": "Info"
+      }
+    },
+    "redirects": {
+      "title": "Redirect Rules",
+      "description": "Manage 301/302 redirect rules.",
+      "createButton": "Add redirect",
+      "emptyTitle": "No redirects yet",
+      "emptyDescription": "Add your first redirect rule.",
+      "table": {
+        "from": "From",
+        "to": "To",
+        "type": "Type",
+        "active": "Active",
+        "hits": "Hits",
+        "actions": ""
+      },
+      "type": {
+        "PERMANENT": "301 Permanent",
+        "TEMPORARY": "302 Temporary"
+      },
+      "create": {
+        "title": "Add redirect",
+        "fromLabel": "From path",
+        "fromPlaceholder": "/old-page",
+        "toLabel": "To path",
+        "toPlaceholder": "/new-page",
+        "typeLabel": "Type",
+        "submit": "Add redirect",
+        "submitting": "Adding…"
+      },
+      "deleteConfirm": "Delete redirect from \"{{from}}\"?",
+      "toggleActive": "Toggle active"
+    },
+    "sitemap": {
+      "title": "Sitemap URLs",
+      "description": "Published entries with canonical URLs appear here.",
+      "copyAll": "Copy all URLs",
+      "copied": "Copied!",
+      "empty": "No published entries with canonical URLs found.",
+      "urlCount": "{{count}} URLs"
+    }
+  },
+  "locales": {
+    "title": "Locales",
+    "addLocale": "Add Locale",
+    "defaultBadge": "Default",
+    "setDefault": "Set as default",
+    "delete": "Delete",
+    "deleteConfirm": "Delete this locale? This action cannot be undone.",
+    "active": "Active",
+    "inactive": "Inactive",
+    "empty": "No locales configured yet.",
+    "columns": {
+      "code": "Code",
+      "name": "Name",
+      "nativeName": "Native Name",
+      "direction": "Direction",
+      "active": "Status",
+      "actions": "Actions"
+    },
+    "createDialog": {
+      "title": "Add Locale",
+      "code": "Language code (BCP-47)",
+      "name": "Name (in English)",
+      "nativeName": "Native name",
+      "direction": "Text direction",
+      "ltr": "Left to Right (LTR)",
+      "rtl": "Right to Left (RTL)",
+      "fallbackCode": "Fallback locale code (optional)",
+      "cancel": "Cancel",
+      "save": "Add Locale",
+      "saving": "Saving…"
+    }
+  },
+  "webhooks": {
+    "title": "Webhooks",
+    "description": "Configure outbound webhooks with HMAC-SHA256 signatures.",
+    "create": "Add webhook",
+    "active": "Active",
+    "inactive": "Inactive",
+    "noWebhooks": "No webhooks configured.",
+    "viewDeliveries": "View delivery log",
+    "sendTest": "Send test delivery",
+    "delete": "Delete webhook",
+    "deleteConfirm": "Delete webhook \"{name}\"? This cannot be undone.",
+    "table": {
+      "name": "Name",
+      "url": "Endpoint URL",
+      "events": "Events",
+      "status": "Status"
+    },
+    "createDrawer": {
+      "title": "Add webhook endpoint",
+      "nameLabel": "Name",
+      "namePlaceholder": "My webhook",
+      "urlLabel": "Endpoint URL",
+      "eventsLabel": "Events to send",
+      "cancel": "Cancel",
+      "create": "Create webhook",
+      "creating": "Creating…"
+    },
+    "secretReveal": {
+      "title": "Webhook secret",
+      "warning": "Copy your webhook secret now. It will not be shown again.",
+      "hint": "Use this secret to verify HMAC-SHA256 signatures on incoming requests (X-Kast-Signature header).",
+      "copied": "Copied!",
+      "done": "Done"
+    },
+    "deliveries": {
+      "title": "Delivery log",
+      "event": "Event",
+      "status": "Status",
+      "statusCode": "HTTP",
+      "attempts": "Attempts",
+      "date": "Date",
+      "redeliver": "Re-deliver",
+      "success": "Success",
+      "failed": "Failed",
+      "pending": "Pending",
+      "empty": "No deliveries yet."
+    }
+  },
+  "agentTokens": {
+    "title": "Agent Tokens",
+    "description": "Scoped tokens for AI agents accessing the MCP server.",
+    "create": "Create token",
+    "noTokens": "No agent tokens yet.",
+    "revokeConfirm": "Revoke token \"{name}\"? Any agents using it will lose access.",
+    "table": {
+      "name": "Name",
+      "prefix": "Prefix",
+      "scopes": "Scopes",
+      "lastUsed": "Last used",
+      "status": "Status"
+    },
+    "status": {
+      "active": "Active",
+      "revoked": "Revoked"
+    },
+    "createDrawer": {
+      "title": "Create agent token",
+      "name": "Token name",
+      "namePlaceholder": "my-agent",
+      "scopes": "Allowed MCP tools",
+      "scopesHint": "Select which MCP tools this agent token may call.",
+      "groupContentTypes": "Content Types",
+      "groupContentEntries": "Content Entries",
+      "groupMediaSeo": "Media & SEO",
+      "cancel": "Cancel",
+      "submit": "Create token",
+      "submitting": "Creating…"
+    },
+    "revealDialog": {
+      "title": "Agent token created",
+      "warning": "This token will only be shown once. Copy it now and store it securely.",
+      "copied": "Copied!",
+      "done": "Done"
+    }
+  },
+  "plugins": {
+    "title": "Plugins",
+    "loading": "Loading plugins…",
+    "empty": "No plugins installed. Add plugins to the plugins/ directory.",
+    "status": {
+      "enabled": "Enabled",
+      "disabled": "Disabled"
+    },
+    "table": {
+      "name": "Plugin",
+      "version": "Version",
+      "description": "Description",
+      "status": "Status",
+      "installed": "Installed",
+      "actions": "Actions"
+    },
+    "actions": {
+      "enable": "Enable",
+      "disable": "Disable"
+    }
+  },
+  "forms": {
+    "title": "Forms",
+    "description": "Build and manage embeddable forms.",
+    "loading": "Loading forms…",
+    "empty": "No forms yet.",
+    "deleteConfirm": "Delete form \"{name}\"? This cannot be undone.",
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "table": {
+      "name": "Name",
+      "slug": "Slug",
+      "fields": "Fields",
+      "submissions": "Submissions",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "actions": {
+      "create": "New Form",
+      "createFirst": "Create your first form",
+      "edit": "Edit",
+      "viewSubmissions": "Submissions"
+    },
+    "builder": {
+      "newTitle": "New Form",
+      "editTitle": "Edit Form",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saving": "Saving…",
+      "saveError": "Failed to save form",
+      "fieldsSection": "Fields",
+      "addField": "Add Field",
+      "noFields": "No fields added yet. Click \"Add Field\" to start.",
+      "fields": {
+        "name": "Name",
+        "namePlaceholder": "e.g. contact-form",
+        "slug": "Slug",
+        "slugPlaceholder": "e.g. contact-form",
+        "description": "Description",
+        "descriptionPlaceholder": "Optional description",
+        "notifyEmail": "Notification Email",
+        "notifyEmailPlaceholder": "admin@example.com",
+        "isActive": "Active"
+      },
+      "fieldLabel": {
+        "name": "Field name",
+        "namePlaceholder": "e.g. email",
+        "label": "Label",
+        "labelPlaceholder": "e.g. Email address",
+        "type": "Type",
+        "required": "Required"
+      }
+    },
+    "submissions": {
+      "loading": "Loading submissions…",
+      "empty": "No submissions yet.",
+      "subtitle": "{total, plural, one {# submission} other {# submissions}}",
+      "back": "Back",
+      "exportCsv": "Export CSV",
+      "deleteConfirm": "Delete this submission? This cannot be undone.",
+      "prev": "Previous",
+      "next": "Next",
+      "table": {
+        "date": "Date",
+        "actions": "Actions"
+      }
+    }
+  },
+  "menus": {
+    "title": "Menus",
+    "subtitle": "Build navigation menus for your frontend.",
+    "new": "New Menu",
+    "edit": "Edit",
+    "loading": "Loading menus…",
+    "empty": "No menus yet.",
+    "deleteConfirm": "Delete menu \"{name}\"? This will remove all its items.",
+    "table": {
+      "name": "Name",
+      "slug": "Slug",
+      "items": "Items",
+      "actions": "Actions"
+    },
+    "builder": {
+      "newTitle": "New Menu",
+      "editTitle": "Edit Menu",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saving": "Saving…",
+      "saveError": "Failed to save menu.",
+      "fields": {
+        "name": "Name",
+        "namePlaceholder": "Main Navigation",
+        "slug": "Handle",
+        "slugPlaceholder": "main-nav"
+      },
+      "tree": {
+        "title": "Menu Items",
+        "empty": "No items yet.",
+        "addItem": "Add Item",
+        "delete": "Delete",
+        "edit": "Edit"
+      }
+    },
+    "itemForm": {
+      "label": "Label",
+      "labelPlaceholder": "Home",
+      "linkType": "Link Type",
+      "url": "URL",
+      "urlPlaceholder": "https://",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saving": "Saving…",
+      "types": {
+        "external_url": "External URL",
+        "anchor": "Anchor",
+        "content_entry": "Content Entry",
+        "custom": "Custom"
+      }
+    }
+  },
+  "trash": {
+    "title": "Trash",
+    "subtitle": "Recover or permanently delete soft-deleted items. Items are auto-deleted after 30 days.",
+    "loading": "Loading…",
+    "empty": "No items in trash.",
+    "restore": "Restore",
+    "delete": "Delete Forever",
+    "deleteConfirm": "Permanently delete this item? This cannot be undone.",
+    "days": "{count, plural, one {# day} other {# days}}",
+    "tabs": {
+      "content": "Content",
+      "media": "Media",
+      "user": "Users",
+      "form": "Forms"
+    },
+    "columns": {
+      "name": "Name",
+      "trashedAt": "Trashed At",
+      "daysUntilDeletion": "Expires In",
+      "actions": "Actions"
+    }
+  },
+  "auditLog": {
+    "title": "Audit Log",
+    "subtitle": "A searchable record of all actions performed in your CMS.",
+    "export": "Export CSV",
+    "loading": "Loading…",
+    "noEntries": "No audit entries found.",
+    "total": "{count} total entries",
+    "prev": "Previous",
+    "next": "Next",
+    "filters": {
+      "action": "Action",
+      "actionPlaceholder": "e.g. create, delete",
+      "resource": "Resource",
+      "resourcePlaceholder": "e.g. content, media",
+      "userId": "User ID",
+      "userIdPlaceholder": "UUID",
+      "from": "From",
+      "to": "To",
+      "apply": "Search",
+      "clear": "Clear"
+    },
+    "table": {
+      "action": "Action",
+      "resource": "Resource",
+      "resourceId": "Resource ID",
+      "actor": "Actor",
+      "ip": "IP Address",
+      "timestamp": "Timestamp"
+    }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome back",
+    "stats": {
+      "publishedEntries": "Published Entries",
+      "draftEntries": "Draft Entries",
+      "mediaFiles": "Media Files",
+      "activeUsers": "Active Users",
+      "totalSize": "{size} MB total",
+      "scheduledEntries": "Scheduled",
+      "archivedEntries": "Archived"
+    },
+    "charts": {
+      "entryStatusTitle": "Entry Status",
+      "seoScoreTitle": "SEO Score Distribution",
+      "below50": "Below 50",
+      "between50and74": "50–74",
+      "above74": "75+",
+      "noData": "No data yet"
+    },
+    "activity": {
+      "title": "Recent Activity",
+      "empty": "No activity yet",
+      "agent": "Agent",
+      "dryRun": "Dry run"
+    },
+    "queueHealth": {
+      "title": "Queue Health",
+      "queue": "Queue",
+      "waiting": "Waiting",
+      "active": "Active",
+      "completed": "Completed",
+      "failed": "Failed",
+      "delayed": "Delayed",
+      "healthy": "Healthy",
+      "failedAlert": "Failed jobs detected",
+      "viewQueues": "View Queues"
+    },
+    "scheduled": {
+      "title": "Upcoming Scheduled",
+      "empty": "No scheduled entries",
+      "at": "at"
+    },
+    "quickActions": {
+      "title": "Quick Actions",
+      "newEntry": "New Entry",
+      "uploadMedia": "Upload Media",
+      "viewAuditLog": "View Audit Log",
+      "systemSettings": "System Settings"
+    },
+    "onboarding": {
+      "title": "Getting Started",
+      "description": "Complete these steps to set up your content platform.",
+      "steps": {
+        "createContentType": "Create your first content type",
+        "addContent": "Add your first content entry",
+        "uploadMedia": "Upload a media file",
+        "inviteUser": "Invite a team member"
+      }
+    },
+    "seo": {
+      "averageScore": "Avg SEO Score",
+      "noScores": "No SEO scores yet"
+    },
+    "forms": {
+      "submissionsToday": "submissions today",
+      "submissionsThisWeek": "this week"
+    }
+  }
+}
