@@ -4,7 +4,7 @@ import {
   type IKastPlugin,
   type KastPluginContext,
   type PluginManifest,
-} from '@kast/plugin-sdk';
+} from '@kast-cms/plugin-sdk';
 import { Injectable, Logger, type OnApplicationBootstrap } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import * as fs from 'fs';

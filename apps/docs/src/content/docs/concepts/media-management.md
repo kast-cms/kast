@@ -56,11 +56,11 @@ Processed variants are stored alongside the original.
 
 ## Storage providers
 
-| Provider | Config                                   | Notes                               |
-| -------- | ---------------------------------------- | ----------------------------------- |
-| `local`  | `STORAGE_LOCAL_DIR`, `STORAGE_LOCAL_URL` | Default, good for development       |
-| `s3`     | `AWS_*` env vars                         | AWS S3 or S3-compatible             |
-| `r2`     | `R2_*` env vars                          | Cloudflare R2 via `@kast/plugin-r2` |
+| Provider | Config                                   | Notes                                   |
+| -------- | ---------------------------------------- | --------------------------------------- |
+| `local`  | `STORAGE_LOCAL_DIR`, `STORAGE_LOCAL_URL` | Default, good for development           |
+| `s3`     | `AWS_*` env vars                         | AWS S3 or S3-compatible                 |
+| `r2`     | `R2_*` env vars                          | Cloudflare R2 via `@kast-cms/plugin-r2` |
 
 Set `STORAGE_PROVIDER` in your `.env` to switch providers.
 

@@ -727,7 +727,7 @@ Every plugin must declare exactly what it needs in `kast.plugin.ts`:
 
 ```typescript
 export default definePlugin({
-  name: '@kast/plugin-stripe',
+  name: '@kast-cms/plugin-stripe',
   version: '1.0.0',
   compatibleWith: '^1.0.0',
 

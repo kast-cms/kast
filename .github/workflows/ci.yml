@@ -36,7 +36,7 @@ jobs:
         run: pnpm audit --audit-level=high
 
       - name: Generate Prisma client
-        run: pnpm --filter @kast/api exec prisma generate
+        run: pnpm --filter @kast-cms/api exec prisma generate
 
       - name: Format check
         run: pnpm format:check

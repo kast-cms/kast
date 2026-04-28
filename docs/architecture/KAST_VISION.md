@@ -369,7 +369,7 @@ The SEO MCP endpoint is configurable — point it at any compatible server.
 | `npx create-kast-app` CLI                     | ✅ Core |
 | Docker image + Compose                        | ✅ Core |
 | PostgreSQL (Prisma ORM)                       | ✅ Core |
-| TypeScript SDK (`@kast/sdk`)                  | ✅ Core |
+| TypeScript SDK (`@kast-cms/sdk`)              | ✅ Core |
 | Plugin system v1 (basic)                      | ✅ Core |
 
 ### v2 (6–12 months)
@@ -510,11 +510,11 @@ The SEO MCP endpoint is configurable — point it at any compatible server.
 
 ### First-Party Plugins (v1)
 
-- `@kast/plugin-stripe` — Stripe payments adapter
-- `@kast/plugin-meilisearch` — Full-text search
-- `@kast/plugin-resend` — Transactional email
-- `@kast/plugin-cloudflare-r2` — R2 media storage
-- `@kast/plugin-sentry` — Error tracking adapter
+- `@kast-cms/plugin-stripe` — Stripe payments adapter
+- `@kast-cms/plugin-meilisearch` — Full-text search
+- `@kast-cms/plugin-resend` — Transactional email
+- `@kast-cms/plugin-cloudflare-r2` — R2 media storage
+- `@kast-cms/plugin-sentry` — Error tracking adapter
 
 ### Plugin Manifest Example
 
@@ -586,21 +586,21 @@ Agent Request
 
 Kast ships as **both** npm packages and a scaffolded application.
 
-#### npm Packages (`@kast/*`)
+#### npm Packages (`@kast-cms/*`)
 
 ```
-@kast/core          → NestJS CMS engine (the brain)
-@kast/admin         → Next.js admin panel
-@kast/sdk           → TypeScript client SDK (for frontends)
-@kast/plugin-sdk    → Interface for building plugins
-@kast/cli           → The create-kast-app CLI
-@kast/ui            → Shared component library
+@kast-cms/core          → NestJS CMS engine (the brain)
+@kast-cms/admin         → Next.js admin panel
+@kast-cms/sdk           → TypeScript client SDK (for frontends)
+@kast-cms/plugin-sdk    → Interface for building plugins
+@kast-cms/cli           → The create-kast-app CLI
+@kast-cms/ui            → Shared component library
 ```
 
 Developers who want to embed Kast inside an existing Node app:
 
 ```typescript
-import { KastModule } from '@kast/core';
+import { KastModule } from '@kast-cms/core';
 
 @Module({
   imports: [KastModule.forRoot(config)],
@@ -654,7 +654,7 @@ This is Kast's **"easy like WordPress"** moment.
 - [ ] Media upload (local + S3)
 - [ ] Structured logging + audit log foundation
 - [ ] Docker image + Compose file
-- [ ] `@kast/sdk` TypeScript client v0.1
+- [ ] `@kast-cms/sdk` TypeScript client v0.1
 
 ### Phase 2 — The Differentiators (Month 2–4)
 
@@ -728,17 +728,17 @@ kast/
 │       └── ...
 │
 ├── packages/
-│   ├── core/                   # @kast/core — shared types + interfaces
-│   ├── sdk/                    # @kast/sdk — TypeScript client
-│   ├── plugin-sdk/             # @kast/plugin-sdk — plugin building interface
-│   └── ui/                     # @kast/ui — shared component library
+│   ├── core/                   # @kast-cms/core — shared types + interfaces
+│   ├── sdk/                    # @kast-cms/sdk — TypeScript client
+│   ├── plugin-sdk/             # @kast-cms/plugin-sdk — plugin building interface
+│   └── ui/                     # @kast-cms/ui — shared component library
 │
 ├── plugins/                    # First-party plugins
-│   ├── stripe/                 # @kast/plugin-stripe
-│   ├── meilisearch/            # @kast/plugin-meilisearch
-│   ├── resend/                 # @kast/plugin-resend
-│   ├── cloudflare-r2/          # @kast/plugin-cloudflare-r2
-│   └── sentry/                 # @kast/plugin-sentry
+│   ├── stripe/                 # @kast-cms/plugin-stripe
+│   ├── meilisearch/            # @kast-cms/plugin-meilisearch
+│   ├── resend/                 # @kast-cms/plugin-resend
+│   ├── cloudflare-r2/          # @kast-cms/plugin-cloudflare-r2
+│   └── sentry/                 # @kast-cms/plugin-sentry
 │
 ├── docs/                       # Documentation site
 ├── docker-compose.yml
@@ -802,7 +802,7 @@ License:     MIT (Open Source)
 Stack:       NestJS + Next.js + PostgreSQL + Prisma + BullMQ
 Mode:        Headless-first + Optional Full-Stack Frontend
 CLI:         npx create-kast-app
-npm:         @kast/core, @kast/admin, @kast/sdk, @kast/plugin-sdk
+npm:         @kast-cms/core, @kast-cms/admin, @kast-cms/sdk, @kast-cms/plugin-sdk
 Unique:      SEO-native + MCP/AI-native + RTL-first + Secure-by-default
 Queue:       BullMQ (webhooks, media, SEO, publishing — all built-in)
 Ecosystem:   MCP server + outbound webhooks + SEO validation + AI agents

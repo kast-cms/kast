@@ -1,5 +1,5 @@
 {
-  "name": "@kast/plugin-sdk",
+  "name": "@kast-cms/plugin-sdk",
   "version": "0.1.0",
   "description": "SDK for building Kast CMS plugins",
   "license": "MIT",

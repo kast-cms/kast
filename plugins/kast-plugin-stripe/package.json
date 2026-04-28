@@ -1,5 +1,5 @@
 {
-  "name": "kast-plugin-stripe",
+  "name": "@kast-cms/kast-plugin-stripe",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -8,9 +8,10 @@
     "build": "tsc"
   },
   "dependencies": {
-    "@kast/plugin-sdk": "workspace:*"
+    "@kast-cms/plugin-sdk": "workspace:*"
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
     "typescript": "^5.5.0"
   }
 }

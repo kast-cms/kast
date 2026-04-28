@@ -22,7 +22,7 @@
    - [WS-7 Audit Log Foundation (PH1-07)](#ws-7-audit-log-foundation-ph1-07)
    - [WS-8 BullMQ + Redis Integration (PH1-10)](#ws-8-bullmq--redis-integration-ph1-10)
    - [WS-9 Docker Image + Compose (PH1-08)](#ws-9-docker-image--compose-ph1-08)
-   - [WS-10 @kast/sdk v0.1 (PH1-09)](#ws-10-kastsdk-v01-ph1-09)
+   - [WS-10 @kast-cms/sdk v0.1 (PH1-09)](#ws-10-kastsdk-v01-ph1-09)
    - [WS-11 CI Pipeline (PH1-01)](#ws-11-ci-pipeline-ph1-01)
 5. [Sprint Breakdown (8 weeks)](#5-sprint-breakdown-8-weeks)
 6. [Phase 1 Exit Criteria](#6-phase-1-exit-criteria)
@@ -41,7 +41,7 @@ Phase 1 ships a **headless, API-only** Kast CMS that a developer can run with `d
 
 - A NestJS API with strict TypeScript, Prisma + Postgres, JWT auth, RBAC, content CRUD, media upload, and audit logging.
 - A Redis-backed BullMQ runtime ready to host the queues introduced in Phase 2.
-- A `@kast/sdk` package providing typed access to every Phase 1 endpoint.
+- A `@kast-cms/sdk` package providing typed access to every Phase 1 endpoint.
 - A reproducible Docker Compose stack (api + postgres + redis).
 - CI green on every PR (lint, typecheck, unit tests, e2e auth + content smoke tests).
 
@@ -75,18 +75,18 @@ The Prisma schema in Phase 1 includes models needed for these features so migrat
 
 ## 3. Deliverable Map
 
-| PRD ID | Deliverable                        | Workstream  | Sprint |
-| ------ | ---------------------------------- | ----------- | ------ |
-| PH1-01 | Monorepo setup + CI pipeline       | WS-1, WS-11 | S1     |
-| PH1-02 | NestJS core + Prisma + PostgreSQL  | WS-2        | S1–S2  |
-| PH1-03 | Content types API (CRUD)           | WS-4        | S3     |
-| PH1-04 | Content entries API (CRUD)         | WS-5        | S4     |
-| PH1-05 | Auth (email/password + JWT + RBAC) | WS-3        | S2     |
-| PH1-06 | Media upload (local + S3)          | WS-6        | S5     |
-| PH1-07 | Audit log foundation               | WS-7        | S2–S3  |
-| PH1-08 | Docker image + Compose             | WS-9        | S1, S6 |
-| PH1-09 | `@kast/sdk` TypeScript client v0.1 | WS-10       | S5–S6  |
-| PH1-10 | BullMQ + Redis integration         | WS-8        | S3     |
+| PRD ID | Deliverable                            | Workstream  | Sprint |
+| ------ | -------------------------------------- | ----------- | ------ |
+| PH1-01 | Monorepo setup + CI pipeline           | WS-1, WS-11 | S1     |
+| PH1-02 | NestJS core + Prisma + PostgreSQL      | WS-2        | S1–S2  |
+| PH1-03 | Content types API (CRUD)               | WS-4        | S3     |
+| PH1-04 | Content entries API (CRUD)             | WS-5        | S4     |
+| PH1-05 | Auth (email/password + JWT + RBAC)     | WS-3        | S2     |
+| PH1-06 | Media upload (local + S3)              | WS-6        | S5     |
+| PH1-07 | Audit log foundation                   | WS-7        | S2–S3  |
+| PH1-08 | Docker image + Compose                 | WS-9        | S1, S6 |
+| PH1-09 | `@kast-cms/sdk` TypeScript client v0.1 | WS-10       | S5–S6  |
+| PH1-10 | BullMQ + Redis integration             | WS-8        | S3     |
 
 ---
 
@@ -464,13 +464,13 @@ Each workstream lists: **objective**, **scope**, **out-of-scope-this-phase**, **
 
 ---
 
-### WS-10 `@kast/sdk` v0.1 (PH1-09)
+### WS-10 `@kast-cms/sdk` v0.1 (PH1-09)
 
 **Objective:** A typed TypeScript client wrapping every Phase 1 endpoint, used internally by tests and externally by SSR consumers.
 
 **Scope:**
 
-- **Package:** `packages/sdk` published as `@kast/sdk` (private during Phase 1).
+- **Package:** `packages/sdk` published as `@kast-cms/sdk` (private during Phase 1).
 - **Transport:** `fetch` based, isomorphic (works in Node 20 + browsers + Next.js SSR).
 - **Auth:** accepts `apiKey` (`X-Kast-Key`) **or** `accessToken` (`Authorization: Bearer`).
 - **Resource clients:** `auth`, `contentTypes`, `content`, `media`, `audit`, `health`.
@@ -480,12 +480,12 @@ Each workstream lists: **objective**, **scope**, **out-of-scope-this-phase**, **
 
 **Out of scope this phase:**
 
-- React hooks package (`@kast/sdk/react`) — Phase 2 admin work.
+- React hooks package (`@kast-cms/sdk/react`) — Phase 2 admin work.
 - GraphQL client (Phase 2).
 
 **Acceptance:**
 
-- `pnpm --filter @kast/sdk build` emits ESM + CJS + `.d.ts`.
+- `pnpm --filter @kast-cms/sdk build` emits ESM + CJS + `.d.ts`.
 - Same code runs from a Node script and a Next.js Route Handler against a local API.
 - Type-checking the SDK catches drift if an endpoint shape changes.
 
@@ -559,16 +559,16 @@ Each sprint = 1 week. Workstreams overlap where dependencies allow.
 
 Lifted directly from [KAST_PRD.md §4](../architecture/KAST_PRD.md), expanded to be testable.
 
-| ID   | Criterion                                                                                            | Verified By                                  |
-| ---- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| EX-1 | All REST endpoints for content types and entries return correct responses                            | e2e suite for WS-4, WS-5                     |
-| EX-2 | JWT auth works with role checks on every endpoint                                                    | e2e: anonymous → 401, VIEWER → 403 on writes |
-| EX-3 | Media file upload stores file and returns URL                                                        | e2e: WS-6 happy path + retrieval             |
-| EX-4 | Audit log records every mutation                                                                     | e2e asserts row count after each test write  |
-| EX-5 | `docker compose up` starts all services cleanly                                                      | CI step builds image + brings stack up       |
-| EX-6 | `@kast/sdk` can be imported from a Node script and perform full content + media flow against the API | SDK integration test in WS-10                |
-| EX-7 | All env vars validated on startup; missing var → process exit with explicit message                  | unit test on ConfigModule                    |
-| EX-8 | Lint + typecheck + test + e2e green on `main` for the merge commit that closes Phase 1               | CI                                           |
+| ID   | Criterion                                                                                                | Verified By                                  |
+| ---- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| EX-1 | All REST endpoints for content types and entries return correct responses                                | e2e suite for WS-4, WS-5                     |
+| EX-2 | JWT auth works with role checks on every endpoint                                                        | e2e: anonymous → 401, VIEWER → 403 on writes |
+| EX-3 | Media file upload stores file and returns URL                                                            | e2e: WS-6 happy path + retrieval             |
+| EX-4 | Audit log records every mutation                                                                         | e2e asserts row count after each test write  |
+| EX-5 | `docker compose up` starts all services cleanly                                                          | CI step builds image + brings stack up       |
+| EX-6 | `@kast-cms/sdk` can be imported from a Node script and perform full content + media flow against the API | SDK integration test in WS-10                |
+| EX-7 | All env vars validated on startup; missing var → process exit with explicit message                      | unit test on ConfigModule                    |
+| EX-8 | Lint + typecheck + test + e2e green on `main` for the merge commit that closes Phase 1                   | CI                                           |
 
 ---
 

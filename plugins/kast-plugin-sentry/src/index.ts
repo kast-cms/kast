@@ -1,4 +1,4 @@
-import { IKastPlugin, KastPluginContext } from '@kast/plugin-sdk';
+import { IKastPlugin, KastPluginContext } from '@kast-cms/plugin-sdk';
 
 /**
  * kast-plugin-sentry

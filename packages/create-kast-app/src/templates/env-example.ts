@@ -76,7 +76,7 @@ SMTP_FROM=noreply@{{projectName}}.local
 {{#if pluginMeilisearch}}
 
 # ---------------------------------------------------------------------------
-# Meilisearch (@kast/plugin-meilisearch)
+# Meilisearch (@kast-cms/plugin-meilisearch)
 # ---------------------------------------------------------------------------
 MEILISEARCH_HOST=http://meilisearch:7700
 MEILISEARCH_API_KEY=masterKey
@@ -84,7 +84,7 @@ MEILISEARCH_API_KEY=masterKey
 {{#if pluginStripe}}
 
 # ---------------------------------------------------------------------------
-# Stripe (@kast/plugin-stripe)
+# Stripe (@kast-cms/plugin-stripe)
 # ---------------------------------------------------------------------------
 STRIPE_SECRET_KEY=sk_test_replace_me
 STRIPE_WEBHOOK_SECRET=whsec_replace_me
@@ -92,14 +92,14 @@ STRIPE_WEBHOOK_SECRET=whsec_replace_me
 {{#if pluginResend}}
 
 # ---------------------------------------------------------------------------
-# Resend (@kast/plugin-resend)
+# Resend (@kast-cms/plugin-resend)
 # ---------------------------------------------------------------------------
 RESEND_API_KEY=re_replace_me
 {{/if}}
 {{#if pluginR2}}
 
 # ---------------------------------------------------------------------------
-# Cloudflare R2 (@kast/plugin-r2)
+# Cloudflare R2 (@kast-cms/plugin-r2)
 # ---------------------------------------------------------------------------
 # R2 endpoint format: https://<account_id>.r2.cloudflarestorage.com
 CF_R2_ACCOUNT_ID=
@@ -111,7 +111,7 @@ CF_R2_PUBLIC_URL=https://media.{{projectName}}.dev
 {{#if pluginSentry}}
 
 # ---------------------------------------------------------------------------
-# Sentry (@kast/plugin-sentry)
+# Sentry (@kast-cms/plugin-sentry)
 # ---------------------------------------------------------------------------
 SENTRY_DSN=https://replace_me@sentry.io/replace_me
 {{/if}}

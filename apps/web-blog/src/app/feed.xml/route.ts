@@ -5,10 +5,16 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3002';
 const siteName = process.env.NEXT_PUBLIC_SITE_NAME ?? 'My Blog';
 const siteDescription = process.env.NEXT_PUBLIC_SITE_DESCRIPTION ?? 'A blog powered by Kast CMS';
 
-export const revalidate = 3600;
+export const dynamic = 'force-dynamic';
 
 export async function GET(): Promise<Response> {
-  const { data: posts } = await getPosts({ limit: '20' });
+  let posts: Awaited<ReturnType<typeof getPosts>>['data'] = [];
+  try {
+    const result = await getPosts({ limit: '20' });
+    posts = result.data;
+  } catch {
+    posts = [];
+  }
 
   const items = posts
     .map((post) => {

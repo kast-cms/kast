@@ -188,7 +188,7 @@ importers:
       '@bull-board/ui':
         specifier: ^7.0.0
         version: 7.0.0
-      '@kast/plugin-sdk':
+      '@kast-cms/plugin-sdk':
         specifier: workspace:*
         version: link:../../packages/plugin-sdk
       '@nestjs/bullmq':
@@ -506,56 +506,75 @@ importers:
 
   plugins/kast-plugin-example:
     dependencies:
-      '@kast/plugin-sdk':
-        specifier: workspace:*
-        version: link:../../packages/plugin-sdk
-
-  plugins/kast-plugin-meilisearch:
-    dependencies:
-      '@kast/plugin-sdk':
+      '@kast-cms/plugin-sdk':
         specifier: workspace:*
         version: link:../../packages/plugin-sdk
     devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.17
+
+  plugins/kast-plugin-meilisearch:
+    dependencies:
+      '@kast-cms/plugin-sdk':
+        specifier: workspace:*
+        version: link:../../packages/plugin-sdk
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.17
       typescript:
         specifier: ^5.5.0
         version: 5.9.3
 
   plugins/kast-plugin-r2:
     dependencies:
-      '@kast/plugin-sdk':
+      '@kast-cms/plugin-sdk':
         specifier: workspace:*
         version: link:../../packages/plugin-sdk
     devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.17
       typescript:
         specifier: ^5.5.0
         version: 5.9.3
 
   plugins/kast-plugin-resend:
     dependencies:
-      '@kast/plugin-sdk':
+      '@kast-cms/plugin-sdk':
         specifier: workspace:*
         version: link:../../packages/plugin-sdk
     devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.17
       typescript:
         specifier: ^5.5.0
         version: 5.9.3
 
   plugins/kast-plugin-sentry:
     dependencies:
-      '@kast/plugin-sdk':
+      '@kast-cms/plugin-sdk':
         specifier: workspace:*
         version: link:../../packages/plugin-sdk
     devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.17
       typescript:
         specifier: ^5.5.0
         version: 5.9.3
 
   plugins/kast-plugin-stripe:
     dependencies:
-      '@kast/plugin-sdk':
+      '@kast-cms/plugin-sdk':
         specifier: workspace:*
         version: link:../../packages/plugin-sdk
     devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.17
       typescript:
         specifier: ^5.5.0
         version: 5.9.3

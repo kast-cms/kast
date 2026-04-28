@@ -1,4 +1,4 @@
-# kast-plugin-sentry
+# @kast-cms/kast-plugin-sentry
 
 Capture and report production errors to [Sentry](https://sentry.io).
 
@@ -7,7 +7,7 @@ Capture and report production errors to [Sentry](https://sentry.io).
 Install the Sentry Node.js SDK in your API:
 
 ```bash
-pnpm add @sentry/node --filter @kast/api
+pnpm add @sentry/node --filter @kast-cms/api
 ```
 
 Then add to your `.env`:

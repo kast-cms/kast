@@ -213,7 +213,7 @@ import type {
 - [GitHub Repository](https://github.com/kast-cms/kast)
 - [npm Package](https://www.npmjs.com/package/@kast-cms/sdk)
 - [Documentation](https://kastcms.com/docs)
-- [Plugin SDK (`@kast/plugin-sdk`)](https://www.npmjs.com/package/@kast/plugin-sdk)
+- [Plugin SDK (`@kast-cms/plugin-sdk`)](https://www.npmjs.com/package/@kast-cms/plugin-sdk)
 - [Scaffolding CLI (`create-kast-app`)](https://www.npmjs.com/package/create-kast-app)
 
 ---

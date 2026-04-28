@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description: 'Release history and version notes.',
 };
 
-export const revalidate = 3600;
+export const dynamic = 'force-dynamic';
 
 interface ChangelogPageProps {
   searchParams: Promise<{ cursor?: string }>;

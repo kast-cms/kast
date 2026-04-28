@@ -59,7 +59,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Generate Prisma client
-        run: pnpm --filter @kast/api exec prisma generate
+        run: pnpm --filter @kast-cms/api exec prisma generate
 
       - name: Build packages
         run: pnpm --filter create-kast-app --filter @kast-cms/sdk build

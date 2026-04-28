@@ -1,5 +1,5 @@
 {
-  "name": "kast-plugin-example",
+  "name": "@kast-cms/kast-plugin-example",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -8,6 +8,9 @@
     "build": "tsc"
   },
   "dependencies": {
-    "@kast/plugin-sdk": "workspace:*"
+    "@kast-cms/plugin-sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0"
   }
 }

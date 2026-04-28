@@ -1,4 +1,4 @@
-import { IKastPlugin, KastPluginContext, PluginHook } from '@kast/plugin-sdk';
+import { IKastPlugin, KastPluginContext, PluginHook } from '@kast-cms/plugin-sdk';
 
 interface ContentPublishedPayload {
   entryId: string;

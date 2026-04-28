@@ -3,7 +3,7 @@ import { getCategories, getPostsByCategory } from '@/lib/content';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 interface CategoryPageProps {
   params: Promise<{ slug: string }>;
@@ -11,8 +11,12 @@ interface CategoryPageProps {
 }
 
 export async function generateStaticParams(): Promise<Array<{ slug: string }>> {
-  const categories = await getCategories();
-  return categories.map((cat) => ({ slug: cat.data.slug }));
+  try {
+    const categories = await getCategories();
+    return categories.map((cat) => ({ slug: cat.data.slug }));
+  } catch {
+    return [];
+  }
 }
 
 export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {

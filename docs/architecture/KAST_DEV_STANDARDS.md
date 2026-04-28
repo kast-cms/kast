@@ -89,7 +89,7 @@ Shared across all apps and packages in the monorepo:
     "outDir": "./dist",
     "baseUrl": ".",
     "paths": {
-      "@kast/*": ["../../packages/*/src"]
+      "@kast-cms/*": ["../../packages/*/src"]
     }
   },
   "include": ["src/**/*"],
@@ -114,7 +114,7 @@ Shared across all apps and packages in the monorepo:
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@kast/*": ["../../packages/*/src"]
+      "@kast-cms/*": ["../../packages/*/src"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
@@ -612,7 +612,7 @@ src/
 
 ```typescript
 // ContentCard.tsx
-import type { ContentEntry } from '@kast/core';
+import type { ContentEntry } from '@kast-cms/core';
 
 interface ContentCardProps {
   entry: ContentEntry;
@@ -766,8 +766,8 @@ import { InjectQueue } from '@nestjs/bullmq';
 import type { Queue } from 'bullmq';
 
 // 3. Internal monorepo packages
-import type { ContentEntry } from '@kast/core';
-import { SeoModule } from '@kast/seo';
+import type { ContentEntry } from '@kast-cms/core';
+import { SeoModule } from '@kast-cms/seo';
 
 // 4. Absolute imports (same app, path alias)
 import { PrismaService } from '@/prisma/prisma.service';
@@ -1124,7 +1124,7 @@ async validateEntry(entryId: string, previewUrl: string): Promise<SeoReport> {
 **When to write JSDoc:**
 
 - ✅ All public service methods
-- ✅ All public types and interfaces in `@kast/core`
+- ✅ All public types and interfaces in `@kast-cms/core`
 - ✅ All plugin SDK interfaces
 - ✅ All MCP tool definitions
 - ❌ Not on private methods (code should be self-explanatory)

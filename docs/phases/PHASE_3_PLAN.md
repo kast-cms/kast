@@ -25,7 +25,7 @@
    - [WS-28 Admin Dashboard (PH3-11)](#ws-28-admin-dashboard-ph3-11)
    - [WS-29 Queue Monitoring UI — Bull Board (PH3-12)](#ws-29-queue-monitoring-ui--bull-board-ph3-12)
    - [WS-30 Public Beta Launch (PH3-09)](#ws-30-public-beta-launch-ph3-09)
-   - [WS-31 `@kast/sdk` v0.3](#ws-31-kastsdk-v03)
+   - [WS-31 `@kast-cms/sdk` v0.3](#ws-31-kastsdk-v03)
 5. [Sprint Breakdown (12 weeks)](#5-sprint-breakdown-12-weeks)
 6. [Phase 3 Exit Criteria](#6-phase-3-exit-criteria)
 7. [Cross-Cutting Requirements Compliance](#7-cross-cutting-requirements-compliance)
@@ -45,7 +45,7 @@ Phase 2 delivered every CMS capability. Phase 3 delivers the wrapper that makes 
 
 - `npx create-kast-app my-site` completes in under 3 minutes and produces a running CMS with one `docker-compose up`.
 - A Next.js frontend starter (blog template + docs template) can be deployed alongside Kast with zero configuration.
-- Five first-party plugins ship: `@kast/plugin-meilisearch`, `@kast/plugin-stripe`, `@kast/plugin-resend`, `@kast/plugin-r2`, `@kast/plugin-sentry`.
+- Five first-party plugins ship: `@kast-cms/plugin-meilisearch`, `@kast-cms/plugin-stripe`, `@kast-cms/plugin-resend`, `@kast-cms/plugin-r2`, `@kast-cms/plugin-sentry`.
 - The Global Settings UI is complete — site name, logo, SMTP config, storage provider, CORS origins, robots.txt, and maintenance mode.
 - The Audit Log UI is searchable, filterable, and exportable from the admin panel.
 - The full OWASP-based security checklist (25 items) passes — penetration tested and documented.
@@ -55,7 +55,7 @@ Phase 2 delivered every CMS capability. Phase 3 delivers the wrapper that makes 
 - The admin dashboard shows real CMS health: entry counts per type, recent activity feed, SEO score distribution, media usage, and queue health.
 - Bull Board queue monitoring UI is accessible at `/admin/queues` for SUPER_ADMIN.
 - The public GitHub repository is polished: README, CONTRIBUTING, CODE_OF_CONDUCT, issue templates, PR templates.
-- `@kast/sdk` v0.3 ships with CLI helpers, OAuth flows, and updated types.
+- `@kast-cms/sdk` v0.3 ships with CLI helpers, OAuth flows, and updated types.
 - CI extended to include the full security checklist, Lighthouse score check on the admin login page, and SDK e2e against each deploy target.
 
 ---
@@ -103,7 +103,7 @@ The following are intentionally **not** built in Phase 3:
 | PH3-10 | OAuth (Google + GitHub) + password reset         | WS-27      | S2–S3  |
 | PH3-11 | Admin dashboard                                  | WS-28      | S5     |
 | PH3-12 | Queue monitoring UI (Bull Board)                 | WS-29      | S5     |
-| —      | `@kast/sdk` v0.3                                 | WS-31      | S11    |
+| —      | `@kast-cms/sdk` v0.3                             | WS-31      | S11    |
 
 ---
 
@@ -152,9 +152,9 @@ $ npx create-kast-app
   ○ Amazon S3
   ○ MinIO (self-hosted S3)
 ◆ Install plugins now?
-  ✓ @kast/plugin-meilisearch (full-text search)
-  ✗ @kast/plugin-stripe (commerce)
-  ✓ @kast/plugin-sentry (error tracking)
+  ✓ @kast-cms/plugin-meilisearch (full-text search)
+  ✗ @kast-cms/plugin-stripe (commerce)
+  ✓ @kast-cms/plugin-sentry (error tracking)
 ◆ Include frontend starter? Blog template
 
 ◇ Scaffolding project...
@@ -184,7 +184,7 @@ my-site/
 │   └── admin/             # Next.js admin panel
 │   └── web/               # (optional) Next.js frontend starter
 ├── packages/
-│   └── sdk/               # @kast/sdk (pre-configured for this project)
+│   └── sdk/               # @kast-cms/sdk (pre-configured for this project)
 ├── plugins/               # First-party plugins selected at setup
 ├── docker-compose.yml     # postgres + redis + api + admin
 ├── .env.example           # all required variables with comments
@@ -257,7 +257,7 @@ Generated automatically based on deploy target selection:
 **Tech decisions:**
 
 - **Next.js 16.2.4** — App Router, TypeScript strict, Tailwind CSS v4.
-- **`@kast/sdk`** — all content fetching goes through the SDK; no raw `fetch` in templates.
+- **`@kast-cms/sdk`** — all content fetching goes through the SDK; no raw `fetch` in templates.
 - Both templates built as standalone `apps/web/` workspace, included optionally by the CLI.
 - Templates use the **Delivery API** (public `X-Kast-Key` authenticated endpoints), not the admin API.
 
@@ -312,7 +312,7 @@ Each template ships with a Kast seed script (`scripts/seed-content-types.ts`) th
 
 **Acceptance:**
 
-- `pnpm --filter @kast/web-blog dev` boots and fetches content from a running Kast instance. The homepage renders at least one post card.
+- `pnpm --filter @kast-cms/web-blog dev` boots and fetches content from a running Kast instance. The homepage renders at least one post card.
 - `GET /blog/[slug]` for a published post renders correct SEO meta in `<head>` (verified via `curl -s | grep og:title`).
 - Running the seed script against a fresh Kast install creates all required content types. The templates function without manual schema setup.
 - Sitemap at `/sitemap.xml` contains the same entries as `GET /api/v1/seo/sitemap.xml` from Kast.
@@ -339,15 +339,15 @@ Each template ships with a Kast seed script (`scripts/seed-content-types.ts`) th
 **Tech decisions:**
 
 - Each plugin is a separate pnpm workspace package under `plugins/`.
-- All plugins use the `@kast/plugin-sdk` `IKastPlugin` interface from Phase 2.
-- Each plugin ships its own `README.md` and is published to NPM as `@kast/plugin-<name>`.
+- All plugins use the `@kast-cms/plugin-sdk` `IKastPlugin` interface from Phase 2.
+- Each plugin ships its own `README.md` and is published to NPM as `@kast-cms/plugin-<name>`.
 - Plugin configuration (API keys, secrets) stored via the `PluginConfig` model — encrypted at rest (AES-256-GCM, established in Phase 2 security model).
 
 **Scope:**
 
 ---
 
-#### Plugin 1: `@kast/plugin-meilisearch`
+#### Plugin 1: `@kast-cms/plugin-meilisearch`
 
 **What it does:** Full-text search via [Meilisearch](https://meilisearch.com). Indexes all published content entries. Provides a search endpoint via the Kast API and a search component for frontend templates.
 
@@ -382,7 +382,7 @@ MEILISEARCH_MASTER_KEY=your-master-key
 
 ---
 
-#### Plugin 2: `@kast/plugin-stripe`
+#### Plugin 2: `@kast-cms/plugin-stripe`
 
 **What it does:** Commerce foundation — syncs content types (products, prices) with Stripe. Listens for Stripe webhook events and updates content entries accordingly.
 
@@ -417,7 +417,7 @@ STRIPE_MODE=test
 
 ---
 
-#### Plugin 3: `@kast/plugin-resend`
+#### Plugin 3: `@kast-cms/plugin-resend`
 
 **What it does:** Replaces the built-in SMTP email processor with Resend's API. The `kast.email` BullMQ queue processor is swapped to use Resend.
 
@@ -452,7 +452,7 @@ RESEND_FROM_NAME=My Site
 
 ---
 
-#### Plugin 4: `@kast/plugin-r2`
+#### Plugin 4: `@kast-cms/plugin-r2`
 
 **What it does:** Replaces local filesystem media storage with Cloudflare R2 (S3-compatible). Media uploads are streamed directly to R2. Public media URLs point to the R2 bucket CDN URL.
 
@@ -485,7 +485,7 @@ R2_PUBLIC_URL=https://media.yourdomain.com
 
 ---
 
-#### Plugin 5: `@kast/plugin-sentry`
+#### Plugin 5: `@kast-cms/plugin-sentry`
 
 **What it does:** Sends all unhandled NestJS exceptions (5xx errors) to Sentry for error tracking. Adds request context (user ID, endpoint, request ID) to every Sentry event.
 
@@ -517,11 +517,11 @@ SENTRY_TRACES_SAMPLE_RATE=0.1
 
 **Shared plugin tasks:**
 
-1. `feat(plugin): @kast/plugin-meilisearch — hooks, index, search endpoint, admin UI`
-2. `feat(plugin): @kast/plugin-stripe — product sync, webhook receiver, admin UI`
-3. `feat(plugin): @kast/plugin-resend — email processor override, admin UI`
-4. `feat(plugin): @kast/plugin-r2 — storage service override, migration tool, admin UI`
-5. `feat(plugin): @kast/plugin-sentry — exception filter wrapper, admin UI`
+1. `feat(plugin): @kast-cms/plugin-meilisearch — hooks, index, search endpoint, admin UI`
+2. `feat(plugin): @kast-cms/plugin-stripe — product sync, webhook receiver, admin UI`
+3. `feat(plugin): @kast-cms/plugin-resend — email processor override, admin UI`
+4. `feat(plugin): @kast-cms/plugin-r2 — storage service override, migration tool, admin UI`
+5. `feat(plugin): @kast-cms/plugin-sentry — exception filter wrapper, admin UI`
 6. `chore(npm): publish all 5 plugins to npm registry`
 7. `test(plugin): integration tests for each plugin against docker-compose stack`
 
@@ -865,7 +865,7 @@ Every checkbox must be verified with a test, a manual check, or a documented dec
 
 ```json
 {
-  "buildCommand": "pnpm --filter @kast/admin build",
+  "buildCommand": "pnpm --filter @kast-cms/admin build",
   "outputDirectory": "apps/admin/.next",
   "framework": "nextjs",
   "env": {
@@ -936,7 +936,7 @@ A CI job runs weekly (`cron: '0 0 * * 0'`) that:
 
 - **[Starlight](https://starlight.astro.build/)** (by Astro) — best-in-class docs framework. Markdown + MDX, full-text search (Pagefind), dark mode, i18n, and a clean sidebar. No custom framework.
 - **New `apps/docs/` workspace** — Astro + Starlight. Deployed to Vercel (or Cloudflare Pages).
-- **`@kast/sdk` code examples** — all code examples in docs are real, typed, and tested in the SDK e2e suite.
+- **`@kast-cms/sdk` code examples** — all code examples in docs are real, typed, and tested in the SDK e2e suite.
 - **OpenAPI spec embed** — the API reference section embeds the Swagger UI from the live API's `/api/docs` endpoint.
 
 **Documentation structure:**
@@ -990,7 +990,7 @@ API Reference
   ├── Settings
   └── Health
 
-SDK (@kast/sdk)
+SDK (@kast-cms/sdk)
   ├── Installation
   ├── Authentication
   ├── Content types
@@ -1427,7 +1427,7 @@ GitHub Actions `release.yml` workflow:
 
 - Triggered on `git tag v*`
 - Runs full CI suite
-- Publishes `create-kast-app` and all `@kast/*` packages to NPM
+- Publishes `create-kast-app` and all `@kast-cms/*` packages to NPM
 - Builds and pushes Docker Hub images
 - Creates a GitHub Release with auto-generated changelog (from conventional commits)
 - Deploys docs site
@@ -1461,7 +1461,7 @@ GitHub Actions `release.yml` workflow:
 
 ---
 
-### WS-31 `@kast/sdk` v0.3
+### WS-31 `@kast-cms/sdk` v0.3
 
 **Objective:** Update the TypeScript SDK to cover all Phase 3 additions — OAuth helpers, CLI utilities, dashboard stats, Global Settings, Audit Log export — and ship as `v0.3.0`.
 
@@ -1485,8 +1485,8 @@ New `KastClient` method groups and updates:
 
 **Acceptance:**
 
-- A Node.js script using `@kast/sdk` v0.3 can: get dashboard stats, update global settings, list audit log with date filter, export audit log as CSV (Buffer), get OAuth URLs for Google and GitHub — all with zero `any`.
-- `pnpm --filter @kast/sdk typecheck` passes.
+- A Node.js script using `@kast-cms/sdk` v0.3 can: get dashboard stats, update global settings, list audit log with date filter, export audit log as CSV (Buffer), get OAuth URLs for Google and GitHub — all with zero `any`.
+- `pnpm --filter @kast-cms/sdk typecheck` passes.
 
 **Tasks:**
 
@@ -1516,7 +1516,7 @@ Each sprint = 1 week. Multiple workstreams run in parallel where dependencies al
 | **S8**  | Security Hardening (part 2)            | WS-24 (finish)                       | All 25 security checklist items verified; OWASP Top 10 matrix complete; `securityheaders.com` grade A            |
 | **S9**  | Docs Content                           | WS-26 (continue)                     | Getting Started, Concepts, and Admin Panel sections complete; all 15 MCP tools documented                        |
 | **S10** | Docs Complete                          | WS-26 (finish)                       | Full docs site live; SDK reference complete; Plugin Development guide live; Deploy guides live                   |
-| **S11** | SDK v0.3 + Polish                      | WS-31                                | `@kast/sdk` v0.3 e2e suite passes; `pnpm turbo typecheck` green on all packages                                  |
+| **S11** | SDK v0.3 + Polish                      | WS-31                                | `@kast-cms/sdk` v0.3 e2e suite passes; `pnpm turbo typecheck` green on all packages                              |
 | **S12** | Public Beta Launch                     | WS-30                                | README polished; release workflow triggers NPM + Docker publish; GitHub Discussions enabled; announcement posted |
 
 ---
@@ -1538,7 +1538,7 @@ Lifted directly from [KAST_PRD.md §4](../architecture/KAST_PRD.md), expanded to
 | EX-9  | Google and GitHub OAuth login works end-to-end                                     | Integration test: OAuth flow → JWT issued → admin accessible                            |
 | EX-10 | Password reset flow works end-to-end                                               | Integration test: request reset → email arrives → click link → new password works       |
 | EX-11 | Admin dashboard renders real data for a populated Kast instance                    | e2e: create 5 entries, 3 media files, run test → dashboard counts match                 |
-| EX-12 | `@kast/sdk` v0.3 e2e suite passes against Docker Compose stack                     | CI: sdk e2e job passes with v0.3 methods                                                |
+| EX-12 | `@kast-cms/sdk` v0.3 e2e suite passes against Docker Compose stack                 | CI: sdk e2e job passes with v0.3 methods                                                |
 | EX-13 | GitHub Release `v1.0.0` created with NPM packages + Docker images published        | `npm info create-kast-app` returns `1.0.0`; `docker pull kast-cms/kast-api:1.0.0` works |
 | EX-14 | `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e` all green on main      | CI: full suite passes on the merge commit closing Phase 3                               |
 

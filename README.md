@@ -18,7 +18,7 @@
 <br />
 
 [![npm: @kast-cms/sdk](https://img.shields.io/npm/v/@kast-cms/sdk?label=%40kast-cms%2Fsdk&style=flat-square&color=cb3837&logo=npm)](https://www.npmjs.com/package/@kast-cms/sdk)
-[![npm: @kast/plugin-sdk](https://img.shields.io/npm/v/@kast/plugin-sdk?label=%40kast%2Fplugin-sdk&style=flat-square&color=cb3837&logo=npm)](https://www.npmjs.com/package/@kast/plugin-sdk)
+[![npm: @kast-cms/plugin-sdk](https://img.shields.io/npm/v/@kast-cms/plugin-sdk?label=%40kast%2Fplugin-sdk&style=flat-square&color=cb3837&logo=npm)](https://www.npmjs.com/package/@kast-cms/plugin-sdk)
 [![npm: create-kast-app](https://img.shields.io/npm/v/create-kast-app?label=create-kast-app&style=flat-square&color=cb3837&logo=npm)](https://www.npmjs.com/package/create-kast-app)
 
 <br />
@@ -103,7 +103,7 @@ Most headless CMSes were built for an era before AI agents, before Arabic-first 
     </tr>
     <tr>
       <td><strong>Plugin SDK + marketplace</strong></td>
-      <td align="center">✅ <a href="https://www.npmjs.com/package/@kast/plugin-sdk">@kast/plugin-sdk</a></td>
+      <td align="center">✅ <a href="https://www.npmjs.com/package/@kast-cms/plugin-sdk">@kast-cms/plugin-sdk</a></td>
       <td align="center">✅</td>
       <td align="center">✅</td>
       <td align="center">✅</td>
@@ -171,18 +171,18 @@ Most headless CMSes were built for an era before AI agents, before Arabic-first 
 
 ## npm Packages
 
-| Package                                                              | Version                                                                                                                   | Description                                 |
-| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| [`@kast-cms/sdk`](https://www.npmjs.com/package/@kast-cms/sdk)       | [![npm](https://img.shields.io/npm/v/@kast-cms/sdk?style=flat-square)](https://www.npmjs.com/package/@kast-cms/sdk)       | Official TypeScript client for the Kast API |
-| [`@kast/plugin-sdk`](https://www.npmjs.com/package/@kast/plugin-sdk) | [![npm](https://img.shields.io/npm/v/@kast/plugin-sdk?style=flat-square)](https://www.npmjs.com/package/@kast/plugin-sdk) | Build your own Kast plugins                 |
-| [`create-kast-app`](https://www.npmjs.com/package/create-kast-app)   | [![npm](https://img.shields.io/npm/v/create-kast-app?style=flat-square)](https://www.npmjs.com/package/create-kast-app)   | Scaffold a new Kast project in seconds      |
+| Package                                                                      | Version                                                                                                                           | Description                                 |
+| ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| [`@kast-cms/sdk`](https://www.npmjs.com/package/@kast-cms/sdk)               | [![npm](https://img.shields.io/npm/v/@kast-cms/sdk?style=flat-square)](https://www.npmjs.com/package/@kast-cms/sdk)               | Official TypeScript client for the Kast API |
+| [`@kast-cms/plugin-sdk`](https://www.npmjs.com/package/@kast-cms/plugin-sdk) | [![npm](https://img.shields.io/npm/v/@kast-cms/plugin-sdk?style=flat-square)](https://www.npmjs.com/package/@kast-cms/plugin-sdk) | Build your own Kast plugins                 |
+| [`create-kast-app`](https://www.npmjs.com/package/create-kast-app)           | [![npm](https://img.shields.io/npm/v/create-kast-app?style=flat-square)](https://www.npmjs.com/package/create-kast-app)           | Scaffold a new Kast project in seconds      |
 
 ```bash
 # Use the SDK in your frontend / Next.js app
 npm install @kast-cms/sdk
 
 # Build a Kast plugin
-npm install @kast/plugin-sdk
+npm install @kast-cms/plugin-sdk
 
 # Scaffold a new project
 npx create-kast-app my-site
@@ -194,15 +194,15 @@ npx create-kast-app my-site
 
 First-party plugins, installable via the Kast admin:
 
-| Plugin                    | Description                          |
-| ------------------------- | ------------------------------------ |
-| `kast-plugin-stripe`      | Payments and subscription management |
-| `kast-plugin-meilisearch` | Full-text search with Meilisearch    |
-| `kast-plugin-resend`      | Transactional email via Resend       |
-| `kast-plugin-r2`          | Media storage on Cloudflare R2       |
-| `kast-plugin-sentry`      | Error tracking and monitoring        |
+| Plugin                              | Description                          |
+| ----------------------------------- | ------------------------------------ |
+| `@kast-cms/kast-plugin-stripe`      | Payments and subscription management |
+| `@kast-cms/kast-plugin-meilisearch` | Full-text search with Meilisearch    |
+| `@kast-cms/kast-plugin-resend`      | Transactional email via Resend       |
+| `@kast-cms/kast-plugin-r2`          | Media storage on Cloudflare R2       |
+| `@kast-cms/kast-plugin-sentry`      | Error tracking and monitoring        |
 
-Build your own with [`@kast/plugin-sdk`](https://www.npmjs.com/package/@kast/plugin-sdk).
+Build your own with [`@kast-cms/plugin-sdk`](https://www.npmjs.com/package/@kast-cms/plugin-sdk).
 
 ---
 
@@ -217,7 +217,7 @@ kast/
 │   └── web-docs/        # Astro documentation site
 ├── packages/
 │   ├── sdk/             # @kast-cms/sdk — TypeScript client
-│   ├── plugin-sdk/      # @kast/plugin-sdk — plugin interface
+│   ├── plugin-sdk/      # @kast-cms/plugin-sdk — plugin interface
 │   └── create-kast-app/ # CLI scaffolding tool
 └── plugins/             # First-party plugins
     ├── kast-plugin-stripe/
@@ -248,8 +248,8 @@ cp apps/api/.env.example apps/api/.env
 docker-compose up -d postgres redis
 
 # 5. Run migrations + seed
-pnpm --filter @kast/api run db:migrate
-pnpm --filter @kast/api run db:seed
+pnpm --filter @kast-cms/api run db:migrate
+pnpm --filter @kast-cms/api run db:seed
 
 # 6. Start all dev servers
 pnpm dev

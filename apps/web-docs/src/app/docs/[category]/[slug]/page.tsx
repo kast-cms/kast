@@ -6,18 +6,22 @@ import { kast } from '@/lib/kast';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 interface DocPageProps {
   params: Promise<{ category: string; slug: string }>;
 }
 
 export async function generateStaticParams(): Promise<Array<{ category: string; slug: string }>> {
-  const docs = await getDocs();
-  return docs.map((d) => ({
-    category: d.data.categorySlug,
-    slug: d.data.slug,
-  }));
+  try {
+    const docs = await getDocs();
+    return docs.map((d) => ({
+      category: d.data.categorySlug,
+      slug: d.data.slug,
+    }));
+  } catch {
+    return [];
+  }
 }
 
 export async function generateMetadata({ params }: DocPageProps): Promise<Metadata> {

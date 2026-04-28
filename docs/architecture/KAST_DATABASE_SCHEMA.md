@@ -881,7 +881,7 @@ model WebhookDelivery {
 
 model Plugin {
   id             String       @id @default(cuid())
-  name           String       @unique  // "@kast/plugin-stripe"
+  name           String       @unique  // "@kast-cms/plugin-stripe"
   displayName    String
   version        String
   description    String?
