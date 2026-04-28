@@ -1,5 +1,5 @@
 // docker-compose.yml Handlebars template for generated projects.
-// Generated projects use the pre-built Docker Hub images (kasthq/api, kasthq/admin).
+// Generated projects use the pre-built Docker Hub images (odaybakkour/kast-api, odaybakkour/kast-admin).
 export const DOCKER_COMPOSE_TEMPLATE = `version: '3.9'
 
 services:
@@ -34,7 +34,7 @@ services:
       retries: 5
 
   api:
-    image: kasthq/api:latest
+    image: odaybakkour/kast-api:latest
     restart: unless-stopped
     env_file: .env
     ports:
@@ -48,7 +48,7 @@ services:
       - uploads:/app/uploads
 
   admin:
-    image: kasthq/admin:latest
+    image: odaybakkour/kast-admin:latest
     restart: unless-stopped
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:{{apiPort}}/api/v1
