@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/kast-cms/kast/main/docs/assets/logo.png" alt="Kast CMS" width="120" />
+<img src="./Kast-Logo-with-text.png" alt="Kast CMS" width="120" />
 
 # Kast CMS
 
