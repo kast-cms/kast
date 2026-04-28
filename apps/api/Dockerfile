@@ -5,18 +5,18 @@ RUN corepack enable && corepack prepare pnpm@9 --activate
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/api/package.json ./apps/api/
 COPY packages/ ./packages/
-RUN pnpm install --frozen-lockfile --filter @kast/api...
+RUN pnpm install --frozen-lockfile --filter @kast-cms/api...
 
 # ── Stage 2: build + generate prisma ──────────────────────────────────────────
 FROM deps AS builder
 COPY . .
-RUN pnpm --filter @kast/plugin-sdk run build && \
-    pnpm --filter @kast/api run prisma:generate && \
-    pnpm --filter @kast/api run build
+RUN pnpm --filter @kast-cms/plugin-sdk run build && \
+    pnpm --filter @kast-cms/api run prisma:generate && \
+    pnpm --filter @kast-cms/api run build
 
 # ── Stage 3: prune to prod-only deploy bundle ──────────────────────────────────
 FROM builder AS deployer
-RUN pnpm deploy --filter @kast/api --prod /deploy
+RUN pnpm deploy --filter @kast-cms/api --prod /deploy
 
 # ── Stage 4: production image ──────────────────────────────────────────────────
 FROM node:20-alpine AS runner

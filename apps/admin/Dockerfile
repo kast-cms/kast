@@ -5,13 +5,13 @@ RUN corepack enable && corepack prepare pnpm@9 --activate
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/admin/package.json ./apps/admin/
 COPY packages/ ./packages/
-RUN pnpm install --frozen-lockfile --filter @kast/admin...
+RUN pnpm install --frozen-lockfile --filter @kast-cms/admin...
 
 # ── Stage 2: build ─────────────────────────────────────────────────────────────
 FROM deps AS builder
 COPY . .
 RUN pnpm --filter @kast-cms/sdk run build && \
-    pnpm --filter @kast/admin run build && \
+    pnpm --filter @kast-cms/admin run build && \
     mkdir -p /app/apps/admin/public
 
 # ── Stage 3: production image ──────────────────────────────────────────────────
