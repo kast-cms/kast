@@ -23,9 +23,10 @@ DATABASE_URL=postgresql://kast:kast_secret@localhost:5432/kast_db
 # ---------------------------------------------------------------------------
 # Redis
 # ---------------------------------------------------------------------------
-REDIS_HOST=redis
+REDIS_HOST=localhost
 REDIS_PORT=6379
 # REDIS_PASSWORD=
+# For Docker: change REDIS_HOST to "redis"
 
 # ---------------------------------------------------------------------------
 # JWT — CHANGE THIS IN PRODUCTION

@@ -1,11 +1,17 @@
 // docker-compose.yml Handlebars template for generated projects.
-// This file is provided for PRODUCTION deployments using pre-built images.
-// For local development, use: <pm> run dev  (starts the source directly)
-export const DOCKER_COMPOSE_TEMPLATE = `# ── Production Docker Compose ─────────────────────────────────────────────────
-# Use this file to run Kast CMS with the pre-built Docker images.
-# For local development, run: {{packageManager}} run dev
+// This file is provided for running Kast CMS with Docker (local dev or production).
+// For local development without Docker, run: <pm> run dev
+//
+// When using Docker:
+//   - Override REDIS_HOST=redis in .env (Docker service name)
+//   - Override DATABASE_URL host to "postgres" in .env
+export const DOCKER_COMPOSE_TEMPLATE = `# ── Docker Compose ─────────────────────────────────────────────────────────
+# Use this file to run Kast CMS with Docker.
+# For local development without Docker, run: {{packageManager}} run dev
 #
-# Images are built from: https://github.com/kast-cms/kast
+# When using Docker, update your .env:
+#   REDIS_HOST=redis
+#   DATABASE_URL=postgresql://kast:kast_secret@postgres:5432/kast_db
 # ─────────────────────────────────────────────────────────────────────────────
 
 services:
@@ -52,7 +58,7 @@ services:
         condition: service_healthy
     volumes:
       - uploads:/app/uploads
-
+{{#if includeAdmin}}
   admin:
     image: ghcr.io/kast-cms/kast-admin:latest
     restart: unless-stopped
@@ -62,6 +68,7 @@ services:
       - '3001:3001'
     depends_on:
       - api
+{{/if}}
 {{#if includeFrontend}}
   web:
     image: ghcr.io/kast-cms/web-{{frontendStarter}}:latest
