@@ -32,6 +32,7 @@ export function getDefaultOptions(projectName: string): ProjectOptions {
     projectName,
     packageManager: detectPackageManager(),
     apiPort: 3000,
+    includeAdmin: true,
     i18n: false,
     defaultLocale: 'en',
     extraLocales: [],
@@ -183,6 +184,15 @@ async function promptDeployment(): Promise<{
   return { frontendStarter, deployTarget };
 }
 
+async function promptIncludeAdmin(): Promise<boolean> {
+  return abortIfCancelled(
+    await confirm({
+      message: 'Include the admin panel (Next.js)?',
+      initialValue: true,
+    }),
+  );
+}
+
 export async function runInteractivePrompts(initialName?: string): Promise<ProjectOptions> {
   process.stdout.write(pc.cyan(BANNER) + '\n');
   intro(pc.bgCyan(pc.black(' create-kast-app ')));
@@ -190,9 +200,26 @@ export async function runInteractivePrompts(initialName?: string): Promise<Proje
   const projectName = await promptProjectName(initialName);
   const packageManager = await promptPackageManager();
   const apiPort = await promptApiPort();
-  const { i18n, extraLocales } = await promptI18n();
+  const includeAdmin = await promptIncludeAdmin();
+
+  let i18n = false;
+  let extraLocales: string[] = [];
+  let frontendStarter: FrontendStarter = 'none';
+  let deployTarget: DeployTarget = 'none';
+
+  if (includeAdmin) {
+    const i18nResult = await promptI18n();
+    i18n = i18nResult.i18n;
+    extraLocales = i18nResult.extraLocales;
+  }
+
   const { storageProvider, plugins } = await promptStorageAndPlugins();
-  const { frontendStarter, deployTarget } = await promptDeployment();
+
+  if (includeAdmin) {
+    const deployResult = await promptDeployment();
+    frontendStarter = deployResult.frontendStarter;
+    deployTarget = deployResult.deployTarget;
+  }
 
   outro(pc.green('✓ Configuration complete'));
 
@@ -200,6 +227,7 @@ export async function runInteractivePrompts(initialName?: string): Promise<Proje
     projectName,
     packageManager,
     apiPort,
+    includeAdmin,
     i18n,
     defaultLocale: 'en',
     extraLocales,

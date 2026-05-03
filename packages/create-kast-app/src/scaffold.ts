@@ -1,5 +1,5 @@
 import { execa } from 'execa';
-import { cp, readFile, writeFile } from 'fs/promises';
+import { cp, mkdir, readFile, rm, writeFile } from 'fs/promises';
 import Handlebars from 'handlebars';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -8,6 +8,7 @@ import {
   DOCKER_COMPOSE_TEMPLATE,
   ENV_EXAMPLE_TEMPLATE,
   GITIGNORE_TEMPLATE,
+  PACKAGE_JSON_API_ONLY_TEMPLATE,
   PACKAGE_JSON_TEMPLATE,
   RAILWAY_TEMPLATE,
   README_TEMPLATE,
@@ -19,11 +20,7 @@ import type { PackageManager, ProjectOptions } from './types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// Resolve template directory relative to the compiled dist/ output.
-// In the published package: dist/index.js → ../template
 const TEMPLATE_DIR = join(__dirname, '..', 'template');
-
-// ── Context ────────────────────────────────────────────────────────────────────
 
 interface TemplateContext {
   projectName: string;
@@ -31,6 +28,7 @@ interface TemplateContext {
   pmVersion: string;
   installCmd: string;
   apiPort: number;
+  includeAdmin: boolean;
   i18n: boolean;
   defaultLocale: string;
   extraLocales: string[];
@@ -59,10 +57,8 @@ function installCmd(pm: PackageManager): string {
 }
 
 async function resolvePmVersion(pm: PackageManager): Promise<string> {
-  // 1. Try to parse from npm_config_user_agent (set by all major PMs)
   const fromAgent = detectPmVersion(pm);
   if (fromAgent) return fromAgent;
-  // 2. Fall back to running `<pm> --version`
   try {
     const { stdout } = await execa(pm, ['--version']);
     const match = /(\d+\.\d+\.\d+)/.exec(stdout.trim());
@@ -70,7 +66,6 @@ async function resolvePmVersion(pm: PackageManager): Promise<string> {
   } catch {
     // ignore
   }
-  // 3. Last-resort known stable versions
   const fallbacks: Record<PackageManager, string> = {
     pnpm: '9.0.0',
     npm: '10.0.0',
@@ -87,6 +82,7 @@ function buildContext(opts: ProjectOptions, pmVersion: string): TemplateContext 
     pmVersion,
     installCmd: installCmd(opts.packageManager),
     apiPort: opts.apiPort,
+    includeAdmin: opts.includeAdmin,
     i18n: opts.i18n,
     defaultLocale: opts.defaultLocale,
     extraLocales: opts.extraLocales,
@@ -112,14 +108,12 @@ function render(template: string, ctx: TemplateContext): string {
   return Handlebars.compile(template, { noEscape: true })(ctx);
 }
 
-// ── Generated files (Handlebars) ───────────────────────────────────────────────
-
 interface FileEntry {
   path: string;
   content: string;
 }
 
-function getGeneratedFiles(ctx: TemplateContext, opts: ProjectOptions): FileEntry[] {
+function getMonorepoGeneratedFiles(ctx: TemplateContext, opts: ProjectOptions): FileEntry[] {
   const files: FileEntry[] = [
     { path: 'package.json', content: render(PACKAGE_JSON_TEMPLATE, ctx) },
     { path: 'docker-compose.yml', content: render(DOCKER_COMPOSE_TEMPLATE, ctx) },
@@ -128,12 +122,10 @@ function getGeneratedFiles(ctx: TemplateContext, opts: ProjectOptions): FileEntr
     { path: '.gitignore', content: GITIGNORE_TEMPLATE },
   ];
 
-  // Workspace file — format depends on chosen package manager
   const workspaceContent = render(WORKSPACE_TEMPLATE, ctx);
   if (opts.packageManager === 'pnpm') {
     files.push({ path: 'pnpm-workspace.yaml', content: workspaceContent });
   }
-  // npm/yarn/bun use "workspaces" inside package.json (handled in PACKAGE_JSON_TEMPLATE)
 
   if (opts.deployTarget === 'railway') {
     files.push({ path: 'railway.toml', content: render(RAILWAY_TEMPLATE, ctx) });
@@ -146,7 +138,23 @@ function getGeneratedFiles(ctx: TemplateContext, opts: ProjectOptions): FileEntr
   return files;
 }
 
-// ── Run package manager install ────────────────────────────────────────────────
+function getApiOnlyGeneratedFiles(ctx: TemplateContext, opts: ProjectOptions): FileEntry[] {
+  const files: FileEntry[] = [
+    { path: 'package.json', content: render(PACKAGE_JSON_API_ONLY_TEMPLATE, ctx) },
+    { path: 'docker-compose.yml', content: render(DOCKER_COMPOSE_TEMPLATE, ctx) },
+    { path: '.env.example', content: render(ENV_EXAMPLE_TEMPLATE, ctx) },
+    { path: 'README.md', content: render(README_TEMPLATE, ctx) },
+    { path: '.gitignore', content: GITIGNORE_TEMPLATE },
+  ];
+
+  if (opts.deployTarget === 'railway') {
+    files.push({ path: 'railway.toml', content: render(RAILWAY_TEMPLATE, ctx) });
+  } else if (opts.deployTarget === 'render') {
+    files.push({ path: 'render.yaml', content: render(RENDER_TEMPLATE, ctx) });
+  }
+
+  return files;
+}
 
 async function runInstall(pm: PackageManager, cwd: string): Promise<void> {
   const [bin, ...args] =
@@ -160,7 +168,76 @@ async function runInstall(pm: PackageManager, cwd: string): Promise<void> {
   await execa(bin, args, { cwd, stdio: 'inherit' });
 }
 
-// ── Main export ────────────────────────────────────────────────────────────────
+async function scaffoldMonorepo(
+  opts: ProjectOptions,
+  targetDir: string,
+  ctx: TemplateContext,
+  scaffoldOpts: ScaffoldOptions,
+): Promise<void> {
+  await cp(TEMPLATE_DIR, targetDir, {
+    recursive: true,
+    filter: (src) => {
+      const rel = src.replace(TEMPLATE_DIR, '');
+      return (
+        !rel.includes('node_modules') &&
+        !rel.includes('/.next') &&
+        !rel.includes('/dist') &&
+        !rel.endsWith('.tsbuildinfo') &&
+        !rel.endsWith('.templateignore')
+      );
+    },
+  });
+
+  if (!opts.includeAdmin) {
+    await rm(join(targetDir, 'apps', 'admin'), { recursive: true, force: true });
+  }
+
+  const files = getMonorepoGeneratedFiles(ctx, opts);
+  for (const file of files) {
+    await writeFile(join(targetDir, file.path), file.content, 'utf-8');
+  }
+
+  const envExample = await readFile(join(targetDir, '.env.example'), 'utf-8');
+  await writeFile(join(targetDir, '.env'), envExample, 'utf-8');
+
+  if (!scaffoldOpts.skipInstall) {
+    process.stdout.write(`\n  Installing dependencies with ${ctx.packageManager}...\n`);
+    await runInstall(opts.packageManager, targetDir);
+  }
+}
+
+async function scaffoldApiOnly(
+  opts: ProjectOptions,
+  targetDir: string,
+  ctx: TemplateContext,
+  scaffoldOpts: ScaffoldOptions,
+): Promise<void> {
+  await mkdir(targetDir, { recursive: true });
+
+  const apiTemplateDir = join(TEMPLATE_DIR, 'apps', 'api');
+  await cp(apiTemplateDir, targetDir, {
+    recursive: true,
+    filter: (src) => {
+      const rel = src.replace(apiTemplateDir, '');
+      return (
+        !rel.includes('node_modules') && !rel.includes('/dist') && !rel.endsWith('.tsbuildinfo')
+      );
+    },
+  });
+
+  const files = getApiOnlyGeneratedFiles(ctx, opts);
+  for (const file of files) {
+    await writeFile(join(targetDir, file.path), file.content, 'utf-8');
+  }
+
+  const envExample = await readFile(join(targetDir, '.env.example'), 'utf-8');
+  await writeFile(join(targetDir, '.env'), envExample, 'utf-8');
+
+  if (!scaffoldOpts.skipInstall) {
+    process.stdout.write(`\n  Installing dependencies with ${ctx.packageManager}...\n`);
+    await runInstall(opts.packageManager, targetDir);
+  }
+}
 
 export interface ScaffoldOptions {
   skipInstall?: boolean;
@@ -174,39 +251,12 @@ export async function scaffoldProject(
   const pmVersion = await resolvePmVersion(opts.packageManager);
   const ctx = buildContext(opts, pmVersion);
 
-  // 1. Copy static source template tree into target directory
-  await cp(TEMPLATE_DIR, targetDir, {
-    recursive: true,
-    // Skip .templateignore and the ignore file itself
-    filter: (src) => {
-      const rel = src.replace(TEMPLATE_DIR, '');
-      return (
-        !rel.includes('node_modules') &&
-        !rel.includes('/.next') &&
-        !rel.includes('/dist') &&
-        !rel.endsWith('.tsbuildinfo') &&
-        !rel.endsWith('.templateignore')
-      );
-    },
-  });
-
-  // 2. Write all Handlebars-generated files on top (overwrite placeholders)
-  const files = getGeneratedFiles(ctx, opts);
-  for (const file of files) {
-    await writeFile(join(targetDir, file.path), file.content, 'utf-8');
+  if (opts.includeAdmin) {
+    await scaffoldMonorepo(opts, targetDir, ctx, scaffoldOpts);
+  } else {
+    await scaffoldApiOnly(opts, targetDir, ctx, scaffoldOpts);
   }
 
-  // 3. Copy .env.example → .env so the project works immediately
-  const envExample = await readFile(join(targetDir, '.env.example'), 'utf-8');
-  await writeFile(join(targetDir, '.env'), envExample, 'utf-8');
-
-  // 4. Install dependencies (unless skipped, e.g. in CI/test runs)
-  if (!scaffoldOpts.skipInstall) {
-    process.stdout.write(`\n  Installing dependencies with ${ctx.packageManager}...\n`);
-    await runInstall(opts.packageManager, targetDir);
-  }
-
-  // 5. Initialise git repository
   try {
     await execa('git', ['init'], { cwd: targetDir });
     await execa('git', ['add', '-A'], { cwd: targetDir });
@@ -214,6 +264,6 @@ export async function scaffoldProject(
       cwd: targetDir,
     });
   } catch {
-    // Git might not be installed — silently skip, project is still valid
+    // Git might not be installed — silently skip
   }
 }

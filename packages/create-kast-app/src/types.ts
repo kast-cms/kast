@@ -7,6 +7,7 @@ export interface ProjectOptions {
   projectName: string;
   packageManager: PackageManager;
   apiPort: number;
+  includeAdmin: boolean;
   i18n: boolean;
   defaultLocale: string;
   extraLocales: string[];
