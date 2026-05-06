@@ -280,12 +280,12 @@ async function fixWorkspaceDependencies(targetDir: string): Promise<void> {
           if (value === 'workspace:*') {
             // Use actual version numbers for npm
             if (key === '@kast-cms/sdk') {
-              pkg.dependencies[key as string = '^0.3.2';
+              (pkg.dependencies as Record<string, string>)[key] = '^0.3.2';
             } else if (key === '@kast-cms/plugin-sdk') {
-              pkg.dependencies[key as string = '^0.1.0';
+              (pkg.dependencies as Record<string, string>)[key] = '^0.1.0';
             } else {
               // Default fallback for other workspace dependencies
-              pkg.dependencies[key as string = '*';
+              (pkg.dependencies as Record<string, string>)[key] = '*';
             }
             modified = true;
           }
