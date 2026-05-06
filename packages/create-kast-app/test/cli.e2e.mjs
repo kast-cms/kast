@@ -128,6 +128,66 @@ test('package.json is valid JSON with correct project name and turbo dev script'
   assert.ok(pkg.scripts?.['db:migrate'], 'package.json should have db:migrate script');
 });
 
+test('--no-admin generates backend-only flat project', async (t) => {
+  const tmp = await mkdtemp(join(tmpdir(), 'kast-e2e-'));
+  const projectName = 'test-api-only';
+  const projectDir = join(tmp, projectName);
+
+  t.after(async () => {
+    await rm(tmp, { recursive: true, force: true });
+  });
+
+  await execFileAsync('node', [CLI_BIN, projectName, ...SKIP_FLAGS, '--no-admin'], { cwd: tmp });
+
+  const requiredFiles = [
+    'package.json',
+    'docker-compose.yml',
+    '.env.example',
+    '.env',
+    'README.md',
+    '.gitignore',
+  ];
+  for (const file of requiredFiles) {
+    assert.ok(await exists(join(projectDir, file)), `Missing: ${file}`);
+  }
+
+  assert.ok(
+    await exists(join(projectDir, 'src', 'main.ts')),
+    'src/main.ts must exist (flat structure)',
+  );
+
+  assert.ok(
+    !(await exists(join(projectDir, 'apps'))),
+    'apps/ must NOT exist in backend-only mode',
+  );
+  assert.ok(
+    !(await exists(join(projectDir, 'pnpm-workspace.yaml'))),
+    'pnpm-workspace.yaml must NOT exist in backend-only mode',
+  );
+
+  const raw = await readFile(join(projectDir, 'package.json'), 'utf-8');
+  const pkg = JSON.parse(raw);
+  assert.equal(pkg.name, projectName, 'package.json name should match project name');
+  assert.ok(pkg.scripts?.['dev'], 'package.json should have a dev script');
+  assert.ok(pkg.scripts?.['db:migrate'], 'package.json should have db:migrate script');
+  assert.ok(pkg.dependencies?.['@nestjs/core'], 'should have @nestjs/core');
+});
+
+test('--no-admin docker-compose excludes admin service', async (t) => {
+  const tmp = await mkdtemp(join(tmpdir(), 'kast-e2e-'));
+  t.after(async () => rm(tmp, { recursive: true, force: true }));
+
+  await execFileAsync('node', [CLI_BIN, 'api-compose', ...SKIP_FLAGS, '--no-admin'], {
+    cwd: tmp,
+  });
+
+  const compose = await readFile(join(tmp, 'api-compose', 'docker-compose.yml'), 'utf-8');
+  assert.ok(compose.includes('postgres'), 'docker-compose should include postgres service');
+  assert.ok(compose.includes('redis'), 'docker-compose should include redis service');
+  assert.ok(compose.includes('kast-api'), 'docker-compose should reference kast-api image');
+  assert.ok(!compose.includes('kast-admin'), 'docker-compose must NOT reference kast-admin');
+});
+
 test('exits with code 1 when project directory already exists', async (t) => {
   const tmp = await mkdtemp(join(tmpdir(), 'kast-e2e-'));
   t.after(async () => rm(tmp, { recursive: true, force: true }));
