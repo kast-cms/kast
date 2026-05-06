@@ -1,5 +1,5 @@
 import { execa } from 'execa';
-import { cp, mkdir, readFile, rm, writeFile } from 'fs/promises';
+import { cp, mkdir, readFile, readdir, rm, writeFile } from 'fs/promises';
 import Handlebars from 'handlebars';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -200,6 +200,11 @@ async function scaffoldMonorepo(
   const envExample = await readFile(join(targetDir, '.env.example'), 'utf-8');
   await writeFile(join(targetDir, '.env'), envExample, 'utf-8');
 
+  // Fix workspace dependencies for npm
+  if (opts.packageManager === 'npm') {
+    await fixWorkspaceDependencies(targetDir);
+  }
+
   if (!scaffoldOpts.skipInstall) {
     process.stdout.write(`\n  Installing dependencies with ${ctx.packageManager}...\n`);
     await runInstall(opts.packageManager, targetDir);
@@ -233,9 +238,67 @@ async function scaffoldApiOnly(
   const envExample = await readFile(join(targetDir, '.env.example'), 'utf-8');
   await writeFile(join(targetDir, '.env'), envExample, 'utf-8');
 
+  // Fix workspace dependencies for npm
+  if (opts.packageManager === 'npm') {
+    await fixWorkspaceDependencies(targetDir);
+  }
+
   if (!scaffoldOpts.skipInstall) {
     process.stdout.write(`\n  Installing dependencies with ${ctx.packageManager}...\n`);
     await runInstall(opts.packageManager, targetDir);
+  }
+}
+
+async function fixWorkspaceDependencies(targetDir: string): Promise<void> {
+  // Find all package.json files in the project
+  const packageJsonFiles: string[] = [];
+
+  async function findPackageJsonFiles(dir: string): Promise<void> {
+    const entries = await readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = join(dir, entry.name);
+      if (entry.name === 'package.json' && entry.isFile()) {
+        packageJsonFiles.push(fullPath);
+      } else if (entry.isDirectory() && !entry.name.startsWith('.') && entry.name !== 'node_modules') {
+        await findPackageJsonFiles(fullPath);
+      }
+    }
+  }
+
+  await findPackageJsonFiles(targetDir);
+
+  // Process each package.json file
+  for (const filePath of packageJsonFiles) {
+    try {
+      const content = await readFile(filePath, 'utf-8');
+      const pkg: Record<string, any> = JSON.parse(content);
+      let modified = false;
+
+      // Fix dependencies
+      if (pkg.dependencies) {
+        for (const [key, value] of Object.entries(pkg.dependencies)) {
+          if (value === 'workspace:*') {
+            // Use actual version numbers for npm
+            if (key === '@kast-cms/sdk') {
+              pkg.dependencies[key as string = '^0.3.2';
+            } else if (key === '@kast-cms/plugin-sdk') {
+              pkg.dependencies[key as string = '^0.1.0';
+            } else {
+              // Default fallback for other workspace dependencies
+              pkg.dependencies[key as string = '*';
+            }
+            modified = true;
+          }
+        }
+      }
+
+      if (modified) {
+        await writeFile(filePath, JSON.stringify(pkg, null, 2) + '\n', 'utf-8');
+      }
+    } catch (error) {
+      // Silently skip files that can't be processed
+      console.warn(`Warning: Could not process ${filePath}:`, error);
+    }
   }
 }
 

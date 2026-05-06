@@ -24,7 +24,11 @@ function resolveOptions(args: string[]): ProjectOptions | null {
         pc.bold(projectNameArg as string) +
         pc.cyan(' with default settings...\n\n'),
     );
-    return getDefaultOptions(projectNameArg as string);
+    const opts = getDefaultOptions(projectNameArg as string);
+    if (args.includes('--no-admin')) {
+      opts.includeAdmin = false;
+    }
+    return opts;
   }
 
   return null;
