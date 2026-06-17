@@ -1,13 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsArray, IsString, ValidateNested } from 'class-validator';
+import { Allow, IsArray, IsString, ValidateNested } from 'class-validator';
 
 class SettingEntryDto {
   @ApiProperty({ description: 'Setting key (e.g. site.name)' })
   @IsString()
   key!: string;
 
+  // @Allow keeps the whitelisting ValidationPipe from stripping this arbitrary
+  // JSON value (it has no type-specific validator of its own).
   @ApiProperty({ description: 'Setting value (any JSON-serialisable type)' })
+  @Allow()
   value!: unknown;
 }
 

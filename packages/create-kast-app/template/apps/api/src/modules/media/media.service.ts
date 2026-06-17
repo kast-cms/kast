@@ -54,9 +54,17 @@ export class MediaService {
     const maxMb = config.get('UPLOAD_MAX_FILE_SIZE_MB', { infer: true }) ?? 10;
     this.maxBytes = maxMb * 1024 * 1024;
     const mimes = config.get('UPLOAD_ALLOWED_MIME_TYPES', { infer: true });
-    this.allowedMimes = new Set(
-      mimes ?? ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'],
-    );
+    const defaultMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+    // UPLOAD_ALLOWED_MIME_TYPES is a comma-separated string; split it so the
+    // Set holds whole MIME types, not individual characters.
+    const mimeList =
+      typeof mimes === 'string'
+        ? mimes
+            .split(',')
+            .map((m) => m.trim())
+            .filter(Boolean)
+        : defaultMimes;
+    this.allowedMimes = new Set(mimeList);
   }
 
   async upload(file: Express.Multer.File, uploaderId: string): Promise<{ data: MediaFile }> {
