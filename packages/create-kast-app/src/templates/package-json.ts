@@ -7,10 +7,10 @@ export const PACKAGE_JSON_TEMPLATE = `{
     "build": "turbo build",
     "typecheck": "turbo typecheck",
     "lint": "turbo lint",
-    "db:generate": "{{packageManager}} --filter @kast-cms/api run prisma:generate",
-    "db:migrate": "{{packageManager}} --filter @kast-cms/api run prisma:migrate",
-    "db:migrate:prod": "{{packageManager}} --filter @kast-cms/api run prisma:migrate:prod",
-    "db:seed": "{{packageManager}} --filter @kast-cms/api run prisma:seed",
+    "db:generate": "{{dbGenerateCmd}}",
+    "db:migrate": "{{dbMigrateCmd}}",
+    "db:migrate:prod": "{{dbMigrateProdCmd}}",
+    "db:seed": "{{dbSeedCmd}}",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f",
@@ -30,15 +30,29 @@ export const PACKAGE_JSON_TEMPLATE = `{
     "prettier-plugin-organize-imports": "^4.1.0",
     "husky": "^9.1.7",
     "lint-staged": "^15.5.1",
+    "dotenv-cli": "^11.0.0",
     "@commitlint/cli": "^19.8.0",
     "@commitlint/config-conventional": "^19.8.0",
     "@commitlint/types": "^19.8.0"
-  }{{#unless isPnpm}},
+  }{{#if isPnpm}},
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@parcel/watcher",
+      "@prisma/client",
+      "@prisma/engines",
+      "@swc/core",
+      "argon2",
+      "esbuild",
+      "msgpackr-extract",
+      "prisma",
+      "sharp"
+    ]
+  }{{else}},
   "workspaces": [
     "apps/*",
     "packages/*",
     "plugins/*"
-  ]{{/unless}}
+  ]{{/if}}
 }
 `;
 
@@ -76,6 +90,7 @@ export const PACKAGE_JSON_API_ONLY_TEMPLATE = `{
     "@bull-board/express": "^7.0.0",
     "@bull-board/nestjs": "^7.0.0",
     "@bull-board/ui": "^7.0.0",
+    "@kast-cms/plugin-sdk": "^0.1.0",
     "@nestjs/bullmq": "^10.2.3",
     "@nestjs/common": "^11.0.11",
     "@nestjs/config": "^3.3.0",
@@ -155,7 +170,17 @@ export const PACKAGE_JSON_API_ONLY_TEMPLATE = `{
   },
   "prisma": {
     "seed": "ts-node -r tsconfig-paths/register prisma/seed.ts"
-  }
+  }{{#if isPnpm}},
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "argon2",
+      "esbuild",
+      "prisma",
+      "sharp"
+    ]
+  }{{/if}}
 }
 `;
 

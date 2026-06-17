@@ -37,6 +37,9 @@ import { PrismaModule } from './prisma/prisma.module';
     ConfigModule.forRoot({
       isGlobal: true,
       validate: validateEnv,
+      // Monorepo keeps .env at the repo root; api-only keeps it beside the app.
+      // In Docker the env comes from the container, so a missing file is fine.
+      envFilePath: ['../../.env', '.env'],
     }),
     ScheduleModule.forRoot(),
     EventEmitterModule.forRoot(),

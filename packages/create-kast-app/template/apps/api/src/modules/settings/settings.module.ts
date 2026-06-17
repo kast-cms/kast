@@ -13,8 +13,9 @@ import { SettingsService } from './settings.service';
 })
 export class SettingsModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    consumer
-      .apply(MaintenanceMiddleware)
-      .forRoutes({ path: '*/delivery/*', method: RequestMethod.ALL });
+    // Express 5 / path-to-regexp v8 require named wildcards. Bind to all routes
+    // with the `{*path}` wildcard; the middleware itself filters to delivery
+    // routes via `req.path`.
+    consumer.apply(MaintenanceMiddleware).forRoutes({ path: '{*path}', method: RequestMethod.ALL });
   }
 }

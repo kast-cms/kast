@@ -9,6 +9,10 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "test:e2e": "turbo run test:e2e",
+    "db:generate": "pnpm --filter @kast-cms/api run prisma:generate",
+    "db:migrate": "dotenv -- pnpm --filter @kast-cms/api run prisma:migrate",
+    "db:migrate:prod": "dotenv -- pnpm --filter @kast-cms/api run prisma:migrate:prod",
+    "db:seed": "dotenv -- pnpm --filter @kast-cms/api run prisma:seed",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky"
@@ -17,6 +21,7 @@
     "@commitlint/cli": "^19.0.0",
     "@commitlint/config-conventional": "^19.0.0",
     "@commitlint/types": "^19.0.0",
+    "dotenv-cli": "^11.0.0",
     "eslint": "^9.0.0",
     "globals": "^15.0.0",
     "husky": "^9.0.0",
@@ -35,6 +40,17 @@
   "pnpm": {
     "overrides": {
       "lodash": "^4.18.1"
-    }
+    },
+    "onlyBuiltDependencies": [
+      "@parcel/watcher",
+      "@prisma/client",
+      "@prisma/engines",
+      "@swc/core",
+      "argon2",
+      "esbuild",
+      "msgpackr-extract",
+      "prisma",
+      "sharp"
+    ]
   }
 }

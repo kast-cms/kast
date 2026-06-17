@@ -1,5 +1,8 @@
-version: '3.9'
-
+# Full-stack Docker deployment (Postgres + Redis + API).
+# Before `docker compose up`, copy .env.example to .env and point the API at the
+# compose service names (the API runs inside the network, not on localhost):
+#   DATABASE_URL=postgresql://kast:kast_secret@postgres:5432/kast_db
+#   REDIS_HOST=redis
 services:
   postgres:
     image: postgres:16-alpine
