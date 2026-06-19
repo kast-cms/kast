@@ -1,8 +1,18 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
 import { Roles } from '../../common/decorators/roles.decorator';
-import type { PluginListResponse, PluginRecord } from './dto/plugin.dto';
+import { InstallPluginDto, type PluginListResponse, type PluginRecord } from './dto/plugin.dto';
 import { PluginService } from './plugin.service';
 
 @ApiTags('plugins')
@@ -16,6 +26,21 @@ export class PluginController {
   @ApiOperation({ summary: 'List installed plugins' })
   list(): Promise<PluginListResponse> {
     return this.service.list();
+  }
+
+  @Post('install')
+  @Roles(SYSTEM_ROLES.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Install a plugin by name and version' })
+  install(@Body() dto: InstallPluginDto): Promise<{ data: PluginRecord }> {
+    return this.service.install(dto.name, dto.version);
+  }
+
+  @Delete(':name')
+  @Roles(SYSTEM_ROLES.SUPER_ADMIN)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Uninstall a plugin' })
+  async uninstall(@Param('name') name: string): Promise<void> {
+    await this.service.uninstall(name);
   }
 
   @Post(':name/enable')

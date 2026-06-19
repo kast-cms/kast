@@ -1,0 +1,258 @@
+name: Release
+
+# Fully automatic, independent per-package versioning.
+# On every push/merge to main:
+#   1. Quality gate (format, lint, typecheck, test) must pass first.
+#   2. multi-semantic-release independently versions + publishes the 3 npm packages
+#      (create-kast-app, @kast-cms/sdk, @kast-cms/plugin-sdk) from the conventional
+#      commits that touched each package's directory, and creates per-package tags
+#      + GitHub Releases. Packages with no relevant commits are skipped.
+#   3. A product-level vX.Y.Z tag + GitHub Release is computed from the overall
+#      conventional commits since the last v* tag, and the api + admin GHCR Docker
+#      images are (re)built. :edge is built on EVERY push to main.
+#
+# There is NO release PR and NO manual step. See README "Releasing".
+#
+# Reconciliation with publish.yml: this workflow OWNS all npm publishing and the
+# product-version Docker build. publish.yml is trimmed to only build :edge images
+# on main. That removes every overlap, so nothing double-publishes.
+#
+# GITHUB_TOKEN tag-trigger pitfall: tags pushed with the default GITHUB_TOKEN do
+# NOT re-trigger other workflows. We never rely on a pushed tag re-triggering
+# anything — the Docker build for the product version happens INSIDE this run,
+# right after the version is computed. The product tag is still pushed (for history
+# + the GitHub Release) using RELEASE_PAT, so it remains robust even if a
+# tag-triggered workflow is added later.
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  # ── Quality gate — everything below is gated on this ───────────────────────
+  gate:
+    name: Quality gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: kast
+          POSTGRES_PASSWORD: kast
+          POSTGRES_DB: kast_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kast -d kast_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://kast:kast@localhost:5432/kast_test?schema=public
+      REDIS_HOST: localhost
+      REDIS_PORT: '6379'
+      JWT_SECRET: ci-test-jwt-secret-at-least-32-characters-long
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter @kast-cms/api exec prisma generate
+
+      - name: Format check
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Apply database migrations (e2e)
+        run: pnpm --filter @kast-cms/api exec prisma migrate deploy
+
+      - name: API e2e tests
+        run: pnpm --filter @kast-cms/api run test:e2e
+
+  # ── Independent per-package npm releases ───────────────────────────────────
+  release-npm:
+    name: Publish npm packages
+    runs-on: ubuntu-latest
+    needs: gate
+    timeout-minutes: 20
+    permissions:
+      contents: write # create per-package git tags + GitHub Releases
+      issues: write # @semantic-release/github may comment/label
+      id-token: write # npm provenance (OIDC)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # semantic-release needs full history + tags
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter @kast-cms/api exec prisma generate
+
+      - name: Build publishable packages
+        run: pnpm --filter create-kast-app --filter @kast-cms/sdk --filter @kast-cms/plugin-sdk build
+
+      - name: Release (multi-semantic-release)
+        run: pnpm exec multi-semantic-release --deps.bump=override
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: 'true' # npm publish --provenance
+
+  # ── Compute the product vX.Y.Z version for Docker + GitHub Release ─────────
+  product-version:
+    name: Compute product version
+    runs-on: ubuntu-latest
+    needs: gate
+    timeout-minutes: 10
+    permissions:
+      contents: write # tag action pushes the vX.Y.Z tag (auth is via RELEASE_PAT)
+    outputs:
+      new_version: ${{ steps.semver.outputs.new_version }}
+      new_tag: ${{ steps.semver.outputs.new_tag }}
+      changelog: ${{ steps.semver.outputs.changelog }}
+      changed: ${{ steps.semver.outputs.release_type != '' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # PAT so the pushed product tag is robust for any future tag-triggered
+          # workflow (GITHUB_TOKEN-pushed tags do not re-trigger workflows).
+          token: ${{ secrets.RELEASE_PAT }}
+
+      # Reads v* tags + conventional commits since the last one. Never downgrades:
+      # the next version is always derived from the latest existing v* tag.
+      - name: Compute next product version
+        id: semver
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.RELEASE_PAT }}
+          tag_prefix: v
+          default_bump: false # no bump if no feat/fix/breaking since last tag
+          release_branches: main
+          # The action creates + pushes the tag itself when a bump is warranted.
+
+  # ── Build & push versioned Docker images (only on a product bump) ──────────
+  # :edge images are built by publish.yml on every push; this job owns the
+  # versioned :x.y.z + :latest images, so :edge is never built twice.
+  docker:
+    name: Docker — ${{ matrix.app }}
+    runs-on: ubuntu-latest
+    needs: product-version
+    if: needs.product-version.outputs.changed == 'true'
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write # push to GHCR
+    strategy:
+      matrix:
+        include:
+          - app: api
+            image: ghcr.io/kast-cms/kast-api
+            dockerfile: apps/api/Dockerfile
+          - app: admin
+            image: ghcr.io/kast-cms/kast-admin
+            dockerfile: apps/admin/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ matrix.image }}
+          # This job only runs on a product bump, so always tag :x.y.z + :latest.
+          tags: |
+            type=raw,value=${{ needs.product-version.outputs.new_version }}
+            type=raw,value=latest
+
+      - name: Build and push ${{ matrix.app }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ── Product GitHub Release (only on a product bump) ────────────────────────
+  product-release:
+    name: Product GitHub Release
+    runs-on: ubuntu-latest
+    needs: [product-version, docker]
+    if: needs.product-version.outputs.changed == 'true'
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.product-version.outputs.new_tag }}
+          body: ${{ needs.product-version.outputs.changelog }}
+          generate_release_notes: true

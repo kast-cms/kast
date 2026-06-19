@@ -1,6 +1,6 @@
-import type { ContentEntryDetail, ContentEntrySummary } from '@kast-cms/sdk';
+import type { DeliveryEntry } from '@/lib/kast';
 
-/** Shape of a doc page's `data` field */
+/** Shape of a doc page's `data` field. */
 export interface DocData {
   title: string;
   slug: string;
@@ -12,7 +12,7 @@ export interface DocData {
   publishedAt?: string;
 }
 
-/** Shape of a changelog entry's `data` field */
+/** Shape of a changelog entry's `data` field. */
 export interface ChangelogData {
   version: string;
   releasedAt: string;
@@ -21,11 +21,20 @@ export interface ChangelogData {
   type?: 'major' | 'minor' | 'patch' | 'security';
 }
 
-export type DocEntry = ContentEntrySummary & { data: DocData };
-export type DocDetailEntry = ContentEntryDetail & { data: DocData };
-export type ChangelogEntry = ContentEntrySummary & { data: ChangelogData };
+/**
+ * A published entry returned by the Delivery API, normalised for the UI.
+ * `createdAt` / `updatedAt` are derived from the Delivery `publishedAt`.
+ */
+export type DeliveryUiEntry<TData> = DeliveryEntry<TData> & {
+  createdAt: string;
+  updatedAt: string;
+};
 
-/** Sidebar item built from doc entries */
+export type DocEntry = DeliveryUiEntry<DocData>;
+export type DocDetailEntry = DeliveryUiEntry<DocData>;
+export type ChangelogEntry = DeliveryUiEntry<ChangelogData>;
+
+/** Sidebar item built from doc entries. */
 export interface SidebarItem {
   label: string;
   slug: string;
@@ -33,14 +42,14 @@ export interface SidebarItem {
   order: number;
 }
 
-/** Sidebar category group */
+/** Sidebar category group. */
 export interface SidebarCategory {
   name: string;
   slug: string;
   items: SidebarItem[];
 }
 
-/** TOC heading extracted from rich-text HTML */
+/** TOC heading extracted from rich-text HTML. */
 export interface TocHeading {
   id: string;
   text: string;

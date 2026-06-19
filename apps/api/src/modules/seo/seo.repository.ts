@@ -51,6 +51,27 @@ export class SeoRepository {
     });
   }
 
+  async findScoreHistory(
+    entryId: string,
+    limit: number,
+    cursor?: string,
+  ): Promise<{ items: SeoScoreWithIssues[]; total: number } | null> {
+    const meta = await this.prisma.seoMeta.findUnique({ where: { entryId } });
+    if (!meta) return null;
+    const where = { seoMetaId: meta.id };
+    const [items, total] = await Promise.all([
+      this.prisma.seoScore.findMany({
+        where,
+        include: { issues: true },
+        orderBy: { validatedAt: 'desc' },
+        take: limit + 1,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      }),
+      this.prisma.seoScore.count({ where }),
+    ]);
+    return { items, total };
+  }
+
   async saveScore(
     seoMetaId: string,
     score: number,
@@ -83,6 +104,36 @@ export class SeoRepository {
     return this.prisma.redirect.create({ data: { ...data, createdById: userId } });
   }
 
+  async findExistingFromPaths(fromPaths: string[]): Promise<Set<string>> {
+    if (fromPaths.length === 0) return new Set();
+    const rows = await this.prisma.redirect.findMany({
+      where: { fromPath: { in: fromPaths } },
+      select: { fromPath: true },
+    });
+    return new Set(rows.map((r) => r.fromPath));
+  }
+
+  async createManyRedirects(
+    rows: {
+      fromPath: string;
+      toPath: string;
+      type: 'PERMANENT' | 'TEMPORARY';
+      isActive: boolean;
+    }[],
+    userId: string,
+  ): Promise<number> {
+    if (rows.length === 0) return 0;
+    const result = await this.prisma.redirect.createMany({
+      data: rows.map((r) => ({ ...r, createdById: userId })),
+      skipDuplicates: true,
+    });
+    return result.count;
+  }
+
+  async findAllRedirectsForExport(): Promise<Redirect[]> {
+    return this.prisma.redirect.findMany({ orderBy: { createdAt: 'asc' } });
+  }
+
   async updateRedirect(id: string, data: UpdateRedirectDto): Promise<Redirect> {
     return this.prisma.redirect.update({ where: { id }, data });
   }
@@ -106,5 +157,38 @@ export class SeoRepository {
     return rows.filter(
       (r): r is { canonicalUrl: string; updatedAt: Date } => r.canonicalUrl !== null,
     );
+  }
+
+  async findPublishedEntriesForSitemap(): Promise<
+    Array<{
+      id: string;
+      updatedAt: Date;
+      contentTypeName: string;
+      locales: { localeCode: string; slug: string }[];
+    }>
+  > {
+    const rows = await this.prisma.contentEntry.findMany({
+      where: { status: 'PUBLISHED', trashedAt: null },
+      select: {
+        id: true,
+        updatedAt: true,
+        contentType: { select: { name: true } },
+        locales: { select: { localeCode: true, slug: true } },
+      },
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      updatedAt: r.updatedAt,
+      contentTypeName: r.contentType.name,
+      locales: r.locales,
+    }));
+  }
+
+  async findActiveLocales(): Promise<{ code: string; isDefault: boolean }[]> {
+    return this.prisma.locale.findMany({
+      where: { isActive: true },
+      select: { code: true, isDefault: true },
+      orderBy: { createdAt: 'asc' },
+    });
   }
 }

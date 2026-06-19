@@ -293,6 +293,75 @@ Images are built and pushed automatically via GitHub Actions.
 
 ---
 
+## Releasing
+
+Releases are **fully automatic and independent per package**. There is no release
+PR and no manual version bumping — just merge [Conventional Commits](https://www.conventionalcommits.org/)
+to `main` and CI does the rest (`.github/workflows/release.yml`).
+
+### What happens on every merge to `main`
+
+1. **Quality gate** runs first — `format:check`, `lint`, `typecheck`, `test`, and
+   the API e2e suite (Postgres 16 + Redis 7 service containers). Nothing is
+   published unless this passes.
+2. **npm packages** are versioned independently by
+   [`multi-semantic-release`](https://github.com/qiwi/multi-semantic-release). For
+   each of the three publishable packages it analyzes the Conventional Commits that
+   touched that package's directory since its last per-package tag, computes the
+   next semver, bumps `package.json`, runs `npm publish --provenance`, and creates a
+   per-package git tag + GitHub Release. Packages with no relevant commits are
+   skipped (no version churn). The publishable packages and their tag namespaces:
+
+   | Package                | npm                                                       | Tag format           |
+   | ---------------------- | --------------------------------------------------------- | -------------------- |
+   | `create-kast-app`      | [npm](https://www.npmjs.com/package/create-kast-app)      | `create-kast-app-v*` |
+   | `@kast-cms/sdk`        | [npm](https://www.npmjs.com/package/@kast-cms/sdk)        | `sdk-v*`             |
+   | `@kast-cms/plugin-sdk` | [npm](https://www.npmjs.com/package/@kast-cms/plugin-sdk) | `plugin-sdk-v*`      |
+
+   Every other workspace package (`api`, `admin`, the docs/blog apps, all
+   `plugins/*`) is `private: true` and is skipped automatically.
+
+3. **Product release** — a product-level `vX.Y.Z` version is computed from the
+   overall Conventional Commits since the last `v*` tag, the tag is pushed, the
+   `api` + `admin` GHCR images are rebuilt as `:x.y.z` + `:latest`, and a product
+   GitHub Release is created. `:edge` images build on **every** push to `main`
+   (via `.github/workflows/publish.yml`).
+
+### Required secrets
+
+| Secret         | Used for                                                                       |
+| -------------- | ------------------------------------------------------------------------------ |
+| `NPM_TOKEN`    | `npm publish` of the three packages (an **Automation** token).                 |
+| `RELEASE_PAT`  | Pushing the product `vX.Y.Z` tag (a PAT with `repo` scope / `contents:write`). |
+| `GITHUB_TOKEN` | Per-package tags + GitHub Releases + GHCR push (provided automatically).       |
+
+> **Why `RELEASE_PAT`?** Tags pushed with the default `GITHUB_TOKEN` do not
+> re-trigger workflows. The Docker build runs in the **same** workflow run, so it
+> does not depend on a re-trigger — but the product tag is pushed with `RELEASE_PAT`
+> so it stays robust if a tag-triggered workflow is ever added.
+
+### One-time bootstrap (run before the first automated release)
+
+semantic-release derives the next version from the latest **git tag** in each
+package's namespace, not from `package.json`. The packages are already past their
+first release (`create-kast-app@2.1.0`, `@kast-cms/sdk@0.3.2`,
+`@kast-cms/plugin-sdk@0.1.0`) but have no per-package tags yet. Seed baseline tags
+once so the first run bumps from the correct floor (and never downgrades):
+
+```bash
+git checkout main && git pull
+pnpm install
+node scripts/bootstrap-release-tags.mjs   # add --dry-run to preview
+git push origin --tags
+```
+
+### Branch protection
+
+Protect `main`: require the CI checks to pass and merge via PR. The `release.yml`
+quality gate re-runs the full suite on the merge commit before anything publishes.
+
+---
+
 ## Documentation
 
 Full docs at [kastcms.com/docs](https://kastcms.com/docs)

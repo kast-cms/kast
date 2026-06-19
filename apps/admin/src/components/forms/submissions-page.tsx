@@ -1,64 +1,15 @@
 'use client';
 
+import { SubmissionDetailDialog } from '@/components/forms/submission-detail-dialog';
+import { SubmissionsPagination, SubmissionsTable } from '@/components/forms/submissions-table';
 import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
 import type { FormSubmissionSummary } from '@kast-cms/sdk';
-import { ArrowLeft, Download, Trash2 } from 'lucide-react';
+import { ArrowLeft, Download } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import React, { useCallback, useEffect, useState, type JSX } from 'react';
-
-interface SubmissionsPaginationProps {
-  page: number;
-  totalPages: number;
-  t: ReturnType<typeof useTranslations<'forms.submissions'>>;
-  setPage: React.Dispatch<React.SetStateAction<number>>;
-}
-
-function SubmissionsPagination({
-  page,
-  totalPages,
-  t,
-  setPage,
-}: SubmissionsPaginationProps): JSX.Element | null {
-  if (totalPages <= 1) return null;
-  return (
-    <div className="flex items-center justify-end gap-2">
-      <Button
-        size="sm"
-        variant="outline"
-        disabled={page <= 1}
-        onClick={() => {
-          setPage((p) => p - 1);
-        }}
-      >
-        {t('prev')}
-      </Button>
-      <span className="text-sm text-muted-foreground">
-        {page} / {totalPages}
-      </span>
-      <Button
-        size="sm"
-        variant="outline"
-        disabled={page >= totalPages}
-        onClick={() => {
-          setPage((p) => p + 1);
-        }}
-      >
-        {t('next')}
-      </Button>
-    </div>
-  );
-}
+import { useCallback, useEffect, useState, type JSX } from 'react';
 
 interface SubmissionsPageClientProps {
   formId: string;
@@ -77,6 +28,7 @@ export function SubmissionsPageClient({
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [selected, setSelected] = useState<FormSubmissionSummary | null>(null);
 
   const limit = 20;
 
@@ -105,6 +57,7 @@ export function SubmissionsPageClient({
       try {
         const client = createApiClient(session.accessToken);
         await client.forms.deleteSubmission(formId, subId);
+        setSelected((prev) => (prev?.id === subId ? null : prev));
         await load();
       } finally {
         setDeleting(null);
@@ -112,9 +65,6 @@ export function SubmissionsPageClient({
     },
     [session, formId, load, t],
   );
-
-  const firstSub = submissions[0];
-  const dataKeys = firstSub !== undefined ? Object.keys(firstSub.data) : [];
 
   if (loading && submissions.length === 0) {
     return (
@@ -124,6 +74,8 @@ export function SubmissionsPageClient({
     );
   }
 
+  const firstSub = submissions[0];
+  const dataKeys = firstSub !== undefined ? Object.keys(firstSub.data) : [];
   const totalPages = Math.ceil(total / limit);
 
   return (
@@ -137,7 +89,7 @@ export function SubmissionsPageClient({
               router.push('/forms');
             }}
           >
-            <ArrowLeft className="mr-1 h-4 w-4" />
+            <ArrowLeft className="me-1 h-4 w-4" />
             {t('back')}
           </Button>
           <div>
@@ -161,50 +113,30 @@ export function SubmissionsPageClient({
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('table.date')}</TableHead>
-                  {dataKeys.map((k) => (
-                    <TableHead key={k}>{k}</TableHead>
-                  ))}
-                  <TableHead className="text-right">{t('table.actions')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {submissions.map((sub) => (
-                  <TableRow key={sub.id}>
-                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                      {new Date(sub.createdAt).toLocaleString()}
-                    </TableCell>
-                    {dataKeys.map((k) => (
-                      <TableCell key={k} className="max-w-xs truncate text-sm">
-                        {String(sub.data[k] ?? '')}
-                      </TableCell>
-                    ))}
-                    <TableCell className="text-right">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        disabled={deleting === sub.id}
-                        onClick={() => {
-                          void handleDelete(sub.id);
-                        }}
-                        className="text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
+          <SubmissionsTable
+            submissions={submissions}
+            dataKeys={dataKeys}
+            deleting={deleting}
+            t={t}
+            onView={setSelected}
+            onDelete={(subId) => {
+              void handleDelete(subId);
+            }}
+          />
           <SubmissionsPagination page={page} totalPages={totalPages} t={t} setPage={setPage} />
         </>
       )}
+
+      <SubmissionDetailDialog
+        submission={selected}
+        t={t}
+        onClose={() => {
+          setSelected(null);
+        }}
+        onDelete={(subId) => {
+          void handleDelete(subId);
+        }}
+      />
     </div>
   );
 }

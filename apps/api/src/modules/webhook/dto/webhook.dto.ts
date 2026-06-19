@@ -12,6 +12,13 @@ export class CreateWebhookDto {
   @IsArray()
   @IsIn(ALL_WEBHOOK_EVENT_NAMES, { each: true })
   events!: string[];
+
+  // Optional caller-supplied HMAC secret. When omitted, one is generated and
+  // returned once on creation.
+  @IsOptional()
+  @IsString()
+  @MinLength(8)
+  secret?: string;
 }
 
 export class UpdateWebhookDto {
@@ -28,6 +35,11 @@ export class UpdateWebhookDto {
   @IsArray()
   @IsIn(ALL_WEBHOOK_EVENT_NAMES, { each: true })
   events?: string[];
+
+  @IsOptional()
+  @IsString()
+  @MinLength(8)
+  secret?: string;
 
   @IsOptional()
   @IsBoolean()

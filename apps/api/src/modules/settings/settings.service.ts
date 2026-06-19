@@ -15,6 +15,14 @@ export class SettingsService {
     return this.repo.findAll();
   }
 
+  /** Returns public settings as a flat { key: value } map for delivery callers. */
+  async getPublicSettings(): Promise<Record<string, unknown>> {
+    const rows = await this.repo.findPublic();
+    const out: Record<string, unknown> = {};
+    for (const row of rows) out[row.key] = row.value;
+    return out;
+  }
+
   patch(dto: UpdateSettingsDto, updatedBy: string): Promise<GlobalSetting[]> {
     const patches: SettingPatch[] = dto.settings.map(({ key, value }) => ({
       key,

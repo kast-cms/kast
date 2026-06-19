@@ -1,21 +1,65 @@
-import { kast } from '@/lib/kast';
-import type { CategoryEntry, PostDetailEntry, PostEntry } from '@/types';
-import type { EntryListParams } from '@kast-cms/sdk';
+import { type DeliveryEntry, deliveryFetch } from '@/lib/kast';
+import type { CategoryData, CategoryEntry, PostData, PostDetailEntry, PostEntry } from '@/types';
 
 export const BLOG_TYPE = 'blog-post';
 export const CATEGORY_TYPE = 'blog-category';
 
+/** Pagination / locale params accepted by the list helpers. */
+export interface ListParams {
+  cursor?: string;
+  limit?: string;
+  locale?: string;
+}
+
+/**
+ * Normalise a post entry for UI consumption: surface the top-level `slug` /
+ * `publishedAt` inside `data` (components read `post.data.slug`) and derive
+ * `createdAt` / `updatedAt` from the Delivery `publishedAt`.
+ */
+function normalizePost(entry: DeliveryEntry<PostData>): PostEntry {
+  const ts = entry.publishedAt ?? new Date(0).toISOString();
+  return {
+    ...entry,
+    data: {
+      ...entry.data,
+      slug: entry.data.slug ?? entry.slug,
+      ...(entry.publishedAt != null
+        ? { publishedAt: entry.data.publishedAt ?? entry.publishedAt }
+        : {}),
+    },
+    createdAt: ts,
+    updatedAt: ts,
+  };
+}
+
+/** Normalise a category entry: surface the top-level `slug` and add timestamps. */
+function normalizeCategory(entry: DeliveryEntry<CategoryData>): CategoryEntry {
+  const ts = entry.publishedAt ?? new Date(0).toISOString();
+  return {
+    ...entry,
+    data: { ...entry.data, slug: entry.data.slug ?? entry.slug },
+    createdAt: ts,
+    updatedAt: ts,
+  };
+}
+
+function buildQuery(params: ListParams, defaultLimit: string): Record<string, string | undefined> {
+  return { limit: params.limit ?? defaultLimit, cursor: params.cursor };
+}
+
 export async function getPosts(
-  params: EntryListParams = {},
+  params: ListParams = {},
 ): Promise<{ data: PostEntry[]; nextCursor?: string }> {
   try {
-    const res = await kast.content.list(BLOG_TYPE, {
-      status: 'PUBLISHED',
-      limit: '10',
-      ...params,
+    const res = await deliveryFetch<{
+      data: DeliveryEntry<PostData>[];
+      meta: { cursor: string | null };
+    }>(`/content/${BLOG_TYPE}`, {
+      query: buildQuery(params, '10'),
+      ...(params.locale !== undefined ? { locale: params.locale } : {}),
     });
     return {
-      data: res.data as PostEntry[],
+      data: res.data.map(normalizePost),
       ...(res.meta.cursor != null ? { nextCursor: res.meta.cursor } : {}),
     };
   } catch {
@@ -25,26 +69,10 @@ export async function getPosts(
 
 export async function getPostBySlug(slug: string): Promise<PostDetailEntry | null> {
   try {
-    // List posts filtered by slug field
-    const res = await kast.content.list(BLOG_TYPE, {
-      status: 'PUBLISHED',
-      limit: '1',
-      // NOTE: slug filter requires the Kast API to support data field filtering
-      // If not supported, fetch all and find by slug
-    });
-    const match = (res.data as PostEntry[]).find((p) => p.data.slug === slug);
-    if (!match) return null;
-    const detail = await kast.content.get(BLOG_TYPE, match.id);
-    return detail.data as PostDetailEntry;
-  } catch {
-    return null;
-  }
-}
-
-export async function getPostById(id: string): Promise<PostDetailEntry | null> {
-  try {
-    const res = await kast.content.get(BLOG_TYPE, id);
-    return res.data as PostDetailEntry;
+    const res = await deliveryFetch<{ data: DeliveryEntry<PostData> }>(
+      `/content/${BLOG_TYPE}/${encodeURIComponent(slug)}`,
+    );
+    return normalizePost(res.data);
   } catch {
     return null;
   }
@@ -52,11 +80,11 @@ export async function getPostById(id: string): Promise<PostDetailEntry | null> {
 
 export async function getCategories(): Promise<CategoryEntry[]> {
   try {
-    const res = await kast.content.list(CATEGORY_TYPE, {
-      status: 'PUBLISHED',
-      limit: '100',
-    });
-    return res.data as CategoryEntry[];
+    const res = await deliveryFetch<{ data: DeliveryEntry<CategoryData>[] }>(
+      `/content/${CATEGORY_TYPE}`,
+      { query: { limit: '100' } },
+    );
+    return res.data.map(normalizeCategory);
   } catch {
     return [];
   }
@@ -64,20 +92,12 @@ export async function getCategories(): Promise<CategoryEntry[]> {
 
 export async function getPostsByCategory(
   categorySlug: string,
-  params: EntryListParams = {},
+  params: ListParams = {},
 ): Promise<{ data: PostEntry[]; nextCursor?: string }> {
-  try {
-    const res = await kast.content.list(BLOG_TYPE, {
-      status: 'PUBLISHED',
-      limit: '10',
-      ...params,
-    });
-    // Filter by category (client-side until server-side filtering is available)
-    const filtered = (res.data as PostEntry[]).filter((p) => p.data.category === categorySlug);
-    return { data: filtered, ...(res.meta.cursor != null ? { nextCursor: res.meta.cursor } : {}) };
-  } catch {
-    return { data: [] };
-  }
+  const { data, nextCursor } = await getPosts(params);
+  // The Delivery API has no per-field filter, so filter by category client-side.
+  const filtered = data.filter((p) => p.data.category === categorySlug);
+  return { data: filtered, ...(nextCursor !== undefined ? { nextCursor } : {}) };
 }
 
 export function estimateReadTime(body: string): number {

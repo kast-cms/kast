@@ -1,24 +1,48 @@
-import { kast } from '@/lib/kast';
+import { type DeliveryEntry, deliveryFetch } from '@/lib/kast';
 import type {
+  ChangelogData,
   ChangelogEntry,
+  DocData,
   DocDetailEntry,
   DocEntry,
   SidebarCategory,
   TocHeading,
 } from '@/types';
-import type { EntryListParams } from '@kast-cms/sdk';
 
 export const DOC_TYPE = 'doc-page';
 export const CHANGELOG_TYPE = 'changelog-entry';
 
-export async function getDocs(params: EntryListParams = {}): Promise<DocEntry[]> {
+/** Pagination / locale params accepted by the list helpers. */
+export interface ListParams {
+  cursor?: string;
+  limit?: string;
+  locale?: string;
+}
+
+/** Surface the top-level `slug` inside a doc's `data` and derive timestamps. */
+function normalizeDoc(entry: DeliveryEntry<DocData>): DocEntry {
+  const ts = entry.publishedAt ?? new Date(0).toISOString();
+  return {
+    ...entry,
+    data: { ...entry.data, slug: entry.data.slug ?? entry.slug },
+    createdAt: ts,
+    updatedAt: ts,
+  };
+}
+
+/** Normalise a changelog entry: add derived timestamps. */
+function normalizeChangelog(entry: DeliveryEntry<ChangelogData>): ChangelogEntry {
+  const ts = entry.publishedAt ?? new Date(0).toISOString();
+  return { ...entry, createdAt: ts, updatedAt: ts };
+}
+
+export async function getDocs(params: ListParams = {}): Promise<DocEntry[]> {
   try {
-    const res = await kast.content.list(DOC_TYPE, {
-      status: 'PUBLISHED',
-      limit: '200',
-      ...params,
+    const res = await deliveryFetch<{ data: DeliveryEntry<DocData>[] }>(`/content/${DOC_TYPE}`, {
+      query: { limit: params.limit ?? '200', cursor: params.cursor },
+      ...(params.locale !== undefined ? { locale: params.locale } : {}),
     });
-    return res.data as DocEntry[];
+    return res.data.map(normalizeDoc);
   } catch {
     return [];
   }
@@ -28,11 +52,17 @@ export async function getDocBySlug(
   categorySlug: string,
   slug: string,
 ): Promise<DocDetailEntry | null> {
-  const docs = await getDocs();
-  const match = docs.find((d) => d.data.categorySlug === categorySlug && d.data.slug === slug);
-  if (!match) return null;
-  const detail = await kast.content.get(DOC_TYPE, match.id);
-  return detail.data as DocDetailEntry;
+  try {
+    const res = await deliveryFetch<{ data: DeliveryEntry<DocData> }>(
+      `/content/${DOC_TYPE}/${encodeURIComponent(slug)}`,
+    );
+    const doc = normalizeDoc(res.data);
+    // The delivery slug lookup is keyed by slug only; ensure the category matches.
+    if (doc.data.categorySlug !== categorySlug) return null;
+    return doc;
+  } catch {
+    return null;
+  }
 }
 
 export async function buildSidebar(): Promise<SidebarCategory[]> {
@@ -42,11 +72,7 @@ export async function buildSidebar(): Promise<SidebarCategory[]> {
   for (const doc of docs) {
     const key = doc.data.categorySlug;
     if (!map.has(key)) {
-      map.set(key, {
-        name: doc.data.category,
-        slug: doc.data.categorySlug,
-        items: [],
-      });
+      map.set(key, { name: doc.data.category, slug: doc.data.categorySlug, items: [] });
     }
     map.get(key)!.items.push({
       label: doc.data.title,
@@ -56,7 +82,6 @@ export async function buildSidebar(): Promise<SidebarCategory[]> {
     });
   }
 
-  // Sort items within each category by order
   for (const cat of map.values()) {
     cat.items.sort((a, b) => a.order - b.order);
   }
@@ -64,18 +89,20 @@ export async function buildSidebar(): Promise<SidebarCategory[]> {
   return Array.from(map.values());
 }
 
-export async function getChangelog(params: EntryListParams = {}): Promise<{
+export async function getChangelog(params: ListParams = {}): Promise<{
   data: ChangelogEntry[];
   nextCursor?: string;
 }> {
   try {
-    const res = await kast.content.list(CHANGELOG_TYPE, {
-      status: 'PUBLISHED',
-      limit: '20',
-      ...params,
+    const res = await deliveryFetch<{
+      data: DeliveryEntry<ChangelogData>[];
+      meta: { cursor: string | null };
+    }>(`/content/${CHANGELOG_TYPE}`, {
+      query: { limit: params.limit ?? '20', cursor: params.cursor },
+      ...(params.locale !== undefined ? { locale: params.locale } : {}),
     });
     return {
-      data: res.data as ChangelogEntry[],
+      data: res.data.map(normalizeChangelog),
       ...(res.meta.cursor != null ? { nextCursor: res.meta.cursor } : {}),
     };
   } catch {
@@ -85,7 +112,6 @@ export async function getChangelog(params: EntryListParams = {}): Promise<{
 
 /**
  * Extracts H2 and H3 headings from rich-text HTML for a table of contents.
- * Adds id attributes to headings so in-page anchors work.
  */
 export function extractToc(html: string): TocHeading[] {
   const headings: TocHeading[] = [];

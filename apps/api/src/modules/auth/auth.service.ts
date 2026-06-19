@@ -194,8 +194,9 @@ export class AuthService {
   }
 
   private refreshTokenExpiry(): Date {
+    // BR-AUT-002: refresh tokens expire in 30 days.
     const d = new Date();
-    d.setDate(d.getDate() + 7);
+    d.setDate(d.getDate() + 30);
     return d;
   }
 

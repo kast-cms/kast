@@ -75,7 +75,7 @@ Enqueues a `kast.seo` job. Score is updated asynchronously.
 GET /api/v1/seo/sitemap.xml
 ```
 
-Returns `Content-Type: application/xml`. No authentication required.
+Returns `Content-Type: application/xml`. No authentication required. For public, crawler-facing use, the same sitemap is also served (CORS-exempt) from the [Delivery API](/api-reference/delivery/) at `GET /api/v1/delivery/sitemap.xml`.
 
 ## Robots.txt
 

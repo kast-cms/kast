@@ -17,6 +17,14 @@ export class SettingsRepository {
     });
   }
 
+  findPublic(): Promise<Pick<GlobalSetting, 'key' | 'value'>[]> {
+    return this.prisma.globalSetting.findMany({
+      where: { isPublic: true },
+      select: { key: true, value: true },
+      orderBy: { key: 'asc' },
+    });
+  }
+
   findByKey(key: string): Promise<GlobalSetting | null> {
     return this.prisma.globalSetting.findUnique({ where: { key } });
   }

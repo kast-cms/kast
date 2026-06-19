@@ -85,21 +85,25 @@ export class McpService {
     const args = params.arguments ?? {};
     const dryRun = (args['dryRun'] as boolean | undefined) === true;
 
+    if (dryRun && !tool.dryRunable) {
+      return this.errorResponse(req.id, -32602, `Tool "${params.name}" does not support dryRun`);
+    }
+
     try {
-      let result: unknown;
-      if (dryRun && tool.dryRunable) {
-        const preview = await tool.handler(args, user);
-        result = { dryRun: true, preview };
-      } else {
-        result = await tool.handler(args, user);
-      }
+      // In dry-run mode the handler performs no writes and returns a preview of
+      // the change it would make.
+      const handlerResult = await tool.handler(args, user, { dryRun });
+      const result = dryRun ? { dryRun: true, preview: handlerResult } : handlerResult;
+
       this.auditService.logAction({
         action: `mcp.${params.name}`,
         resource: 'mcp_tool',
         userId: user.id,
         changes: args as unknown as Prisma.InputJsonValue,
+        isDryRun: dryRun,
       });
-      this.logAgentSession(user, params.name);
+      // Dry-run calls are previews and don't constitute a real agent session.
+      if (!dryRun) this.logAgentSession(user, params.name);
       return this.okResponse(req.id, {
         content: [{ type: 'text', text: JSON.stringify(result) }],
       });

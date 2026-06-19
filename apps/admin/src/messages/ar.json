@@ -190,6 +190,13 @@
   "content": {
     "title": "المحتوى",
     "description": "تصفح وإدارة مدخلات المحتوى.",
+    "landing": {
+      "description": "اختر نوع محتوى لتصفح إدخالاته وإدارتها.",
+      "entries": "{count, plural, =0 {لا توجد إدخالات} one {# إدخال} other {# إدخالات}}",
+      "emptyTitle": "لا توجد أنواع محتوى بعد",
+      "emptyDescription": "أنشئ نوع محتوى قبل أن تتمكن من إضافة إدخالات.",
+      "manageTypes": "إدارة أنواع المحتوى"
+    },
     "newEntry": "مدخل جديد",
     "emptyTitle": "لا توجد مدخلات بعد",
     "emptyDescription": "أنشئ أول مدخل لهذا النوع من المحتوى.",
@@ -370,7 +377,9 @@
       "cannotSelfSuspend": "لا يمكنك إيقاف حسابك الخاص."
     },
     "noUsers": "لا يوجد مستخدمون.",
-    "never": "أبداً"
+    "never": "أبداً",
+    "errorTitle": "فشل إجراء المستخدم",
+    "loadError": "فشل تحميل المستخدمين."
   },
   "roles": {
     "title": "الأدوار",
@@ -421,7 +430,9 @@
       "delete": "حذف",
       "deleteConfirm": "حذف الدور \"{{name}}\"؟ لا يمكن التراجع عن هذا الإجراء."
     },
-    "noRoles": "لا توجد أدوار."
+    "noRoles": "لا توجد أدوار.",
+    "errorTitle": "فشل إجراء الدور",
+    "loadError": "فشل تحميل الأدوار."
   },
   "apiTokens": {
     "title": "رموز API",
@@ -470,7 +481,9 @@
     "never": "أبداً",
     "noExpiry": "لا انتهاء",
     "revoke": "إلغاء",
-    "revokeConfirm": "إلغاء الرمز \"{{name}}\"؟ ستفقد جميع الخدمات التي تستخدمه الوصول."
+    "revokeConfirm": "إلغاء الرمز \"{{name}}\"؟ ستفقد جميع الخدمات التي تستخدمه الوصول.",
+    "errorTitle": "فشل إجراء الرمز",
+    "loadError": "فشل تحميل الرموز."
   },
   "seo": {
     "title": "تحسين محركات البحث",
@@ -496,6 +509,18 @@
       "title": "قواعد إعادة التوجيه",
       "description": "إدارة قواعد إعادة التوجيه 301/302.",
       "createButton": "إضافة إعادة توجيه",
+      "importButton": "استيراد CSV",
+      "importing": "جارٍ الاستيراد…",
+      "exportButton": "تصدير CSV",
+      "exporting": "جارٍ التصدير…",
+      "loading": "جارٍ التحميل…",
+      "yes": "نعم",
+      "no": "لا",
+      "importSuccessTitle": "اكتمل الاستيراد",
+      "importSuccessDescription": "{created, plural, =0 {لم يتم إنشاء عمليات إعادة توجيه} one {تم إنشاء # عملية إعادة توجيه} other {تم إنشاء # عمليات إعادة توجيه}}، تم تخطي {skipped}، {errors} أخطاء.",
+      "importErrorTitle": "فشل الاستيراد",
+      "exportErrorTitle": "فشل التصدير",
+      "genericError": "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
       "emptyTitle": "لا توجد إعادة توجيه بعد",
       "emptyDescription": "أضف أول قاعدة إعادة توجيه.",
       "table": {
@@ -730,12 +755,23 @@
       "subtitle": "{total} إرسال",
       "back": "رجوع",
       "exportCsv": "تصدير CSV",
+      "view": "عرض",
       "deleteConfirm": "حذف هذه الإرسالة؟ لا يمكن التراجع.",
       "prev": "السابق",
       "next": "التالي",
       "table": {
         "date": "التاريخ",
         "actions": "الإجراءات"
+      },
+      "detail": {
+        "title": "تفاصيل الإرسال",
+        "submittedAt": "أُرسل في",
+        "ipAddress": "عنوان IP",
+        "userAgent": "وكيل المستخدم",
+        "fields": "بيانات النموذج",
+        "empty": "لم يتم التقاط أي بيانات.",
+        "close": "إغلاق",
+        "delete": "حذف"
       }
     }
   },

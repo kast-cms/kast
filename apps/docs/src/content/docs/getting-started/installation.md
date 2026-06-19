@@ -37,8 +37,8 @@ It then generates a complete project, installs dependencies, and prints next ste
   docker-compose up
 
   Admin:  http://localhost:3001/admin
-  API:    http://localhost:3001/api/v1
-  MCP:    http://localhost:3001/mcp
+  API:    http://localhost:3000/api/v1
+  MCP:    http://localhost:3000/mcp
 ```
 
 ### Skip interactive mode

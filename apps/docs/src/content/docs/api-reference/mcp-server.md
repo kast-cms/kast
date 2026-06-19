@@ -3,14 +3,14 @@ title: MCP Server
 description: Connect AI agents to Kast via the Model Context Protocol JSON-RPC endpoint.
 ---
 
-Kast exposes a built-in [Model Context Protocol](https://modelcontextprotocol.io) server at `/mcp`. AI agents (Claude, etc.) use this to read and write CMS content under full RBAC and audit control.
+Kast exposes a built-in [Model Context Protocol](https://modelcontextprotocol.io) server. AI agents (Claude, etc.) use this to read and write CMS content under full RBAC and audit control. The server is advertised at `http://localhost:3000/mcp`; the underlying versioned routes are listed below.
 
 ## Transport
 
-| Endpoint       | Method   | Description                                                         |
-| -------------- | -------- | ------------------------------------------------------------------- |
-| `GET /mcp/sse` | —        | Server-Sent Events transport — opens a session, returns `sessionId` |
-| `POST /mcp`    | JSON-RPC | Handle tool calls on an existing session                            |
+| Endpoint              | Method   | Description                                                         |
+| --------------------- | -------- | ------------------------------------------------------------------- |
+| `GET /api/v1/mcp/sse` | —        | Server-Sent Events transport — opens a session, returns `sessionId` |
+| `POST /api/v1/mcp`    | JSON-RPC | Handle tool calls on an existing session                            |
 
 All requests require a valid Bearer token (agent token or user JWT).
 

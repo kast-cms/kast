@@ -8,7 +8,8 @@
     "build": "tsc"
   },
   "dependencies": {
-    "@kast-cms/plugin-sdk": "workspace:*"
+    "@kast-cms/plugin-sdk": "workspace:*",
+    "meilisearch": "^0.58.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

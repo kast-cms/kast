@@ -7,6 +7,7 @@ import { memoryStorage } from 'multer';
 import type { Env } from '../../config/env.schema';
 import { QueueAdapter } from '../queue/queue.adapter';
 import { QUEUE_NAMES } from '../queue/queue.constants';
+import { MediaFolderService } from './media-folder.service';
 import { MediaController } from './media.controller';
 import { MediaProcessor, STORAGE_ADAPTER } from './media.processor';
 import { MediaRepository } from './media.repository';
@@ -24,6 +25,7 @@ import { S3StorageAdapter } from './storage/s3-storage.adapter';
   controllers: [MediaController],
   providers: [
     MediaRepository,
+    MediaFolderService,
     LocalStorageAdapter,
     S3StorageAdapter,
     R2StorageAdapter,

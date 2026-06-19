@@ -63,7 +63,13 @@ export class WebhookRepository {
 
   update(
     id: string,
-    data: { name?: string; url?: string; events?: string[]; isActive?: boolean },
+    data: {
+      name?: string;
+      url?: string;
+      events?: string[];
+      isActive?: boolean;
+      secretHash?: string;
+    },
   ): Promise<EndpointRow> {
     return this.prisma.webhookEndpoint.update({
       where: { id },

@@ -1,12 +1,25 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import type { AuthUser } from '../../common/types/auth.types';
-import { AgentTokenService } from './agent-token.service';
 import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+  Query,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { PaginationDto } from '../../common/dto/pagination.dto';
+import type { AuthUser, PaginatedResult } from '../../common/types/auth.types';
+import { AgentTokenService, type AgentSessionRecord } from './agent-token.service';
+import {
+  CreateAgentTokenDto,
   type AgentTokenCreatedResponse,
   type AgentTokenRecord,
-  CreateAgentTokenDto,
 } from './dto/agent-token.dto';
 
 @ApiTags('agent-tokens')
@@ -35,5 +48,15 @@ export class AgentTokenController {
   @ApiOperation({ summary: 'Revoke an agent token' })
   async revoke(@CurrentUser() user: AuthUser, @Param('id') id: string): Promise<void> {
     await this.service.revoke(id, user.id);
+  }
+
+  @Get(':id/sessions')
+  @Roles(SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get MCP session history for an agent token' })
+  sessions(
+    @Param('id') id: string,
+    @Query() query: PaginationDto,
+  ): Promise<PaginatedResult<AgentSessionRecord>> {
+    return this.service.listSessions(id, query.limit ?? 20, query.cursor);
   }
 }

@@ -70,6 +70,7 @@ export default defineConfig({
             { slug: 'api-reference/authentication' },
             { slug: 'api-reference/content-types' },
             { slug: 'api-reference/content-entries' },
+            { slug: 'api-reference/delivery' },
             { slug: 'api-reference/media' },
             { slug: 'api-reference/seo' },
             { slug: 'api-reference/locales' },

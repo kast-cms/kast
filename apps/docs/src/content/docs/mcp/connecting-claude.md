@@ -59,7 +59,7 @@ When running the API locally:
 {
   "mcpServers": {
     "kast-local": {
-      "url": "http://localhost:3001/api/v1/mcp/sse",
+      "url": "http://localhost:3000/api/v1/mcp/sse",
       "headers": {
         "Authorization": "Bearer <your-agent-token>"
       }
