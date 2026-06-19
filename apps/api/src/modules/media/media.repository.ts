@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import type { MediaFile, Prisma } from '@prisma/client';
+import type { MediaFile, MediaFolder, Prisma } from '@prisma/client';
 import type { PaginationDto } from '../../common/dto/pagination.dto';
 import { PrismaService } from '../../prisma/prisma.service';
+
+export type FolderWithCounts = MediaFolder & {
+  _count: { files: number; children: number };
+};
 
 @Injectable()
 export class MediaRepository {
@@ -36,5 +40,36 @@ export class MediaRepository {
 
   softDelete(id: string): Promise<MediaFile> {
     return this.prisma.mediaFile.update({ where: { id }, data: { trashedAt: new Date() } });
+  }
+
+  // ── Folders ──────────────────────────────────────────────
+
+  listFolders(): Promise<FolderWithCounts[]> {
+    return this.prisma.mediaFolder.findMany({
+      include: { _count: { select: { files: true, children: true } } },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  findFolderById(id: string): Promise<FolderWithCounts | null> {
+    return this.prisma.mediaFolder.findUnique({
+      where: { id },
+      include: { _count: { select: { files: true, children: true } } },
+    });
+  }
+
+  createFolder(name: string, parentId: string | null): Promise<MediaFolder> {
+    return this.prisma.mediaFolder.create({ data: { name, parentId } });
+  }
+
+  updateFolder(
+    id: string,
+    data: { name?: string; parentId?: string | null },
+  ): Promise<MediaFolder> {
+    return this.prisma.mediaFolder.update({ where: { id }, data });
+  }
+
+  async deleteFolder(id: string): Promise<void> {
+    await this.prisma.mediaFolder.delete({ where: { id } });
   }
 }

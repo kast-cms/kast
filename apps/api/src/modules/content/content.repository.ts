@@ -146,6 +146,23 @@ export class ContentRepository {
     }) as Promise<EntryWithLocale>;
   }
 
+  addLocale(
+    id: string,
+    locale: string,
+    slug: string,
+    data: Record<string, unknown>,
+  ): Promise<EntryWithLocale> {
+    return this.prisma.contentEntry.update({
+      where: { id },
+      data: {
+        locales: {
+          create: { localeCode: locale, slug, data: data as Prisma.InputJsonValue },
+        },
+      },
+      include: { locales: true },
+    }) as Promise<EntryWithLocale>;
+  }
+
   updateStatus(id: string, status: ContentStatus, publishedAt?: Date): Promise<ContentEntry> {
     return this.prisma.contentEntry.update({
       where: { id },
@@ -229,21 +246,14 @@ export class ContentRepository {
       where: { id: entryId },
       include: { locales: true },
     });
-    const locale = entry.locales[0]?.localeCode ?? 'en';
-    const revertedData = version.data as Record<string, unknown>;
-    await this.prisma.$transaction([
-      this.prisma.contentEntryLocale.upsert({
-        where: { entryId_localeCode: { entryId, localeCode: locale } },
-        create: {
-          entryId,
-          localeCode: locale,
-          slug: locale,
-          data: version.data as Prisma.InputJsonValue,
-        },
-        update: { data: version.data as Prisma.InputJsonValue },
-      }),
+    const primaryLocale = entry.locales[0]?.localeCode ?? 'en';
+
+    const ops = this.buildRevertLocaleOps(entryId, version, primaryLocale);
+    ops.push(
       this.prisma.contentEntry.update({ where: { id: entryId }, data: { status: 'DRAFT' } }),
-    ]);
+    );
+    await this.prisma.$transaction(ops);
+
     const latest = await this.prisma.contentEntryVersion.findFirst({
       where: { entryId },
       orderBy: { versionNumber: 'desc' },
@@ -253,8 +263,8 @@ export class ContentRepository {
         entryId,
         versionNumber: (latest?.versionNumber ?? 0) + 1,
         status: 'DRAFT',
-        data: revertedData as Prisma.InputJsonValue,
-        localesData: {} as Prisma.InputJsonValue,
+        data: version.data as Prisma.InputJsonValue,
+        localesData: (version.localesData ?? {}) as Prisma.InputJsonValue,
         savedById: userId,
       },
     });
@@ -262,5 +272,51 @@ export class ContentRepository {
       where: { id: entryId },
       include: { locales: true },
     }) as Promise<EntryWithLocale>;
+  }
+
+  /** Builds the locale upsert ops for a revert, using the multi-locale snapshot when present. */
+  private buildRevertLocaleOps(
+    entryId: string,
+    version: VersionWithAuthor,
+    primaryLocale: string,
+  ): Prisma.PrismaPromise<unknown>[] {
+    const snapshot = this.parseLocalesData(version.localesData);
+    if (snapshot && Object.keys(snapshot).length > 0) {
+      return Object.entries(snapshot).map(([code, payload]) =>
+        this.prisma.contentEntryLocale.upsert({
+          where: { entryId_localeCode: { entryId, localeCode: code } },
+          create: {
+            entryId,
+            localeCode: code,
+            slug: payload.slug ?? code,
+            data: payload.data as Prisma.InputJsonValue,
+          },
+          update: {
+            ...(payload.slug ? { slug: payload.slug } : {}),
+            data: payload.data as Prisma.InputJsonValue,
+          },
+        }),
+      );
+    }
+    // Legacy version without a locale snapshot: restore primary-locale data only.
+    return [
+      this.prisma.contentEntryLocale.upsert({
+        where: { entryId_localeCode: { entryId, localeCode: primaryLocale } },
+        create: {
+          entryId,
+          localeCode: primaryLocale,
+          slug: primaryLocale,
+          data: version.data as Prisma.InputJsonValue,
+        },
+        update: { data: version.data as Prisma.InputJsonValue },
+      }),
+    ];
+  }
+
+  private parseLocalesData(
+    value: unknown,
+  ): Record<string, { slug?: string; data: unknown }> | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    return value as Record<string, { slug?: string; data: unknown }>;
   }
 }

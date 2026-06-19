@@ -1,5 +1,6 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { QUEUE_NAMES } from '../queue/queue.constants';
 import { QueueModule } from '../queue/queue.module';
@@ -10,7 +11,12 @@ import { WebhookRepository } from './webhook.repository';
 import { WebhookService } from './webhook.service';
 
 @Module({
-  imports: [PrismaModule, QueueModule, BullModule.registerQueue({ name: QUEUE_NAMES.WEBHOOK })],
+  imports: [
+    PrismaModule,
+    ConfigModule,
+    QueueModule,
+    BullModule.registerQueue({ name: QUEUE_NAMES.WEBHOOK }),
+  ],
   controllers: [WebhookController],
   providers: [WebhookService, WebhookRepository, WebhookProcessor, WebhookListener],
   exports: [WebhookService],

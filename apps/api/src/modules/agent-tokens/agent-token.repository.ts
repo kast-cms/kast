@@ -83,6 +83,38 @@ export class AgentTokenRepository {
     });
   }
 
+  findByIdAny(id: string): Promise<{ id: string } | null> {
+    return this.prisma.agentToken.findUnique({ where: { id }, select: { id: true } });
+  }
+
+  async listSessions(
+    agentTokenId: string,
+    limit: number,
+    cursor?: string,
+  ): Promise<{
+    items: {
+      id: string;
+      agentName: string | null;
+      toolsUsed: Prisma.JsonValue;
+      startedAt: Date;
+      endedAt: Date | null;
+    }[];
+    total: number;
+  }> {
+    const where = { agentTokenId };
+    const [items, total] = await Promise.all([
+      this.prisma.agentSession.findMany({
+        where,
+        select: { id: true, agentName: true, toolsUsed: true, startedAt: true, endedAt: true },
+        orderBy: { startedAt: 'desc' },
+        take: limit + 1,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      }),
+      this.prisma.agentSession.count({ where }),
+    ]);
+    return { items, total };
+  }
+
   async revoke(id: string, userId: string): Promise<boolean> {
     const result = await this.prisma.agentToken.updateMany({
       where: { id, userId, revokedAt: null },

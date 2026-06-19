@@ -1,5 +1,11 @@
 import { InjectQueue } from '@nestjs/bullmq';
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ContentFieldType } from '@prisma/client';
 import type { Queue } from 'bullmq';
@@ -8,9 +14,12 @@ import { sanitizeRichTextFields } from '../../common/utils/sanitize-rich-text.ut
 import { ContentTypesService } from '../content-types/content-types.service';
 import type { PublishJobData } from '../publish/publish.processor';
 import { QUEUE_NAMES } from '../queue/queue.constants';
+import { SeoService } from '../seo/seo.service';
 import { ContentRepository, EntryWithLocale, VersionWithAuthor } from './content.repository';
 import type {
+  AddLocaleDto,
   CreateContentEntryDto,
+  PublishContentDto,
   SchedulePublishDto,
   UpdateContentEntryDto,
 } from './dto/content-entry.dto';
@@ -21,9 +30,19 @@ export class ContentService {
   constructor(
     private readonly repo: ContentRepository,
     private readonly contentTypesService: ContentTypesService,
+    private readonly seoService: SeoService,
     @InjectQueue(QUEUE_NAMES.PUBLISH) private readonly publishQueue: Queue<PublishJobData>,
     private readonly eventEmitter: EventEmitter2,
   ) {}
+
+  /** Builds a { localeCode: { slug, data } } snapshot for version history. */
+  private snapshotLocales(entry: EntryWithLocale): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
+    for (const loc of entry.locales) {
+      out[loc.localeCode] = { slug: loc.slug, data: loc.data };
+    }
+    return out;
+  }
 
   async findAll(
     typeSlug: string,
@@ -93,10 +112,11 @@ export class ContentService {
         .filter((f) => f.type === ContentFieldType.RICH_TEXT)
         .map((f) => f.name);
       const sanitizedData = sanitizeRichTextFields(dto.data, richTextFields);
+      // Snapshot the full multi-locale state so reverts restore every locale.
       await this.repo.createVersion(
         id,
         (entry.locales[0]?.data ?? {}) as Record<string, unknown>,
-        {},
+        this.snapshotLocales(entry),
         userId,
         entry.status,
       );
@@ -119,14 +139,75 @@ export class ContentService {
     this.eventEmitter.emit('content.trashed', { entryId: id, typeSlug });
   }
 
-  async publish(typeSlug: string, id: string): Promise<{ data: EntryWithLocale }> {
+  async publish(
+    typeSlug: string,
+    id: string,
+    dto?: PublishContentDto,
+  ): Promise<{ data: EntryWithLocale }> {
     await this.contentTypesService.findByName(typeSlug);
     const entry = await this.repo.findById(id);
     if (!entry) throw new NotFoundException(`Content entry ${id} not found`);
+
+    // SEO gate: ERROR-severity issues always block; WARNING-severity issues
+    // block unless `force: true` is passed (API spec §4).
+    const validation = await this.seoService.validateNow(id);
+    if (validation.errors.length > 0) {
+      throw new UnprocessableEntityException({
+        message: 'Publish blocked by SEO errors',
+        code: 'SEO_VALIDATION_FAILED',
+        issues: validation.errors,
+        score: validation.score,
+      });
+    }
+    if (validation.warnings.length > 0 && dto?.force !== true) {
+      throw new UnprocessableEntityException({
+        message: 'Publish blocked by SEO warnings. Pass force: true to override.',
+        code: 'SEO_VALIDATION_WARNINGS',
+        issues: validation.warnings,
+        score: validation.score,
+      });
+    }
+
     await this.repo.updateStatus(id, 'PUBLISHED', new Date());
     const updated = await this.repo.findById(id);
     if (!updated) throw new NotFoundException(`Content entry ${id} not found`);
     this.eventEmitter.emit('content.published', { entryId: id, typeSlug, status: 'PUBLISHED' });
+    return { data: updated };
+  }
+
+  async addLocale(
+    typeSlug: string,
+    id: string,
+    dto: AddLocaleDto,
+    _userId: string,
+  ): Promise<{ data: EntryWithLocale }> {
+    const ct = await this.contentTypesService.findByName(typeSlug);
+    const entry = await this.repo.findById(id);
+    if (!entry) throw new NotFoundException(`Content entry ${id} not found`);
+
+    if (entry.locales.some((l) => l.localeCode === dto.locale)) {
+      throw new ConflictException(`Entry already has locale "${dto.locale}"`);
+    }
+
+    // Optionally seed from another locale, then apply the supplied data on top.
+    let seed: Record<string, unknown> = {};
+    if (dto.copyFromLocale) {
+      const source = entry.locales.find((l) => l.localeCode === dto.copyFromLocale);
+      if (!source) {
+        throw new BadRequestException(`Source locale "${dto.copyFromLocale}" not found on entry`);
+      }
+      seed = source.data as Record<string, unknown>;
+    }
+    const merged = { ...seed, ...dto.data };
+    const richTextFields = ct.fields
+      .filter((f) => f.type === ContentFieldType.RICH_TEXT)
+      .map((f) => f.name);
+    const sanitized = sanitizeRichTextFields(merged, richTextFields);
+
+    await this.repo.addLocale(id, dto.locale, dto.slug, sanitized);
+    const updated = await this.repo.findById(id);
+    if (!updated) throw new NotFoundException(`Content entry ${id} not found`);
+    this.eventEmitter.emit('content.updated', { entryId: id, typeSlug, status: updated.status });
     return { data: updated };
   }
 

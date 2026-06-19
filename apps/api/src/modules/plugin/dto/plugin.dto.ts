@@ -1,9 +1,19 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString, MinLength } from 'class-validator';
 
 export class EnableDisablePluginDto {
   @IsString()
   @IsOptional()
   reason?: string;
+}
+
+export class InstallPluginDto {
+  @IsString()
+  @MinLength(1)
+  name!: string;
+
+  @IsString()
+  @MinLength(1)
+  version!: string;
 }
 
 export interface PluginRecord {

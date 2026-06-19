@@ -1,6 +1,15 @@
 import type { AuthUser } from '../../../common/types/auth.types';
 
-export type ToolHandler = (args: Record<string, unknown>, user: AuthUser) => Promise<unknown>;
+export interface ToolContext {
+  /** When true, the tool must compute a preview and perform no writes. */
+  dryRun: boolean;
+}
+
+export type ToolHandler = (
+  args: Record<string, unknown>,
+  user: AuthUser,
+  ctx: ToolContext,
+) => Promise<unknown>;
 
 export interface McpToolMeta {
   name: string;

@@ -1,4 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { PluginListResponse, PluginRecord } from './dto/plugin.dto';
 import { PluginLoaderService } from './plugin.loader';
 import { PluginRepository } from './plugin.repository';
@@ -14,6 +19,22 @@ export class PluginService {
   async list(): Promise<PluginListResponse> {
     const data = await this.repo.findAll();
     return { data };
+  }
+
+  async install(name: string, version: string): Promise<{ data: PluginRecord }> {
+    const existing = await this.repo.findByName(name);
+    if (existing) throw new ConflictException(`Plugin "${name}" is already installed`);
+    const data = await this.repo.install(name, version);
+    return { data };
+  }
+
+  async uninstall(name: string): Promise<void> {
+    const existing = await this.repo.findByName(name);
+    if (!existing) throw new NotFoundException(`Plugin "${name}" not found`);
+    if (existing.isSystemPlugin) {
+      throw new ForbiddenException('System plugins cannot be uninstalled');
+    }
+    await this.repo.remove(name);
   }
 
   async enable(name: string): Promise<{ data: PluginRecord }> {
