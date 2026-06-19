@@ -9,10 +9,13 @@ import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { MediaFile } from '@prisma/client';
 import { randomUUID } from 'crypto';
+import { lookup } from 'dns/promises';
+import { isIP } from 'net';
 import { extname } from 'path';
 import type { PaginationDto } from '../../common/dto/pagination.dto';
 import type { PaginatedResult } from '../../common/types/auth.types';
 import { validateMagicBytes } from '../../common/utils/mime-magic.util';
+import { isPrivateAddress } from '../../common/utils/ssrf-guard.util';
 import type { Env } from '../../config/env.schema';
 import { QueueAdapter } from '../queue/queue.adapter';
 import { QUEUE_NAMES } from '../queue/queue.constants';
@@ -38,6 +41,9 @@ const OPTIMIZE_RASTER_TYPES = new Set([
   'image/bmp',
   'image/tiff',
 ]);
+
+const MAX_REDIRECTS = 5;
+const FETCH_TIMEOUT_MS = 15_000;
 
 @Injectable()
 export class MediaService {
@@ -220,12 +226,7 @@ export class MediaService {
   ): Promise<{ buffer: Buffer; mimeType: string; originalName: string }> {
     const parsed = this.parseHttpUrl(url);
 
-    let res: Response;
-    try {
-      res = await fetch(url, { signal: AbortSignal.timeout(15_000), redirect: 'follow' });
-    } catch (err: unknown) {
-      throw new UnprocessableEntityException(`Failed to fetch URL: ${String(err)}`);
-    }
+    const res = await this.fetchGuarded(url);
     if (!res.ok) {
       throw new UnprocessableEntityException(`Remote returned ${res.status} for the URL`);
     }
@@ -247,6 +248,49 @@ export class MediaService {
       );
     }
     return { buffer, mimeType, originalName: this.fileNameFromUrl(parsed, mimeType) };
+  }
+
+  /** Fetches a URL, blocking SSRF to private/internal hosts and re-validating each redirect hop. */
+  private async fetchGuarded(initialUrl: string): Promise<Response> {
+    let target = this.parseHttpUrl(initialUrl);
+    for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+      await this.assertPublicUrl(target);
+      let res: Response;
+      try {
+        res = await fetch(target, {
+          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+          redirect: 'manual',
+        });
+      } catch (err: unknown) {
+        throw new UnprocessableEntityException(`Failed to fetch URL: ${String(err)}`);
+      }
+      if (res.status < 300 || res.status >= 400) return res;
+      const location = res.headers.get('location');
+      if (location === null) return res;
+      target = this.parseHttpUrl(new URL(location, target).toString());
+    }
+    throw new UnprocessableEntityException('Too many redirects while fetching the URL');
+  }
+
+  /** Rejects hosts that resolve to loopback/private/link-local addresses (SSRF guard). */
+  private async assertPublicUrl(parsed: URL): Promise<void> {
+    const host = parsed.hostname
+      .toLowerCase()
+      .replace(/\.$/, '')
+      .replace(/^\[|\]$/g, '');
+    let addresses: string[];
+    if (isIP(host) !== 0) {
+      addresses = [host];
+    } else {
+      try {
+        addresses = (await lookup(host, { all: true })).map((record) => record.address);
+      } catch {
+        throw new BadRequestException('Could not resolve URL host');
+      }
+    }
+    if (addresses.length === 0 || addresses.some((address) => isPrivateAddress(address))) {
+      throw new BadRequestException('URL host is not allowed');
+    }
   }
 
   private parseHttpUrl(url: string): URL {
