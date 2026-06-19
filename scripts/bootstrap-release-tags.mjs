@@ -30,8 +30,8 @@
  */
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
@@ -58,7 +58,9 @@ for (const { dir, slug } of PACKAGES) {
   // Any existing tag in this namespace means the flow has already started.
   const existing = sh(`git tag -l "${slug}-v*"`);
   if (existing) {
-    console.log(`✓ ${pkg.name}: namespace already has tags (${existing.split('\n').join(', ')}), skipping.`);
+    console.log(
+      `✓ ${pkg.name}: namespace already has tags (${existing.split('\n').join(', ')}), skipping.`,
+    );
     continue;
   }
 
