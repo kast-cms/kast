@@ -1,0 +1,19 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": ".",
+  "testEnvironment": "node",
+  "testRegex": ".e2e-spec.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": ["ts-jest", { "tsconfig": "<rootDir>/../tsconfig.json" }]
+  },
+  "moduleNameMapper": {
+    "^isomorphic-dompurify$": "<rootDir>/stubs/isomorphic-dompurify.ts"
+  },
+  "globalSetup": "<rootDir>/global-setup.ts",
+  "setupFiles": ["<rootDir>/setup-e2e.ts"],
+  "testTimeout": 30000,
+  "maxWorkers": 1,
+  "forceExit": true,
+  "collectCoverageFrom": ["../src/**/*.(t|j)s"],
+  "coverageDirectory": "../coverage-e2e"
+}
