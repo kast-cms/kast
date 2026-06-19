@@ -68,13 +68,32 @@ export default async function BlogPage() {
 }
 ```
 
-## Using the REST API directly
+## Using the public Delivery API directly
 
-If you prefer not to use the SDK:
+For a purely public frontend you don't even need the SDK — fetch published content straight from the [Delivery API](/api-reference/delivery/) with a typed helper:
 
-```bash
-GET /api/v1/content-types/blog-post/entries?status=PUBLISHED
-X-Kast-Key: your-delivery-api-key
+```ts
+// lib/kast.ts
+const API = process.env.KAST_API_URL ?? 'http://localhost:3000';
+const KEY = process.env.KAST_API_KEY; // optional read-only delivery key
+const LOCALE = process.env.KAST_LOCALE ?? 'en';
+
+async function delivery<T>(path: string): Promise<T> {
+  const res = await fetch(`${API}/api/v1/delivery${path}`, {
+    headers: KEY ? { 'X-Kast-Key': KEY } : {},
+    next: { revalidate: 60 },
+  });
+  if (!res.ok) throw new Error(`Kast ${res.status}`);
+  return res.json() as Promise<T>;
+}
+
+export const getPosts = () => delivery<{ data: Post[] }>(`/content/blog-post?locale=${LOCALE}`);
+
+export const getPost = (slug: string) =>
+  delivery<{ data: Post }>(`/content/blog-post/${slug}?locale=${LOCALE}`);
+
+export const getMenu = (slug: string) =>
+  delivery<{ data: Menu }>(`/menus/${slug}?locale=${LOCALE}`);
 ```
 
 All responses follow the envelope format:
@@ -82,19 +101,21 @@ All responses follow the envelope format:
 ```json
 {
   "data": [...],
-  "meta": { "total": 42, "cursor": "clxyz..." }
+  "meta": { "total": 42, "limit": 20, "cursor": "clxyz...", "hasNextPage": true }
 }
 ```
 
+The `locale` query param is **required** on `/delivery/content/*`. See the [Delivery API reference](/api-reference/delivery/) for every endpoint.
+
 ## Delivery API key
 
-A delivery API key (`X-Kast-Key`) grants read-only access to published content. Create one in the admin panel:
+A delivery API key (`X-Kast-Key`) is optional. On the public delivery endpoints it grants higher rate limits and bypasses CORS for trusted server-side callers. Create one in the admin panel:
 
 1. Go to **Settings** → **API Tokens**.
-2. Click **New Token** → type: **Delivery**.
+2. Click **New Token** → type: **Delivery** (read-only).
 3. Copy the token — it's shown only once.
 
-Delivery tokens can only `GET` published entries, media, SEO metadata, forms, and menus. They cannot create, update, or delete anything.
+Delivery tokens can only `GET` published content; they cannot create, update, or delete anything.
 
 ## Frontend starter templates
 

@@ -1,5 +1,4 @@
 import { getPosts } from '@/lib/content';
-import { kast } from '@/lib/kast';
 import type { MetadataRoute } from 'next';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3002';
@@ -44,15 +43,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Fail silently — return partial sitemap
   }
 
-  // Merge with Kast-managed SEO sitemap entries (redirects etc.)
-  try {
-    const kastSitemap = await kast.seo.getSitemap();
-    // kastSitemap is the raw XML — we return our own Next.js sitemap
-    // and let the Kast sitemap serve at /api/v1/seo/sitemap.xml
-    void kastSitemap;
-  } catch {
-    // Not critical
-  }
+  // Kast also serves a ready-made XML sitemap of every published entry at
+  // `${KAST_API_URL}/api/v1/delivery/sitemap.xml` (CORS-exempt, no key required).
+  // We build a frontend-relative sitemap here so URLs match this site's routes.
 
   return urls;
 }

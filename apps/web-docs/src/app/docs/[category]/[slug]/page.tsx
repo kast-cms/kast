@@ -2,7 +2,6 @@ import { DocsSidebar } from '@/components/docs-sidebar';
 import { DocsToc } from '@/components/docs-toc';
 import { RichText } from '@/components/rich-text';
 import { buildSidebar, extractToc, getDocBySlug, getDocs, injectHeadingIds } from '@/lib/content';
-import { kast } from '@/lib/kast';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
@@ -29,18 +28,9 @@ export async function generateMetadata({ params }: DocPageProps): Promise<Metada
   const doc = await getDocBySlug(category, slug);
   if (!doc) return {};
 
-  let title = doc.data.title;
-  let description = doc.data.excerpt;
-
-  try {
-    const seoRes = await kast.seo.getMeta(doc.id);
-    if (seoRes.data) {
-      title = seoRes.data.metaTitle ?? title;
-      description = seoRes.data.metaDescription ?? description;
-    }
-  } catch {
-    // SEO meta not found — use content defaults
-  }
+  // The Delivery API embeds published SEO metadata on each entry — prefer it.
+  const title = doc.seoMeta?.metaTitle ?? doc.data.title;
+  const description = doc.seoMeta?.metaDescription ?? doc.data.excerpt;
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3003';
 

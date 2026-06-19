@@ -3,11 +3,13 @@ title: Content Entries API
 description: CRUD, publish, schedule, version, and deliver content entries.
 ---
 
+These are the **authenticated** content management endpoints — they require a Bearer token and let you read entries in any status (draft, scheduled, archived). To fetch **published** content from a public frontend, use the [Delivery API](/api-reference/delivery/) (`/api/v1/delivery/*`) instead.
+
 ## List entries
 
 ```http
 GET /api/v1/content-types/:typeSlug/entries
-X-Kast-Key: <delivery-key>   (or Authorization: Bearer <token>)
+Authorization: Bearer <token>
 ```
 
 **Query parameters:**

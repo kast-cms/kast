@@ -1,6 +1,5 @@
 import { RichText } from '@/components/rich-text';
 import { estimateReadTime, getPostBySlug, getPosts } from '@/lib/content';
-import { kast } from '@/lib/kast';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
@@ -25,21 +24,11 @@ export async function generateMetadata({ params }: PostPageProps): Promise<Metad
   const post = await getPostBySlug(slug);
   if (!post) return {};
 
-  let seoTitle = post.data.title;
-  let seoDescription = post.data.excerpt;
-  let seoImage: string | undefined = post.data.coverImage;
-
-  // Enrich with Kast SEO meta if available
-  try {
-    const seoRes = await kast.seo.getMeta(post.id);
-    if (seoRes.data) {
-      seoTitle = seoRes.data.metaTitle ?? seoTitle;
-      seoDescription = seoRes.data.metaDescription ?? seoDescription;
-      // ogImageId is a media ID reference, not a URL — keep content coverImage as seoImage
-    }
-  } catch {
-    // SEO meta not found — use content data defaults
-  }
+  // The Delivery API embeds published SEO metadata on each entry — prefer it,
+  // falling back to the content fields.
+  const seoTitle = post.seoMeta?.metaTitle ?? post.data.title;
+  const seoDescription = post.seoMeta?.metaDescription ?? post.data.excerpt;
+  const seoImage: string | undefined = post.seoMeta?.ogImageUrl ?? post.data.coverImage;
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3002';
 

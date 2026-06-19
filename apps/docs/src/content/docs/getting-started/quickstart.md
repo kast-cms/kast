@@ -56,11 +56,12 @@ You're now logged in as `SUPER_ADMIN`.
 3. Fill in title, body, and slug.
 4. Click **Save Draft**, then **Publish**.
 
-## 6. Fetch via API
+## 6. Fetch via the public Delivery API
+
+Published content is served from the public `/api/v1/delivery/*` endpoints — no token needed:
 
 ```bash
-curl http://localhost:3000/api/v1/content-types/blog-post/entries \
-  -H "X-Kast-Key: your-delivery-api-key"
+curl "http://localhost:3000/api/v1/delivery/content/blog-post?locale=en"
 ```
 
 ```json
@@ -69,13 +70,15 @@ curl http://localhost:3000/api/v1/content-types/blog-post/entries \
     {
       "id": "cuid...",
       "slug": "my-first-post",
-      "status": "PUBLISHED",
+      "publishedAt": "2026-01-02T00:00:00.000Z",
       "data": { "title": "My First Post", "body": "..." }
     }
   ],
-  "meta": { "total": 1, "cursor": null }
+  "meta": { "total": 1, "limit": 20, "cursor": null, "hasNextPage": false }
 }
 ```
+
+For server-side callers you can pass an optional `X-Kast-Key` delivery key to raise the rate limit and bypass CORS.
 
 ## Next steps
 

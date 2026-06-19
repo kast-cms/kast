@@ -49,11 +49,13 @@ GET /api/v1/seo/entries/:entryId
 
 ## Sitemap
 
+The public, crawler-facing sitemap is served from the [Delivery API](/api-reference/delivery/):
+
 ```bash
-GET /api/v1/seo/sitemap.xml
+GET /api/v1/delivery/sitemap.xml
 ```
 
-Returns an XML sitemap of all `PUBLISHED` entries. Update frequency and priority are derived from the entry's `updatedAt` timestamp.
+Returns an XML sitemap of all `PUBLISHED` entries across every locale, with `hreflang` alternates. It is always open (CORS-exempt, no key required). The same XML is also reachable via the authenticated SEO module at `GET /api/v1/seo/sitemap.xml`.
 
 ## Robots.txt
 
