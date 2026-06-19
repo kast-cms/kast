@@ -1,8 +1,10 @@
 'use client';
 
+import { useToast } from '@/components/ui/use-toast';
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
 import type { ApiTokenCreated, ApiTokenSummary, CreateApiTokenBody } from '@kast-cms/sdk';
+import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState } from 'react';
 
 export interface UseTokensReturn {
@@ -17,20 +19,35 @@ export interface UseTokensReturn {
 export function useTokens(): UseTokensReturn {
   const { session } = useSession();
   const client = createApiClient(session?.accessToken);
+  const { toast } = useToast();
+  const t = useTranslations('apiTokens');
 
   const [tokens, setTokens] = useState<ApiTokenSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [createdToken, setCreatedToken] = useState<ApiTokenCreated | null>(null);
+
+  const reportError = useCallback(
+    (err: unknown): void => {
+      toast({
+        variant: 'destructive',
+        title: t('errorTitle'),
+        description: err instanceof Error ? err.message : t('loadError'),
+      });
+    },
+    [toast, t],
+  );
 
   const loadTokens = useCallback(async (): Promise<void> => {
     setLoading(true);
     try {
       const res = await client.tokens.list();
       setTokens(res.data);
+    } catch (err) {
+      reportError(err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [reportError]);
 
   useEffect(() => {
     void loadTokens();
@@ -38,19 +55,28 @@ export function useTokens(): UseTokensReturn {
 
   const create = useCallback(
     async (body: CreateApiTokenBody): Promise<void> => {
-      const res = await client.tokens.create(body);
-      setCreatedToken(res.data);
-      void loadTokens();
+      try {
+        const res = await client.tokens.create(body);
+        setCreatedToken(res.data);
+        void loadTokens();
+      } catch (err) {
+        reportError(err);
+        throw err;
+      }
     },
-    [loadTokens],
+    [loadTokens, reportError],
   );
 
   const revoke = useCallback(
     async (id: string): Promise<void> => {
-      await client.tokens.revoke(id);
-      void loadTokens();
+      try {
+        await client.tokens.revoke(id);
+        void loadTokens();
+      } catch (err) {
+        reportError(err);
+      }
     },
-    [loadTokens],
+    [loadTokens, reportError],
   );
 
   const clearCreatedToken = useCallback((): void => {

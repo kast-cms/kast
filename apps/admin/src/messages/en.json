@@ -190,6 +190,13 @@
   "content": {
     "title": "Content",
     "description": "Browse and manage your content entries.",
+    "landing": {
+      "description": "Select a content type to browse and manage its entries.",
+      "entries": "{count, plural, =0 {No entries} one {# entry} other {# entries}}",
+      "emptyTitle": "No content types yet",
+      "emptyDescription": "Create a content type before you can add entries.",
+      "manageTypes": "Manage content types"
+    },
     "newEntry": "New entry",
     "emptyTitle": "No entries yet",
     "emptyDescription": "Create your first entry for this content type.",
@@ -370,7 +377,9 @@
       "cannotSelfSuspend": "You cannot suspend your own account."
     },
     "noUsers": "No users found.",
-    "never": "Never"
+    "never": "Never",
+    "errorTitle": "User action failed",
+    "loadError": "Failed to load users."
   },
   "roles": {
     "title": "Roles",
@@ -421,7 +430,9 @@
       "delete": "Delete",
       "deleteConfirm": "Delete role \"{{name}}\"? This cannot be undone."
     },
-    "noRoles": "No roles found."
+    "noRoles": "No roles found.",
+    "errorTitle": "Role action failed",
+    "loadError": "Failed to load roles."
   },
   "apiTokens": {
     "title": "API Tokens",
@@ -470,7 +481,9 @@
     "never": "Never",
     "noExpiry": "No expiry",
     "revoke": "Revoke",
-    "revokeConfirm": "Revoke token \"{{name}}\"? Any services using it will lose access."
+    "revokeConfirm": "Revoke token \"{{name}}\"? Any services using it will lose access.",
+    "errorTitle": "Token action failed",
+    "loadError": "Failed to load tokens."
   },
   "seo": {
     "title": "SEO",
@@ -496,6 +509,18 @@
       "title": "Redirect Rules",
       "description": "Manage 301/302 redirect rules.",
       "createButton": "Add redirect",
+      "importButton": "Import CSV",
+      "importing": "Importing…",
+      "exportButton": "Export CSV",
+      "exporting": "Exporting…",
+      "loading": "Loading…",
+      "yes": "Yes",
+      "no": "No",
+      "importSuccessTitle": "Import complete",
+      "importSuccessDescription": "{created, plural, =0 {No redirects created} one {# redirect created} other {# redirects created}}, {skipped} skipped, {errors} errors.",
+      "importErrorTitle": "Import failed",
+      "exportErrorTitle": "Export failed",
+      "genericError": "Something went wrong. Please try again.",
       "emptyTitle": "No redirects yet",
       "emptyDescription": "Add your first redirect rule.",
       "table": {
@@ -730,12 +755,23 @@
       "subtitle": "{total, plural, one {# submission} other {# submissions}}",
       "back": "Back",
       "exportCsv": "Export CSV",
+      "view": "View",
       "deleteConfirm": "Delete this submission? This cannot be undone.",
       "prev": "Previous",
       "next": "Next",
       "table": {
         "date": "Date",
         "actions": "Actions"
+      },
+      "detail": {
+        "title": "Submission detail",
+        "submittedAt": "Submitted",
+        "ipAddress": "IP address",
+        "userAgent": "User agent",
+        "fields": "Form data",
+        "empty": "No data captured.",
+        "close": "Close",
+        "delete": "Delete"
       }
     }
   },

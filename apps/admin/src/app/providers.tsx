@@ -1,3 +1,4 @@
+import { ToastContextProvider } from '@/components/ui/use-toast';
 import { SessionProvider } from '@/lib/session';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
@@ -12,7 +13,9 @@ export async function Providers({ children }: ProvidersProps): Promise<JSX.Eleme
 
   return (
     <NextIntlClientProvider messages={messages}>
-      <SessionProvider>{children}</SessionProvider>
+      <SessionProvider>
+        <ToastContextProvider>{children}</ToastContextProvider>
+      </SessionProvider>
     </NextIntlClientProvider>
   );
 }

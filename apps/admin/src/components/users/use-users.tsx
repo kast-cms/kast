@@ -1,8 +1,10 @@
 'use client';
 
+import { useToast } from '@/components/ui/use-toast';
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
 import type { InviteUserBody, RoleSummary, UpdateUserBody, UserSummary } from '@kast-cms/sdk';
+import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState } from 'react';
 
 export interface UseUsersReturn {
@@ -22,6 +24,8 @@ export interface UseUsersReturn {
 export function useUsers(): UseUsersReturn {
   const { session } = useSession();
   const client = createApiClient(session?.accessToken);
+  const { toast } = useToast();
+  const t = useTranslations('users');
 
   const [users, setUsers] = useState<UserSummary[]>([]);
   const [roles, setRoles] = useState<RoleSummary[]>([]);
@@ -29,20 +33,37 @@ export function useUsers(): UseUsersReturn {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
 
+  const reportError = useCallback(
+    (err: unknown): void => {
+      toast({
+        variant: 'destructive',
+        title: t('errorTitle'),
+        description: err instanceof Error ? err.message : t('loadError'),
+      });
+    },
+    [toast, t],
+  );
+
   const loadUsers = useCallback(async (): Promise<void> => {
     setLoading(true);
     try {
       const res = await client.users.list(roleFilter ? { role: roleFilter } : {});
       setUsers(res.data);
+    } catch (err) {
+      reportError(err);
     } finally {
       setLoading(false);
     }
-  }, [roleFilter]);
+  }, [roleFilter, reportError]);
 
   const loadRoles = useCallback(async (): Promise<void> => {
-    const res = await client.roles.list();
-    setRoles(res.data);
-  }, []);
+    try {
+      const res = await client.roles.list();
+      setRoles(res.data);
+    } catch (err) {
+      reportError(err);
+    }
+  }, [reportError]);
 
   useEffect(() => {
     void loadRoles();
@@ -54,24 +75,41 @@ export function useUsers(): UseUsersReturn {
 
   const invite = useCallback(
     async (body: InviteUserBody): Promise<void> => {
-      await client.users.invite(body);
-      void loadUsers();
+      try {
+        await client.users.invite(body);
+        void loadUsers();
+      } catch (err) {
+        reportError(err);
+        throw err;
+      }
     },
-    [loadUsers],
+    [loadUsers, reportError],
   );
 
   const update = useCallback(
     async (id: string, body: UpdateUserBody): Promise<void> => {
-      await client.users.update(id, body);
-      void loadUsers();
+      try {
+        await client.users.update(id, body);
+        void loadUsers();
+      } catch (err) {
+        reportError(err);
+        throw err;
+      }
     },
-    [loadUsers],
+    [loadUsers, reportError],
   );
 
-  const trash = useCallback(async (id: string): Promise<void> => {
-    await client.users.trash(id);
-    setUsers((prev) => prev.filter((u) => u.id !== id));
-  }, []);
+  const trash = useCallback(
+    async (id: string): Promise<void> => {
+      try {
+        await client.users.trash(id);
+        setUsers((prev) => prev.filter((u) => u.id !== id));
+      } catch (err) {
+        reportError(err);
+      }
+    },
+    [reportError],
+  );
 
   const filteredUsers = users.filter((u) => {
     if (!search) return true;

@@ -2,8 +2,38 @@
 
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
-import type { CreateRedirectBody, Redirect, SeoScore, UpdateRedirectBody } from '@kast-cms/sdk';
+import type {
+  CreateRedirectBody,
+  KastClient,
+  Redirect,
+  SeoScore,
+  UpdateRedirectBody,
+} from '@kast-cms/sdk';
 import { useCallback, useEffect, useState } from 'react';
+
+/**
+ * Result returned by the redirects CSV import endpoint
+ * (`POST /api/v1/seo/redirects/import`).
+ */
+export interface RedirectImportResult {
+  created: number;
+  skipped: number;
+  errors: number;
+}
+
+/**
+ * Subset of the SEO resource for the CSV import/export endpoints that are
+ * being added to the API/SDK in parallel. Once the SDK exposes
+ * `importRedirects` / `exportRedirects` natively this assertion becomes a no-op.
+ */
+interface RedirectCsvResource {
+  importRedirects: (file: File) => Promise<RedirectImportResult>;
+  exportRedirects: () => Promise<Blob>;
+}
+
+function redirectCsv(client: KastClient): RedirectCsvResource {
+  return client.seo as unknown as RedirectCsvResource;
+}
 
 export interface UseSeoReturn {
   redirects: Redirect[];
@@ -15,6 +45,8 @@ export interface UseSeoReturn {
   createRedirect: (body: CreateRedirectBody) => Promise<void>;
   updateRedirect: (id: string, body: UpdateRedirectBody) => Promise<void>;
   deleteRedirect: (id: string) => Promise<void>;
+  importRedirects: (file: File) => Promise<RedirectImportResult>;
+  exportRedirects: () => Promise<Blob>;
   loadRedirects: () => Promise<void>;
   loadSitemap: () => Promise<void>;
   loadScore: (entryId: string) => Promise<void>;
@@ -101,6 +133,19 @@ export function useSeo(): UseSeoReturn {
     [loadRedirects],
   );
 
+  const importRedirects = useCallback(
+    async (file: File): Promise<RedirectImportResult> => {
+      const result = await redirectCsv(client).importRedirects(file);
+      await loadRedirects();
+      return result;
+    },
+    [loadRedirects],
+  );
+
+  const exportRedirects = useCallback(async (): Promise<Blob> => {
+    return redirectCsv(client).exportRedirects();
+  }, []);
+
   useEffect(() => {
     void loadRedirects();
   }, [loadRedirects]);
@@ -115,6 +160,8 @@ export function useSeo(): UseSeoReturn {
     createRedirect,
     updateRedirect,
     deleteRedirect,
+    importRedirects,
+    exportRedirects,
     loadRedirects,
     loadSitemap,
     loadScore,
