@@ -1,46 +1,35 @@
 /**
- * Shared semantic-release config, consumed by `multi-semantic-release`.
+ * Shared semantic-release config, consumed by `multi-semantic-release` (msr).
  *
- * `multi-semantic-release` runs one semantic-release pass PER workspace package
- * that is NOT marked `private: true`, with `process.cwd()` set to that package's
- * directory. In this monorepo the non-private packages are exactly the three
- * publishable ones:
+ * msr runs one semantic-release pass per workspace package. In release.yml we pass
+ * `--ignore-private-packages`, so only the three NON-private packages are processed
+ * (everything else — api, admin, the docs/blog apps, every plugins/* — is
+ * `private: true` and skipped, producing no npm publish, no tag, no GitHub Release):
  *   - create-kast-app             (packages/create-kast-app)
  *   - @kast-cms/sdk               (packages/sdk)
  *   - @kast-cms/plugin-sdk        (packages/plugin-sdk)
- * Everything else (api, admin, the docs/blog apps, every plugins/*) is
- * `private: true` and is skipped automatically — so npm versioning is fully
- * independent and per-package, with no version churn for untouched packages.
+ * npm versioning is therefore fully independent and per-package, with no version
+ * churn for untouched packages.
  *
- * This single root config is reused for every package (no per-package config
- * files are written under packages/**). Because it executes once per package
- * with that package's cwd, we read the local package.json here to derive a
- * UNIQUE, package-scoped `tagFormat`. Distinct tag namespaces are what let each
- * package compute its own next version from its own history:
- *   create-kast-app        ->  create-kast-app-v${version}
- *   @kast-cms/sdk          ->  sdk-v${version}
- *   @kast-cms/plugin-sdk   ->  plugin-sdk-v${version}
- * These are deliberately distinct from the product tags `v${version}` used for
- * Docker/GitHub releases, so the two tag schemes never collide.
+ * TAG FORMAT — controlled by msr, NOT here. msr forces a per-package tag namespace
+ * of `${name}@${version}` and OVERRIDES any `tagFormat` set in this config (setting
+ * one here has no effect), so we deliberately do not set `tagFormat`:
+ *   create-kast-app        ->  create-kast-app@${version}
+ *   @kast-cms/sdk          ->  @kast-cms/sdk@${version}
+ *   @kast-cms/plugin-sdk   ->  @kast-cms/plugin-sdk@${version}
+ * These are distinct from the product tags `v${version}` used for Docker/GitHub
+ * releases, so the two tag schemes never collide.
  *
  * IMPORTANT — versions only ever increase (never downgrade):
- * semantic-release derives the *next* version from the latest git tag matching
- * that package's `tagFormat`, NOT from package.json. Baseline tags at the current
- * published versions are seeded once by `scripts/bootstrap-release-tags.mjs`
- * (see README "Releasing"). That keeps @kast-cms/sdk on 0.3.x and
- * create-kast-app on 2.x on the very first automated run.
+ * semantic-release derives the *next* version from the latest git tag matching that
+ * package's `${name}@*` namespace, NOT from package.json. Baseline tags at the
+ * current published versions are seeded once by `scripts/bootstrap-release-tags.mjs`
+ * (see README "Releasing"). Without them the first automated run treats each package
+ * as a brand-new 1.0.0 release — keeping @kast-cms/sdk on 0.3.x and create-kast-app
+ * on 2.x depends on those baselines existing.
  */
-const path = require('node:path');
-
-// cwd is the package directory during each multi-semantic-release pass.
-const pkg = require(path.join(process.cwd(), 'package.json'));
-
-// Short, filesystem/tag-safe slug for the tag namespace.
-const slug = pkg.name.replace(/^@kast-cms\//, '').replace(/[^a-zA-Z0-9-]/g, '-');
-
 module.exports = {
   branches: ['main'],
-  tagFormat: `${slug}-v\${version}`,
   plugins: [
     // 1. Decide the bump from Conventional Commits that touched this package's dir.
     ['@semantic-release/commit-analyzer', { preset: 'conventionalcommits' }],
