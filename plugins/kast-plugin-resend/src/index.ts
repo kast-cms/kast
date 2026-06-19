@@ -1,42 +1,122 @@
-import { IKastPlugin, KastPluginContext } from '@kast-cms/plugin-sdk';
+import { type IKastPlugin, type KastPluginContext } from '@kast-cms/plugin-sdk';
+import { type CreateEmailOptions, type CreateEmailResponse, Resend } from 'resend';
+
+/** A single outbound message handed to the transport. */
+export interface EmailMessage {
+  to: string | string[];
+  subject: string;
+  html?: string;
+  text?: string;
+  from?: string;
+  replyTo?: string | string[];
+  cc?: string | string[];
+  bcc?: string | string[];
+}
+
+const LOG_PREFIX = '[kast-plugin-resend]';
 
 /**
- * kast-plugin-resend
+ * Resend-backed email transport built on the official `resend` SDK. Provides a
+ * `sendEmail` method so transactional mail (password resets, invites, …) can be
+ * delivered through Resend, and persists its configuration so the admin UI /
+ * core can detect that Resend is available.
  *
- * Activates the Resend email transport in the Kast API.
- * When RESEND_API_KEY is set, the API's EmailProcessor automatically
- * uses Resend instead of SMTP — no code changes required.
- *
- * This plugin registers itself, validates the required environment
- * variables at boot, and exposes a test-email endpoint for the admin UI.
+ * Limitation: `KastPluginContext` exposes no transport-registration extension
+ * point, so the plugin cannot register `sendEmail` as the host's active mailer
+ * from inside `onLoad`. The transport is fully functional and callable; wiring
+ * it as the default mailer requires either the host reading the persisted
+ * `provider: 'resend'` config or a future `ctx.registerEmailTransport` hook.
  */
 export class ResendPlugin implements IKastPlugin {
+  private resend: Resend | null = null;
+  private fromAddress = '';
+
   async onLoad(ctx: KastPluginContext): Promise<void> {
-    const apiKey = process.env['RESEND_API_KEY'];
-    const fromEmail = process.env['RESEND_FROM_EMAIL'];
+    const apiKey = process.env['RESEND_API_KEY'] ?? '';
+    const fromEmail = process.env['RESEND_FROM_EMAIL'] ?? '';
+    const fromName = process.env['RESEND_FROM_NAME'] ?? '';
 
     if (!apiKey) {
-      console.warn('[kast-plugin-resend] RESEND_API_KEY not set — email will fall back to SMTP');
+      this.warn('RESEND_API_KEY not set — email will fall back to the host SMTP transport');
       return;
     }
-
     if (!fromEmail) {
-      console.warn(
-        '[kast-plugin-resend] RESEND_FROM_EMAIL not set — using default SMTP_FROM address',
+      this.warn(
+        'RESEND_FROM_EMAIL not set — sendEmail requires an explicit `from` until configured',
       );
     }
 
-    // Persist config so admin UI can display the status
+    this.resend = new Resend(apiKey);
+    this.fromAddress = fromName && fromEmail ? `${fromName} <${fromEmail}>` : fromEmail;
+
     await ctx.setConfig({
       provider: 'resend',
-      fromEmail: fromEmail ?? null,
-      fromName: process.env['RESEND_FROM_NAME'] ?? null,
+      fromEmail: fromEmail || null,
+      fromName: fromName || null,
       configuredAt: new Date().toISOString(),
     });
 
-    console.log(
-      `[kast-plugin-resend] Active — sending email via Resend from ${fromEmail ?? 'default'}`,
-    );
+    this.log(`Active — Resend transport ready (from ${this.fromAddress || 'unset'})`);
+  }
+
+  /** True once a valid API key has been supplied. */
+  isReady(): boolean {
+    return this.resend !== null;
+  }
+
+  /**
+   * Sends one email through Resend. Throws if the plugin was not configured with
+   * an API key, or if no `from` address is available.
+   */
+  async sendEmail(message: EmailMessage): Promise<CreateEmailResponse> {
+    const resend = this.requireResend();
+    const from = message.from ?? this.fromAddress;
+    if (!from) {
+      throw new Error(
+        `${LOG_PREFIX} no "from" address (set RESEND_FROM_EMAIL or pass message.from)`,
+      );
+    }
+    if (!message.html && !message.text) {
+      throw new Error(`${LOG_PREFIX} email must include "html" or "text" content`);
+    }
+
+    // `CreateEmailOptions` is a discriminated union enforcing "at least one of
+    // html/text/react"; the runtime guard above guarantees html or text is set,
+    // so the assembled object is cast to the SDK's parameter type. (Casting to
+    // `CreateEmailOptions` directly rather than `Parameters<send>` because
+    // `emails.send` is overloaded and `Parameters` would pick the wrong overload.)
+    const payload = {
+      from,
+      to: message.to,
+      subject: message.subject,
+      ...(message.html !== undefined ? { html: message.html } : {}),
+      ...(message.text !== undefined ? { text: message.text } : {}),
+      ...(message.replyTo !== undefined ? { replyTo: message.replyTo } : {}),
+      ...(message.cc !== undefined ? { cc: message.cc } : {}),
+      ...(message.bcc !== undefined ? { bcc: message.bcc } : {}),
+    } as CreateEmailOptions;
+
+    const response = await resend.emails.send(payload);
+
+    if (response.error) {
+      throw new Error(`${LOG_PREFIX} Resend send failed: ${response.error.message}`);
+    }
+    return response;
+  }
+
+  private requireResend(): Resend {
+    if (!this.resend) {
+      throw new Error(`${LOG_PREFIX} sendEmail called before the plugin was configured`);
+    }
+    return this.resend;
+  }
+
+  private log(message: string): void {
+    process.stderr.write(`${LOG_PREFIX} ${message}\n`);
+  }
+
+  private warn(message: string): void {
+    process.stderr.write(`${LOG_PREFIX} WARN ${message}\n`);
   }
 }
 

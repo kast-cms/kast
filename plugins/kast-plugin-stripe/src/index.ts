@@ -1,188 +1,246 @@
-import { IKastPlugin, KastPluginContext, PluginHook } from '@kast-cms/plugin-sdk';
+import { type IKastPlugin, type KastPluginContext, PluginHook } from '@kast-cms/plugin-sdk';
+import Stripe from 'stripe';
 
-interface ContentPayload {
+/** Payload emitted on content.published / content.updated. */
+interface ContentLifecyclePayload {
   entryId: string;
   typeSlug: string;
   status?: string;
 }
 
-interface StripeProduct {
-  id: string;
-  name: string;
-  description?: string;
-  metadata: Record<string, string>;
+/** Payload emitted on content.trashed. */
+interface ContentRemovalPayload {
+  entryId: string;
+  typeSlug: string;
 }
 
-interface StripePrice {
-  id: string;
-  product: string;
-  unit_amount: number;
-  currency: string;
+interface EntryLocale {
+  data?: Record<string, unknown> | null;
 }
 
 interface KastEntry {
   id: string;
-  fields: Record<string, unknown>;
+  locales?: EntryLocale[];
 }
 
+const LOG_PREFIX = '[kast-plugin-stripe]';
+const METADATA_KEY = 'kastEntryId';
+
+/**
+ * Two-way bridge between a Kast `product` content type and Stripe, built on the
+ * official `stripe` SDK.
+ *
+ *  - On publish/update of a product entry it upserts a matching Stripe Product
+ *    (and a one-time Price when the entry carries a `price` field), keyed by
+ *    `metadata.kastEntryId`.
+ *  - On trash it archives the Stripe Product.
+ *  - `handleWebhook` verifies and dispatches inbound Stripe webhook events using
+ *    `STRIPE_WEBHOOK_SECRET`; `createCheckoutSession` starts a Checkout flow.
+ *
+ * Limitation: the Kast plugin context exposes neither an inbound HTTP route
+ * registration API nor a content-data accessor. `handleWebhook` /
+ * `createCheckoutSession` are therefore provided as callable methods that the
+ * host must mount on a route, and product field data is fetched over HTTP from
+ * the Kast content API (`KAST_API_URL`).
+ */
 export class StripePlugin implements IKastPlugin {
-  private secretKey = '';
+  private stripe: Stripe | null = null;
+  private webhookSecret = '';
   private productTypeSlug = 'product';
-  private stripeApiBase = 'https://api.stripe.com/v1';
 
   async onLoad(ctx: KastPluginContext): Promise<void> {
-    this.secretKey = process.env['STRIPE_SECRET_KEY'] ?? '';
+    const secretKey = process.env['STRIPE_SECRET_KEY'] ?? '';
+    this.webhookSecret = process.env['STRIPE_WEBHOOK_SECRET'] ?? '';
     this.productTypeSlug = process.env['STRIPE_PRODUCT_TYPE_SLUG'] ?? 'product';
 
-    if (!this.secretKey) {
-      console.warn('[kast-plugin-stripe] STRIPE_SECRET_KEY not set — plugin disabled');
+    if (!secretKey) {
+      this.warn('STRIPE_SECRET_KEY not set — plugin disabled');
       return;
     }
 
-    ctx.on(PluginHook.CONTENT_PUBLISHED, async (payload) => {
-      const p = payload as ContentPayload;
-      if (p.typeSlug !== this.productTypeSlug) return;
-      await this.syncProduct(p.entryId, 'upsert');
+    this.stripe = new Stripe(secretKey, {
+      appInfo: { name: 'kast-plugin-stripe' },
+      typescript: true,
     });
 
-    ctx.on(PluginHook.CONTENT_UPDATED, async (payload) => {
-      const p = payload as ContentPayload;
-      if (p.typeSlug !== this.productTypeSlug) return;
-      if (p.status !== 'PUBLISHED') return;
-      await this.syncProduct(p.entryId, 'upsert');
+    ctx.on(PluginHook.CONTENT_PUBLISHED, (payload) => this.onPublish(payload));
+    ctx.on(PluginHook.CONTENT_UPDATED, (payload) => this.onUpdate(payload));
+    ctx.on(PluginHook.CONTENT_TRASHED, (payload) => this.onTrash(payload));
+
+    await ctx.setConfig({
+      provider: 'stripe',
+      productTypeSlug: this.productTypeSlug,
+      webhookConfigured: this.webhookSecret.length > 0,
+      configuredAt: new Date().toISOString(),
     });
 
-    ctx.on(PluginHook.CONTENT_TRASHED, async (payload) => {
-      const p = payload as ContentPayload;
-      if (p.typeSlug !== this.productTypeSlug) return;
-      await this.syncProduct(p.entryId, 'archive');
-    });
-
-    console.log(
-      `[kast-plugin-stripe] Ready — syncing "${this.productTypeSlug}" content type to Stripe`,
-    );
+    this.log(`Ready — syncing "${this.productTypeSlug}" entries to Stripe`);
   }
 
-  private async fetchEntry(entryId: string, typeSlug: string): Promise<KastEntry | null> {
-    try {
-      const kastApiBase = (process.env['KAST_API_URL'] ?? 'http://localhost:3001').replace(
-        /\/$/,
-        '',
-      );
-      const res = await fetch(`${kastApiBase}/api/v1/content/${typeSlug}/${entryId}`, {
-        headers: { 'x-kast-internal': 'plugin' },
-      });
-      if (!res.ok) return null;
-      const json = (await res.json()) as { data: KastEntry };
-      return json.data;
-    } catch {
-      return null;
+  /**
+   * Verifies a raw Stripe webhook request body against the signature header and
+   * dispatches the resulting event. `rawBody` must be the unparsed request body
+   * (string or Buffer) for signature verification to succeed.
+   */
+  async handleWebhook(rawBody: string | Buffer, signature: string): Promise<Stripe.Event> {
+    const stripe = this.requireStripe();
+    if (!this.webhookSecret) {
+      throw new Error(`${LOG_PREFIX} STRIPE_WEBHOOK_SECRET not configured`);
     }
+    const event = stripe.webhooks.constructEvent(rawBody, signature, this.webhookSecret);
+    await this.dispatchEvent(event);
+    return event;
   }
 
-  private async syncProduct(entryId: string, action: 'upsert' | 'archive'): Promise<void> {
-    const entry = await this.fetchEntry(entryId, this.productTypeSlug);
-    if (!entry) {
-      console.warn(`[kast-plugin-stripe] Could not fetch entry ${entryId}`);
-      return;
+  /** Creates a Stripe Checkout session for the given price/quantity. */
+  createCheckoutSession(
+    params: Stripe.Checkout.SessionCreateParams,
+  ): Promise<Stripe.Checkout.Session> {
+    return this.requireStripe().checkout.sessions.create(params);
+  }
+
+  private async dispatchEvent(event: Stripe.Event): Promise<void> {
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object;
+        this.log(`Checkout completed: ${session.id}`);
+        break;
+      }
+      case 'customer.subscription.created':
+      case 'customer.subscription.updated':
+      case 'customer.subscription.deleted': {
+        const sub = event.data.object;
+        this.log(`Subscription ${event.type.split('.').pop() ?? ''}: ${sub.id} (${sub.status})`);
+        break;
+      }
+      default:
+        this.log(`Unhandled Stripe event: ${event.type}`);
     }
+    return Promise.resolve();
+  }
 
-    const name = String(entry.fields['name'] ?? entry.fields['title'] ?? entryId);
-    const description =
-      entry.fields['description'] != null ? String(entry.fields['description']) : undefined;
+  private async onPublish(payload: unknown): Promise<void> {
+    const p = payload as ContentLifecyclePayload;
+    if (p.typeSlug !== this.productTypeSlug) return;
+    await this.upsertProduct(p.entryId);
+  }
 
+  private async onUpdate(payload: unknown): Promise<void> {
+    const p = payload as ContentLifecyclePayload;
+    if (p.typeSlug !== this.productTypeSlug) return;
+    if (p.status !== 'PUBLISHED') return;
+    await this.upsertProduct(p.entryId);
+  }
+
+  private async onTrash(payload: unknown): Promise<void> {
+    const p = payload as ContentRemovalPayload;
+    if (p.typeSlug !== this.productTypeSlug) return;
+    await this.archiveProduct(p.entryId);
+  }
+
+  private async upsertProduct(entryId: string): Promise<void> {
+    const stripe = this.stripe;
+    if (!stripe) return;
     try {
-      if (action === 'archive') {
-        // Look up product by metadata.kastEntryId and archive it
-        const existing = await this.findStripeProduct(entryId);
-        if (existing) {
-          await this.stripeRequest('POST', `/products/${existing.id}`, { active: false });
-          console.log(`[kast-plugin-stripe] Archived Stripe product ${existing.id}`);
-        }
+      const fields = await this.fetchEntryFields(entryId);
+      if (!fields) {
+        this.warn(`Could not fetch entry ${entryId}`);
         return;
       }
 
-      const existing = await this.findStripeProduct(entryId);
+      const name = String(fields['name'] ?? fields['title'] ?? entryId);
+      const description = fields['description'] != null ? String(fields['description']) : undefined;
+
+      const existing = await this.findProduct(entryId);
       if (existing) {
-        await this.stripeRequest('POST', `/products/${existing.id}`, {
+        await stripe.products.update(existing.id, {
           name,
           ...(description !== undefined ? { description } : {}),
         });
-        console.log(`[kast-plugin-stripe] Updated Stripe product ${existing.id}`);
-      } else {
-        const product = await this.stripeRequest<StripeProduct>('POST', '/products', {
-          name,
-          ...(description !== undefined ? { description } : {}),
-          metadata: { kastEntryId: entryId },
-        });
-
-        // Create a price if `price` field exists on the entry
-        const priceAmount = entry.fields['price'];
-        if (typeof priceAmount === 'number' && priceAmount > 0) {
-          const currency = String(entry.fields['currency'] ?? 'usd').toLowerCase();
-          await this.stripeRequest<StripePrice>('POST', '/prices', {
-            product: product.id,
-            unit_amount: Math.round(priceAmount * 100),
-            currency,
-          });
-        }
-
-        console.log(`[kast-plugin-stripe] Created Stripe product ${product.id}`);
+        this.log(`Updated Stripe product ${existing.id}`);
+        return;
       }
+
+      const product = await stripe.products.create({
+        name,
+        ...(description !== undefined ? { description } : {}),
+        metadata: { [METADATA_KEY]: entryId },
+      });
+
+      const priceField = fields['price'];
+      if (typeof priceField === 'number' && priceField > 0) {
+        const currency = String(fields['currency'] ?? 'usd').toLowerCase();
+        await stripe.prices.create({
+          product: product.id,
+          unit_amount: Math.round(priceField * 100),
+          currency,
+        });
+      }
+      this.log(`Created Stripe product ${product.id}`);
     } catch (err) {
-      console.error(`[kast-plugin-stripe] syncProduct error: ${String(err)}`);
+      this.error(`upsertProduct(${entryId}) failed: ${stringifyError(err)}`);
     }
   }
 
-  private async findStripeProduct(kastEntryId: string): Promise<StripeProduct | null> {
+  private async archiveProduct(entryId: string): Promise<void> {
+    const stripe = this.stripe;
+    if (!stripe) return;
     try {
-      const res = await this.stripeRequest<{ data: StripeProduct[] }>(
-        'GET',
-        `/products?metadata[kastEntryId]=${encodeURIComponent(kastEntryId)}&limit=1`,
-      );
-      return res.data[0] ?? null;
-    } catch {
-      return null;
+      const existing = await this.findProduct(entryId);
+      if (!existing) return;
+      await stripe.products.update(existing.id, { active: false });
+      this.log(`Archived Stripe product ${existing.id}`);
+    } catch (err) {
+      this.error(`archiveProduct(${entryId}) failed: ${stringifyError(err)}`);
     }
   }
 
-  private async stripeRequest<T = unknown>(
-    method: string,
-    path: string,
-    body?: Record<string, unknown>,
-  ): Promise<T> {
-    const headers: Record<string, string> = {
-      Authorization: `Bearer ${this.secretKey}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    };
-
-    let bodyStr: string | undefined;
-    if (body !== undefined && method !== 'GET') {
-      bodyStr = Object.entries(body)
-        .flatMap(([k, v]) => {
-          if (typeof v === 'object' && v !== null) {
-            return Object.entries(v as Record<string, string>).map(
-              ([sk, sv]) =>
-                `${encodeURIComponent(`${k}[${sk}]`)}=${encodeURIComponent(String(sv))}`,
-            );
-          }
-          return [`${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`];
-        })
-        .join('&');
-    }
-
-    const res = await fetch(`${this.stripeApiBase}${path}`, {
-      method,
-      headers,
-      ...(bodyStr !== undefined ? { body: bodyStr } : {}),
+  /** Finds the Stripe product previously created for a Kast entry, if any. */
+  private async findProduct(entryId: string): Promise<Stripe.Product | null> {
+    const stripe = this.requireStripe();
+    const result = await stripe.products.search({
+      query: `metadata['${METADATA_KEY}']:'${entryId}'`,
+      limit: 1,
     });
-
-    const json = (await res.json()) as T;
-    if (!res.ok) {
-      throw new Error(`Stripe ${method} ${path} → ${res.status}`);
-    }
-    return json;
+    return result.data[0] ?? null;
   }
+
+  /**
+   * Retrieves a product entry's field data from the Kast content API. See the
+   * class-level note for why HTTP is used here rather than a context method.
+   */
+  private async fetchEntryFields(entryId: string): Promise<Record<string, unknown> | null> {
+    const base = (process.env['KAST_API_URL'] ?? 'http://localhost:3001').replace(/\/$/, '');
+    const slug = encodeURIComponent(this.productTypeSlug);
+    const url = `${base}/api/v1/content-types/${slug}/entries/${encodeURIComponent(entryId)}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const json = (await res.json()) as { data?: KastEntry };
+    return (json.data?.locales?.[0]?.data ?? {}) as Record<string, unknown>;
+  }
+
+  private requireStripe(): Stripe {
+    if (!this.stripe) {
+      throw new Error(`${LOG_PREFIX} Stripe client used before configuration`);
+    }
+    return this.stripe;
+  }
+
+  private log(message: string): void {
+    process.stderr.write(`${LOG_PREFIX} ${message}\n`);
+  }
+
+  private warn(message: string): void {
+    process.stderr.write(`${LOG_PREFIX} WARN ${message}\n`);
+  }
+
+  private error(message: string): void {
+    process.stderr.write(`${LOG_PREFIX} ERROR ${message}\n`);
+  }
+}
+
+function stringifyError(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
 }
 
 export default StripePlugin;
