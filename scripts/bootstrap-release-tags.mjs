@@ -5,12 +5,14 @@
  * WHY THIS EXISTS
  * ---------------
  * semantic-release computes the *next* version for a package from the latest git
- * tag matching that package's `tagFormat` — NOT from its package.json `version`.
- * This repo has product tags (v1.0.0 .. v1.0.4) but NO per-package tags yet, and
- * the publishable packages are already past their would-be first release:
- *   - create-kast-app    @ 2.1.0   (tag: create-kast-app-v<version>)
- *   - @kast-cms/sdk      @ 0.3.2   (tag: sdk-v<version>)
- *   - @kast-cms/plugin-sdk @ 0.1.0 (tag: plugin-sdk-v<version>)
+ * tag matching that package's tag namespace — NOT from its package.json `version`.
+ * multi-semantic-release tags each package as `${name}@${version}` (it overrides any
+ * tagFormat in release.config.cjs), so the baselines below use that exact format.
+ * This repo has product tags (v1.0.0 .. v1.x) but NO per-package tags yet, and the
+ * publishable packages are already past their would-be first release:
+ *   - create-kast-app      @ 2.1.0   (tag: create-kast-app@<version>)
+ *   - @kast-cms/sdk        @ 0.3.2   (tag: @kast-cms/sdk@<version>)
+ *   - @kast-cms/plugin-sdk @ 0.1.0   (tag: @kast-cms/plugin-sdk@<version>)
  *
  * Without a baseline tag, the FIRST automated run would treat each as a brand-new
  * 1.0.0 release — downgrading create-kast-app (2.1.0 -> 1.0.0, which npm rejects)
@@ -37,26 +39,22 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
 const dryRun = process.argv.includes('--dry-run');
 
-// The publishable packages and the tag namespace each one uses. The slug here
-// MUST match the `slug` derivation in release.config.cjs.
-const PACKAGES = [
-  { dir: 'packages/create-kast-app', slug: 'create-kast-app' },
-  { dir: 'packages/sdk', slug: 'sdk' },
-  { dir: 'packages/plugin-sdk', slug: 'plugin-sdk' },
-];
+// The publishable (non-private) packages. multi-semantic-release tags each one as
+// `${name}@${version}`, so the baselines must use that same format.
+const PACKAGES = ['packages/create-kast-app', 'packages/sdk', 'packages/plugin-sdk'];
 
 function sh(cmd) {
   return execSync(cmd, { cwd: repoRoot, encoding: 'utf8' }).trim();
 }
 
 let created = 0;
-for (const { dir, slug } of PACKAGES) {
+for (const dir of PACKAGES) {
   const pkg = JSON.parse(readFileSync(path.join(repoRoot, dir, 'package.json'), 'utf8'));
   const version = pkg.version;
-  const tag = `${slug}-v${version}`;
+  const tag = `${pkg.name}@${version}`;
 
   // Any existing tag in this namespace means the flow has already started.
-  const existing = sh(`git tag -l "${slug}-v*"`);
+  const existing = sh(`git tag -l "${pkg.name}@*"`);
   if (existing) {
     console.log(
       `✓ ${pkg.name}: namespace already has tags (${existing.split('\n').join(', ')}), skipping.`,

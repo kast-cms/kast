@@ -312,14 +312,17 @@ to `main` and CI does the rest (`.github/workflows/release.yml`).
    per-package git tag + GitHub Release. Packages with no relevant commits are
    skipped (no version churn). The publishable packages and their tag namespaces:
 
-   | Package                | npm                                                       | Tag format           |
-   | ---------------------- | --------------------------------------------------------- | -------------------- |
-   | `create-kast-app`      | [npm](https://www.npmjs.com/package/create-kast-app)      | `create-kast-app-v*` |
-   | `@kast-cms/sdk`        | [npm](https://www.npmjs.com/package/@kast-cms/sdk)        | `sdk-v*`             |
-   | `@kast-cms/plugin-sdk` | [npm](https://www.npmjs.com/package/@kast-cms/plugin-sdk) | `plugin-sdk-v*`      |
+   | Package                | npm                                                       | Tag format               |
+   | ---------------------- | --------------------------------------------------------- | ------------------------ |
+   | `create-kast-app`      | [npm](https://www.npmjs.com/package/create-kast-app)      | `create-kast-app@*`      |
+   | `@kast-cms/sdk`        | [npm](https://www.npmjs.com/package/@kast-cms/sdk)        | `@kast-cms/sdk@*`        |
+   | `@kast-cms/plugin-sdk` | [npm](https://www.npmjs.com/package/@kast-cms/plugin-sdk) | `@kast-cms/plugin-sdk@*` |
 
-   Every other workspace package (`api`, `admin`, the docs/blog apps, all
-   `plugins/*`) is `private: true` and is skipped automatically.
+   The tag format is `${name}@${version}` — set by multi-semantic-release, which
+   overrides any `tagFormat` in `release.config.cjs`. Every other workspace package
+   (`api`, `admin`, the docs/blog apps, all `plugins/*`) is `private: true`; the
+   `--ignore-private-packages` flag (in `release.yml`) skips them entirely, so they
+   produce no npm publish, tag, or GitHub Release.
 
 3. **Product release** — a product-level `vX.Y.Z` version is computed from the
    overall Conventional Commits since the last `v*` tag, the tag is pushed, the

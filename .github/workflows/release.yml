@@ -144,7 +144,9 @@ jobs:
         run: pnpm --filter create-kast-app --filter @kast-cms/sdk --filter @kast-cms/plugin-sdk build
 
       - name: Release (multi-semantic-release)
-        run: pnpm exec multi-semantic-release --deps.bump=override
+        # --ignore-private-packages: only the 3 non-private packages are released.
+        # Without it, msr also tags + GitHub-Releases every private app/plugin.
+        run: pnpm exec multi-semantic-release --deps.bump=override --ignore-private-packages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
