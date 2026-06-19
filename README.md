@@ -43,12 +43,12 @@ pnpm run dev
 
 > **Production with Docker?** A `docker-compose.yml` is included in the generated project. Run `docker-compose up` after filling in `.env`.
 
-| Service            | URL                          |
-| ------------------ | ---------------------------- |
-| Admin Panel        | http://localhost:3001        |
-| REST API           | http://localhost:3000/api/v1 |
-| MCP Server         | http://localhost:3000/mcp    |
-| API Docs (Swagger) | http://localhost:3000/api    |
+| Service            | URL                            |
+| ------------------ | ------------------------------ |
+| Admin Panel        | http://localhost:3001/admin    |
+| REST API           | http://localhost:3000/api/v1   |
+| MCP Server         | http://localhost:3000/mcp      |
+| API Docs (Swagger) | http://localhost:3000/api/docs |
 
 ---
 
@@ -245,14 +245,14 @@ cd kast
 pnpm install
 
 # 3. Configure environment
-cp apps/api/.env.example apps/api/.env
+cp .env.example .env  # set JWT_SECRET (min 32 chars) at minimum
 
 # 4. Start PostgreSQL + Redis
-docker-compose up -d postgres redis
+docker compose up -d postgres redis
 
 # 5. Run migrations + seed
-pnpm --filter @kast-cms/api run db:migrate
-pnpm --filter @kast-cms/api run db:seed
+pnpm run db:migrate
+pnpm run db:seed
 
 # 6. Start all dev servers
 pnpm dev

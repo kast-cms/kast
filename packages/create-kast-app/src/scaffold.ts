@@ -17,6 +17,7 @@ import {
   WORKSPACE_TEMPLATE,
 } from './templates/index.js';
 import type { PackageManager, ProjectOptions } from './types.js';
+import { internalDepSpec, rewriteWorkspaceProtocol, wsRun } from './workspace.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -47,6 +48,10 @@ interface TemplateContext {
   isNpm: boolean;
   isYarn: boolean;
   isBun: boolean;
+  dbGenerateCmd: string;
+  dbMigrateCmd: string;
+  dbMigrateProdCmd: string;
+  dbSeedCmd: string;
 }
 
 function installCmd(pm: PackageManager): string {
@@ -101,6 +106,12 @@ function buildContext(opts: ProjectOptions, pmVersion: string): TemplateContext 
     isNpm: opts.packageManager === 'npm',
     isYarn: opts.packageManager === 'yarn',
     isBun: opts.packageManager === 'bun',
+    // prisma:generate needs no DATABASE_URL; the rest run Prisma from apps/api,
+    // so load the repo-root .env via dotenv-cli before delegating.
+    dbGenerateCmd: wsRun(opts.packageManager, '@kast-cms/api', 'prisma:generate'),
+    dbMigrateCmd: `dotenv -- ${wsRun(opts.packageManager, '@kast-cms/api', 'prisma:migrate')}`,
+    dbMigrateProdCmd: `dotenv -- ${wsRun(opts.packageManager, '@kast-cms/api', 'prisma:migrate:prod')}`,
+    dbSeedCmd: `dotenv -- ${wsRun(opts.packageManager, '@kast-cms/api', 'prisma:seed')}`,
   };
 }
 
@@ -113,6 +124,22 @@ interface FileEntry {
   content: string;
 }
 
+/**
+ * Package-manager-specific config files. The NestJS ecosystem still declares
+ * Nest 10 peer ranges, which only npm enforces strictly — install leniently
+ * like pnpm/yarn/bun. Yarn Berry defaults to PnP, which breaks Prisma and
+ * native modules, so pin it to the node_modules linker.
+ */
+function getPmConfigFiles(opts: ProjectOptions): FileEntry[] {
+  if (opts.packageManager === 'npm') {
+    return [{ path: '.npmrc', content: 'legacy-peer-deps=true\n' }];
+  }
+  if (opts.packageManager === 'yarn') {
+    return [{ path: '.yarnrc.yml', content: 'nodeLinker: node-modules\n' }];
+  }
+  return [];
+}
+
 function getMonorepoGeneratedFiles(ctx: TemplateContext, opts: ProjectOptions): FileEntry[] {
   const files: FileEntry[] = [
     { path: 'package.json', content: render(PACKAGE_JSON_TEMPLATE, ctx) },
@@ -120,6 +147,7 @@ function getMonorepoGeneratedFiles(ctx: TemplateContext, opts: ProjectOptions): 
     { path: '.env.example', content: render(ENV_EXAMPLE_TEMPLATE, ctx) },
     { path: 'README.md', content: render(README_TEMPLATE, ctx) },
     { path: '.gitignore', content: GITIGNORE_TEMPLATE },
+    ...getPmConfigFiles(opts),
   ];
 
   const workspaceContent = render(WORKSPACE_TEMPLATE, ctx);
@@ -145,6 +173,7 @@ function getApiOnlyGeneratedFiles(ctx: TemplateContext, opts: ProjectOptions): F
     { path: '.env.example', content: render(ENV_EXAMPLE_TEMPLATE, ctx) },
     { path: 'README.md', content: render(README_TEMPLATE, ctx) },
     { path: '.gitignore', content: GITIGNORE_TEMPLATE },
+    ...getPmConfigFiles(opts),
   ];
 
   if (opts.deployTarget === 'railway') {
@@ -190,6 +219,12 @@ async function scaffoldMonorepo(
 
   if (!opts.includeAdmin) {
     await rm(join(targetDir, 'apps', 'admin'), { recursive: true, force: true });
+  }
+
+  // npm and Yarn Classic can't resolve the `workspace:` protocol — rewrite it.
+  const depSpec = internalDepSpec(opts.packageManager, ctx.pmVersion);
+  if (depSpec !== 'workspace:*') {
+    await rewriteWorkspaceProtocol(targetDir, depSpec);
   }
 
   const files = getMonorepoGeneratedFiles(ctx, opts);

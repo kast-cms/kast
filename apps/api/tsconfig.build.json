@@ -1,4 +1,9 @@
 {
   "extends": "./tsconfig.json",
-  "exclude": ["node_modules", "test", "dist", "**/*spec.ts", "**/*e2e-spec.ts"]
+  "compilerOptions": {
+    "rootDir": "./src",
+    "incremental": false
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "test", "dist", "prisma", "**/*spec.ts", "**/*e2e-spec.ts"]
 }

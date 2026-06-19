@@ -11,8 +11,8 @@
     "clean": "rm -rf dist .astro"
   },
   "dependencies": {
-    "@astrojs/starlight": "^0.33.0",
-    "astro": "^5.7.0",
+    "@astrojs/starlight": "^0.40.0",
+    "astro": "^6.4.7",
     "sharp": "^0.33.5"
   },
   "devDependencies": {
