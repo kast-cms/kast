@@ -1,94 +1,33 @@
-name: Publish
+name: Publish (edge)
+
+# Builds :edge GHCR images on every push to main.
+#
+# All versioned publishing now lives in release.yml, which owns:
+#   - npm publishing of create-kast-app + @kast-cms/sdk + @kast-cms/plugin-sdk
+#     (independent per-package semantic versioning via multi-semantic-release),
+#   - the product vX.Y.Z tag + GitHub Release,
+#   - the versioned (:x.y.z + :latest) api/admin Docker images.
+#
+# Keeping :edge here (and nothing else) means there is exactly ONE place that
+# does each publish, so nothing double-publishes. This workflow is intentionally
+# NOT tag-triggered anymore.
 
 on:
   push:
     branches:
       - main # builds :edge images on every merge to main
-    tags:
-      - 'v*' # builds :latest + :x.y.z images on release tags
 
 concurrency:
-  group: publish-${{ github.ref }}
+  group: publish-edge-${{ github.ref }}
   cancel-in-progress: false
 
+permissions: {}
+
 jobs:
-  # ── Build CLI e2e smoke test ───────────────────────────────────────────────
-  cli-e2e:
-    name: CLI e2e
+  # ── Build & push :edge Docker images ───────────────────────────────────────
+  publish-edge:
+    name: Docker edge — ${{ matrix.app }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build CLI
-        run: pnpm --filter create-kast-app build
-
-      - name: Run CLI e2e tests
-        run: pnpm --filter create-kast-app test:e2e
-
-  # ── Publish NPM packages (tag releases only) ────────────────────────────────
-  publish-npm:
-    name: Publish to NPM
-    runs-on: ubuntu-latest
-    needs: cli-e2e
-    if: startsWith(github.ref, 'refs/tags/v')
-    timeout-minutes: 15
-    permissions:
-      contents: read
-      id-token: write # for npm provenance
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-          registry-url: 'https://registry.npmjs.org'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Generate Prisma client
-        run: pnpm --filter @kast-cms/api exec prisma generate
-
-      - name: Build packages
-        run: pnpm --filter create-kast-app --filter @kast-cms/sdk --filter @kast-cms/plugin-sdk build
-
-      - name: Publish create-kast-app
-        run: pnpm --filter create-kast-app publish --no-git-checks --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish @kast-cms/sdk
-        run: pnpm --filter @kast-cms/sdk publish --no-git-checks --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish @kast-cms/plugin-sdk
-        run: pnpm --filter @kast-cms/plugin-sdk publish --no-git-checks --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-  # ── Build & push Docker images ─────────────────────────────────────────────
-  publish-docker:
-    name: Docker — ${{ matrix.app }}
-    runs-on: ubuntu-latest
-    needs: cli-e2e
-    # Run on main pushes (edge) AND version tags (release)
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     timeout-minutes: 30
     permissions:
       contents: read
@@ -97,11 +36,9 @@ jobs:
       matrix:
         include:
           - app: api
-            context: .
             image: ghcr.io/kast-cms/kast-api
             dockerfile: apps/api/Dockerfile
           - app: admin
-            context: .
             image: ghcr.io/kast-cms/kast-admin
             dockerfile: apps/admin/Dockerfile
 
@@ -124,35 +61,15 @@ jobs:
         with:
           images: ${{ matrix.image }}
           tags: |
-            # :edge on every push to main
             type=edge,branch=main
-            # :latest + :x.y.z on version tags
-            type=semver,pattern={{version}}
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
 
       - name: Build and push ${{ matrix.app }}
         uses: docker/build-push-action@v6
         with:
-          context: ${{ matrix.context }}
+          context: .
           file: ${{ matrix.dockerfile }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-  # ── Create GitHub Release (tag releases only) ───────────────────────────────
-  gh-release:
-    name: GitHub Release
-    runs-on: ubuntu-latest
-    needs: [publish-npm, publish-docker]
-    if: startsWith(github.ref, 'refs/tags/v')
-    timeout-minutes: 5
-    permissions:
-      contents: write
-
-    steps:
-      - name: Create release
-        uses: softprops/action-gh-release@v2
-        with:
-          generate_release_notes: true
