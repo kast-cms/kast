@@ -9,10 +9,10 @@
   },
   "dependencies": {
     "@kast-cms/plugin-sdk": "workspace:*",
-    "meilisearch": "^0.58.0"
+    "meilisearch": "^0.59.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "typescript": "^5.5.0"
+    "typescript": "^6.0.3"
   }
 }
