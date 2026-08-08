@@ -17,7 +17,14 @@
     "locales": "Locales",
     "auditLog": "Audit Log",
     "dashboard": "Dashboard",
-    "queueMonitor": "Queue Monitor"
+    "queueMonitor": "Queue Monitor",
+    "groups": {
+      "overview": "Overview",
+      "content": "Content",
+      "access": "Access",
+      "publishing": "Publishing",
+      "system": "System"
+    }
   },
   "auth": {
     "login": {

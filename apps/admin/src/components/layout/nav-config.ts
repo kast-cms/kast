@@ -31,8 +31,8 @@ export interface NavLinkItem {
 }
 
 export interface NavGroup {
-  /** Section heading in the sidebar. */
-  label: string;
+  /** Key under the `nav.groups` message namespace. */
+  labelKey: string;
   items: NavLinkItem[];
 }
 
@@ -44,11 +44,11 @@ export interface NavGroup {
  */
 export const NAV_GROUPS: NavGroup[] = [
   {
-    label: 'Overview',
+    labelKey: 'overview',
     items: [{ href: '/' as Route, labelKey: 'dashboard', Icon: LayoutDashboard }],
   },
   {
-    label: 'Content',
+    labelKey: 'content',
     items: [
       { href: '/content-types' as Route, labelKey: 'contentTypes', Icon: Database },
       { href: '/content' as Route, labelKey: 'content', Icon: FileText },
@@ -56,7 +56,7 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: 'Access',
+    labelKey: 'access',
     items: [
       { href: '/users' as Route, labelKey: 'users', Icon: Users },
       { href: '/roles' as Route, labelKey: 'roles', Icon: Shield },
@@ -65,7 +65,7 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: 'Publishing',
+    labelKey: 'publishing',
     items: [
       { href: '/seo' as Route, labelKey: 'seo', Icon: Globe },
       { href: '/webhooks' as Route, labelKey: 'webhooks', Icon: Webhook },
@@ -74,7 +74,7 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: 'System',
+    labelKey: 'system',
     items: [
       { href: '/plugins' as Route, labelKey: 'plugins', Icon: Puzzle },
       { href: '/trash' as Route, labelKey: 'trash', Icon: Trash2 },

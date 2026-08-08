@@ -7,11 +7,16 @@ import type { HTMLAttributes, JSX } from 'react';
  * Uses a travelling sheen rather than a pulse: a pulse reads as "something is
  * blinking at me", a sheen reads as "content is on its way". Falls back to a
  * plain block under `prefers-reduced-motion` via the global base rule.
+ *
+ * `data-loading` marks the element as a pending-state placeholder, which lets
+ * automation (the screenshot capture, e2e tests) wait for real content instead
+ * of racing the fetch.
  */
 export function Skeleton({ className, ...props }: HTMLAttributes<HTMLDivElement>): JSX.Element {
   return (
     <div
       aria-hidden="true"
+      data-loading=""
       className={cn(
         'relative overflow-hidden rounded-md bg-muted',
         'after:absolute after:inset-0 after:-translate-x-full after:animate-shimmer',

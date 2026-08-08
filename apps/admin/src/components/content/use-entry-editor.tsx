@@ -1,7 +1,7 @@
 'use client';
 
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import type { createApiClient } from '@/lib/api';
+import { useApiClient } from '@/lib/use-api-client';
 import type { ContentEntryDetail, EntryStatus } from '@kast-cms/sdk';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -116,8 +116,7 @@ export function useEntryEditor({
   entryId,
   initialEntry,
 }: UseEntryEditorParams): EntryEditorState {
-  const { session } = useSession();
-  const client = createApiClient(session?.accessToken);
+  const client = useApiClient();
   const [data, setDataState] = useState<Record<string, unknown>>(
     initialEntry ? stripSeo(initialEntry.data) : {},
   );

@@ -117,14 +117,14 @@ function SidebarNav({ groups, collapsed, isActive, label }: SidebarNavProps): JS
       aria-label="Main navigation"
     >
       {groups.map((group) => (
-        <div key={group.label} className="mb-5 last:mb-0">
+        <div key={group.labelKey} className="mb-5 last:mb-0">
           {/* Collapsed, the section headings would not fit, so a rule carries
               the same grouping information instead. */}
           {collapsed ? (
             <div className="mx-2 mb-2 h-px bg-sidebar-border first:hidden" aria-hidden="true" />
           ) : (
             <p className="mb-1.5 px-2.5 text-2xs font-semibold tracking-wider text-sidebar-muted-foreground uppercase">
-              {group.label}
+              {label(`groups.${group.labelKey}`)}
             </p>
           )}
           <ul role="list" className="space-y-0.5">

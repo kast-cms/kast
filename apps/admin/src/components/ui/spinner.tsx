@@ -26,6 +26,7 @@ export function Spinner({ className, size = 'md', label = 'Loading' }: SpinnerPr
   return (
     <>
       <svg
+        data-loading=""
         className={cn('animate-spin text-current', SIZE_MAP[size], className)}
         viewBox="0 0 24 24"
         fill="none"

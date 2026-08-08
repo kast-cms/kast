@@ -1,9 +1,21 @@
 import { API_URL } from '@/config/env';
 import { KastClient } from '@kast-cms/sdk';
 
+/*
+ * This module is imported from BOTH server and client components, so it must
+ * stay free of `'use client'` — marking it would make `createServerApiClient`
+ * unavailable to server components. The React hook lives in
+ * `lib/use-api-client.ts` instead.
+ */
+
 /**
  * Creates a KastClient instance for browser usage.
  * Pass the access token from session context.
+ *
+ * Note: this returns a NEW client on every call. Inside a component, prefer
+ * `useApiClient()` — a fresh instance on each render makes any effect that
+ * depends on the client re-run every render, which turns a single fetch into
+ * an unbounded request loop.
  */
 export function createApiClient(accessToken?: string): KastClient {
   return new KastClient({

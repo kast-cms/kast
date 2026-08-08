@@ -1,7 +1,6 @@
 'use client';
 
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { useApiClient } from '@/lib/use-api-client';
 import type { ContentEntrySummary, EntryStatus } from '@kast-cms/sdk';
 import { useCallback, useState } from 'react';
 
@@ -30,8 +29,7 @@ interface EntryListState {
 }
 
 export function useEntryList({ typeId }: UseEntryListParams): EntryListState {
-  const { session } = useSession();
-  const client = createApiClient(session?.accessToken);
+  const client = useApiClient();
   const [entries, setEntries] = useState<ContentEntrySummary[]>([]);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');

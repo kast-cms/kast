@@ -17,7 +17,14 @@
     "locales": "اللغات",
     "auditLog": "سجل التدقيق",
     "dashboard": "لوحة التحكم",
-    "queueMonitor": "مراقب قوائم الانتظار"
+    "queueMonitor": "مراقب قوائم الانتظار",
+    "groups": {
+      "overview": "نظرة عامة",
+      "content": "المحتوى",
+      "access": "الوصول",
+      "publishing": "النشر",
+      "system": "النظام"
+    }
   },
   "auth": {
     "login": {

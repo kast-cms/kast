@@ -20,6 +20,7 @@
  *   SCREENSHOT_PASSWORD  default Admin1234!
  *   PLAYWRIGHT_CHROMIUM  explicit path to a Chromium binary, if autodetect fails
  */
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -47,14 +48,38 @@ const onlySet = only ? new Set(only.split(',')) : null;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /* ── Optional deps, resolved leniently so a partial install still explains itself ── */
+
+/**
+ * Playwright is a heavy dev-only dependency, so it is not in package.json.
+ * Look for it locally first, then in the global npm root — CI images and dev
+ * containers commonly ship it globally, where a bare `require` cannot see it.
+ */
 function loadPlaywright() {
-  for (const id of ['playwright', 'playwright-core', '@playwright/test']) {
+  const ids = ['playwright', 'playwright-core', '@playwright/test'];
+  for (const id of ids) {
     try {
       return require(id);
     } catch {
       /* try the next one */
     }
   }
+
+  let globalRoot = '';
+  try {
+    globalRoot = execFileSync('npm', ['root', '-g'], { encoding: 'utf8' }).trim();
+  } catch {
+    /* npm not on PATH — fall through to the error below */
+  }
+  if (globalRoot) {
+    for (const id of ids) {
+      try {
+        return require(path.join(globalRoot, id));
+      } catch {
+        /* try the next one */
+      }
+    }
+  }
+
   throw new Error(
     'Playwright is not installed. Install it globally (`npm i -g playwright`) or add it as a dev dependency.',
   );
@@ -185,17 +210,33 @@ async function login(page) {
   await page.waitForLoadState('networkidle').catch(() => {});
 }
 
-/** Wait for the network, the webfonts and any in-flight animation to settle. */
+/**
+ * Wait for the page to be genuinely ready to photograph.
+ *
+ * `networkidle` alone is not enough: these screens fetch their data from the
+ * client after hydration, so the first idle moment happens *before* the request
+ * is even sent and the shot catches a skeleton. Waiting for every `data-loading`
+ * marker to disappear is what actually tracks "content has arrived".
+ */
 async function settle(page) {
+  await page.waitForLoadState('networkidle').catch(() => {});
+  await page
+    .waitForFunction(() => document.querySelectorAll('[data-loading]').length === 0, {
+      timeout: 15_000,
+    })
+    .catch(() => {
+      /* Some screens are legitimately empty or slow; shoot them as they are. */
+    });
   await page.waitForLoadState('networkidle').catch(() => {});
   await page
     .waitForFunction(() => document.fonts?.status === 'loaded', { timeout: 5_000 })
     .catch(() => {});
+  // Freeze motion last, so nothing above raced a half-finished transition.
   await page.addStyleTag({
     content:
       '*,*::before,*::after{animation-duration:0s!important;animation-delay:0s!important;transition-duration:0s!important}',
   });
-  await sleep(600);
+  await sleep(500);
 }
 
 async function optimize(file, sharp) {
@@ -248,7 +289,19 @@ async function writeIndex(captured) {
     }
   }
 
-  await fs.writeFile(path.join(OUT, 'README.md'), lines.join('\n'));
+  const indexPath = path.join(OUT, 'README.md');
+  await fs.writeFile(indexPath, lines.join('\n'));
+
+  // The repo gates on `prettier --check .`, so format the generated file here
+  // rather than leaving a failing CI run for whoever regenerates the shots.
+  try {
+    execFileSync('pnpm', ['exec', 'prettier', '--write', indexPath], {
+      cwd: REPO,
+      stdio: 'ignore',
+    });
+  } catch {
+    console.warn('  ! could not run prettier on the index — run `pnpm format` before committing');
+  }
 }
 
 /* ── Main ─────────────────────────────────────────────────────────────────── */
