@@ -87,7 +87,7 @@ export function TrashTabs(): JSX.Element {
         ))}
       </TabsList>
       {MODELS.map((m) => (
-        <TabsContent key={m} value={m} className="mt-4">
+        <TabsContent key={m} value={m}>
           <TrashTable
             model={m}
             items={items[m]}

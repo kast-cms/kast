@@ -1,6 +1,10 @@
 'use client';
 
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { PageHeader } from '@/components/ui/page-header';
+import { cn } from '@/lib/utils';
 import type { ContentEntryDetail, ContentTypeDetail } from '@kast-cms/sdk';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
@@ -19,6 +23,90 @@ function getEffectiveEntryId(
   return created;
 }
 
+interface SeoFields {
+  metaTitle: string;
+  metaDescription: string;
+  canonicalUrl: string;
+  ogImage: string;
+}
+
+/** The editor keeps SEO as a loose record; the panel wants four defined strings. */
+function getSeoFields(seo: Record<string, string>): SeoFields {
+  const { metaTitle = '', metaDescription = '', canonicalUrl = '', ogImage = '' } = seo;
+  return { metaTitle, metaDescription, canonicalUrl, ogImage };
+}
+
+interface EditorHeaderProps {
+  isEditing: boolean;
+  autosaved: boolean;
+}
+
+function EditorHeader({ isEditing, autosaved }: EditorHeaderProps): JSX.Element {
+  const t = useTranslations('content.editor');
+  return (
+    <PageHeader
+      title={isEditing ? t('editTitle') : t('newTitle')}
+      actions={
+        autosaved ? (
+          <Badge variant="success" dot>
+            {t('autosaved')}
+          </Badge>
+        ) : undefined
+      }
+    />
+  );
+}
+
+interface FieldsCardProps {
+  contentType: ContentTypeDetail;
+  data: Record<string, unknown>;
+  onFieldChange: (name: string, value: unknown) => void;
+  disabled: boolean;
+}
+
+/** The content type's own fields, one control per field definition. */
+function FieldsCard({ contentType, data, onFieldChange, disabled }: FieldsCardProps): JSX.Element {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{contentType.displayName}</CardTitle>
+        {contentType.description !== null && contentType.description !== '' && (
+          <CardDescription>{contentType.description}</CardDescription>
+        )}
+      </CardHeader>
+      <CardContent className="space-y-5 pt-4">
+        {contentType.fields.map((field) => {
+          // A lone switch under a stacked label reads as unfinished, so
+          // booleans get a row treatment instead.
+          const isToggle = field.type === 'BOOLEAN';
+          return (
+            <div
+              key={field.id}
+              className={cn(
+                isToggle
+                  ? 'flex items-center justify-between gap-4 rounded-lg border border-border px-3.5 py-3'
+                  : 'space-y-2',
+              )}
+            >
+              <Label htmlFor={`field-${field.name}`} required={field.isRequired}>
+                {field.displayName}
+              </Label>
+              <FieldRenderer
+                field={field}
+                value={data[field.name]}
+                onChange={(val) => {
+                  onFieldChange(field.name, val);
+                }}
+                disabled={disabled}
+              />
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+}
+
 interface EntryEditorProps {
   typeId: string;
   contentType: ContentTypeDetail;
@@ -27,7 +115,6 @@ interface EntryEditorProps {
 
 export function EntryEditor({ typeId, contentType, entry }: EntryEditorProps): JSX.Element {
   const router = useRouter();
-  const t = useTranslations('content.editor');
   const {
     data,
     seo,
@@ -94,16 +181,11 @@ export function EntryEditor({ typeId, contentType, entry }: EntryEditorProps): J
   }
 
   const busy = [isSaving, isPublishing, isUnpublishing, isArchiving, isRestoring].some(Boolean);
-  const { metaTitle = '', metaDescription = '', canonicalUrl = '', ogImage = '' } = seo;
+  const { metaTitle, metaDescription, canonicalUrl, ogImage } = getSeoFields(seo);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">{entry ? t('editTitle') : t('newTitle')}</h1>
-        {autosaved && (
-          <span className="text-xs text-[--color-muted-foreground]">{t('autosaved')}</span>
-        )}
-      </div>
+    <div className="mx-auto w-full max-w-3xl space-y-6">
+      <EditorHeader isEditing={entry !== null} autosaved={autosaved} />
       <ActionBar
         status={status}
         isSaving={isSaving}
@@ -139,24 +221,7 @@ export function EntryEditor({ typeId, contentType, entry }: EntryEditorProps): J
           setVersionPanelOpen(true);
         }}
       />
-      <div className="space-y-6 rounded-lg border border-[--color-border] p-6">
-        {contentType.fields.map((field) => (
-          <div key={field.id} className="space-y-1">
-            <Label htmlFor={`field-${field.name}`}>
-              {field.displayName}
-              {field.isRequired && <span className="ms-1 text-[--color-destructive]">*</span>}
-            </Label>
-            <FieldRenderer
-              field={field}
-              value={data[field.name]}
-              onChange={(val) => {
-                setData(field.name, val);
-              }}
-              disabled={busy}
-            />
-          </div>
-        ))}
-      </div>
+      <FieldsCard contentType={contentType} data={data} onFieldChange={setData} disabled={busy} />
       <SeoPanel
         metaTitle={metaTitle}
         metaDescription={metaDescription}

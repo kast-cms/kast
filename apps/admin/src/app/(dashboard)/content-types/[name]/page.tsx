@@ -1,7 +1,9 @@
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/ui/page-header';
 import { createServerApiClient } from '@/lib/api';
 import type { ContentTypeDetail } from '@kast-cms/sdk';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Database } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -31,26 +33,45 @@ export default async function ContentTypePage({
     notFound();
   }
 
-  return (
-    <div className="mx-auto max-w-3xl flex flex-col gap-y-6">
-      <div className="flex items-center gap-x-3">
-        <Button asChild variant="ghost" size="sm">
-          <Link href="/content-types">
-            <ChevronLeft className="me-1 h-4 w-4" />
-            Content Types
-          </Link>
-        </Button>
-      </div>
+  const hasIcon = contentType.icon !== null && contentType.icon !== '';
 
-      <div className="flex items-center gap-x-3">
-        {contentType.icon !== null && contentType.icon !== '' && (
-          <span className="text-3xl">{contentType.icon}</span>
-        )}
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">{contentType.displayName}</h1>
-          <code className="text-sm text-muted-foreground">{contentType.name}</code>
-        </div>
-      </div>
+  return (
+    <div className="mx-auto max-w-3xl space-y-6">
+      <PageHeader
+        breadcrumb={
+          <Button asChild variant="ghost" size="sm" className="-ms-2 w-fit text-muted-foreground">
+            <Link href="/content-types">
+              <ChevronLeft className="rtl:rotate-180" />
+              Content Types
+            </Link>
+          </Button>
+        }
+        title={
+          <span className="flex min-w-0 items-center gap-3">
+            <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary-subtle text-lg text-primary-subtle-foreground">
+              {hasIcon ? contentType.icon : <Database className="size-4.5" />}
+            </span>
+            <span className="truncate">{contentType.displayName}</span>
+          </span>
+        }
+        description={
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <code className="rounded-sm bg-muted px-1.5 py-0.5 font-mono text-xs">
+              {contentType.name}
+            </code>
+            {contentType.description !== null && contentType.description !== '' && (
+              <span>{contentType.description}</span>
+            )}
+          </span>
+        }
+        actions={
+          contentType.isSystem ? (
+            <Badge variant="muted" dot>
+              System type
+            </Badge>
+          ) : undefined
+        }
+      />
 
       <EditContentTypeForm initialData={contentType} />
     </div>

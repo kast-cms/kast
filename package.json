@@ -18,7 +18,9 @@
     "release": "multi-semantic-release --deps.bump=override",
     "release:dry": "multi-semantic-release --dry-run --deps.bump=override",
     "release:bootstrap-tags": "node scripts/bootstrap-release-tags.mjs",
-    "prepare": "husky"
+    "prepare": "husky",
+    "screenshots": "node scripts/capture-screenshots.mjs",
+    "audit:contrast": "node scripts/audit-contrast.mjs"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.0.0",

@@ -1,10 +1,12 @@
 'use client';
 
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Spinner } from '@/components/ui/spinner';
 import { API_URL } from '@/config/env';
+import { ArrowLeft } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { type JSX, useState } from 'react';
@@ -36,61 +38,61 @@ export default function ForgotPasswordPage(): JSX.Element {
   };
 
   return (
-    <div className="rounded-xl border border-[--color-border] bg-[--color-card] p-8 shadow-sm">
-      <div className="mb-6 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-[--color-foreground]">
-          {t('title')}
-        </h1>
-        <p className="mt-1 text-sm text-[--color-muted-foreground]">{t('subtitle')}</p>
-      </div>
+    <Card variant="elevated">
+      <CardHeader className="px-6 pt-6 text-center">
+        <CardTitle className="text-lg">{t('title')}</CardTitle>
+        <CardDescription>{t('subtitle')}</CardDescription>
+      </CardHeader>
 
-      {submitted ? (
-        <div className="space-y-4 text-center">
-          <p className="text-sm text-[--color-foreground]">{t('successMessage')}</p>
-          <Link href="/login" className="text-sm text-[--color-primary] hover:underline">
-            {t('backToLogin')}
-          </Link>
-        </div>
-      ) : (
-        <form onSubmit={(e) => void handleSubmit(e)} noValidate className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="email">{t('emailLabel')}</Label>
-            <Input
-              id="email"
-              type="email"
-              autoComplete="email"
-              placeholder={t('emailPlaceholder')}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              disabled={isPending}
-            />
+      <CardContent className="px-6 pt-5 pb-6">
+        {submitted ? (
+          <div className="space-y-4">
+            <Alert variant="success">
+              <AlertDescription>{t('successMessage')}</AlertDescription>
+            </Alert>
+            <Button variant="ghost" className="w-full" asChild>
+              <Link href="/login">
+                <ArrowLeft className="rtl:rotate-180" />
+                {t('backToLogin')}
+              </Link>
+            </Button>
           </div>
+        ) : (
+          <form onSubmit={(e) => void handleSubmit(e)} noValidate className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="email">{t('emailLabel')}</Label>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder={t('emailPlaceholder')}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={isPending}
+              />
+            </div>
 
-          {error && (
-            <p role="alert" className="text-sm text-[--color-destructive]">
-              {error}
-            </p>
-          )}
-
-          <Button type="submit" className="w-full" disabled={isPending}>
-            {isPending ? (
-              <>
-                <Spinner size="sm" />
-                {t('submitting')}
-              </>
-            ) : (
-              t('submit')
+            {error !== null && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
             )}
-          </Button>
 
-          <p className="text-center text-sm text-[--color-muted-foreground]">
-            <Link href="/login" className="hover:text-[--color-foreground] hover:underline">
-              {t('backToLogin')}
-            </Link>
-          </p>
-        </form>
-      )}
-    </div>
+            <div className="space-y-2 pt-1">
+              <Button type="submit" className="w-full" loading={isPending}>
+                {isPending ? t('submitting') : t('submit')}
+              </Button>
+              <Button variant="ghost" className="w-full" asChild>
+                <Link href="/login">
+                  <ArrowLeft className="rtl:rotate-180" />
+                  {t('backToLogin')}
+                </Link>
+              </Button>
+            </div>
+          </form>
+        )}
+      </CardContent>
+    </Card>
   );
 }

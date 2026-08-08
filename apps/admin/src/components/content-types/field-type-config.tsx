@@ -1,7 +1,7 @@
 'use client';
 
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { FieldHint, Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -11,12 +11,34 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import type { ContentFieldType } from '@kast-cms/sdk';
-import { useCallback, type ChangeEvent, type JSX } from 'react';
+import { useCallback, type ChangeEvent, type JSX, type ReactNode } from 'react';
 
 interface FieldConfigProps {
   type: ContentFieldType;
   config: Record<string, unknown>;
   onConfigChange: (config: Record<string, unknown>) => void;
+}
+
+/** A switch and its label on one line, so boolean settings all sit the same way. */
+function ToggleRow({
+  id,
+  label,
+  checked,
+  onCheckedChange,
+}: {
+  id: string;
+  label: ReactNode;
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+}): JSX.Element {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <Label htmlFor={id} className="cursor-pointer">
+        {label}
+      </Label>
+      <Switch id={id} className="shrink-0" checked={checked} onCheckedChange={onCheckedChange} />
+    </div>
+  );
 }
 
 function TextConfig({
@@ -27,43 +49,47 @@ function TextConfig({
   set: (k: string, v: unknown) => void;
 }): JSX.Element {
   return (
-    <div className="grid gap-y-4">
-      <div className="grid gap-y-2">
-        <Label htmlFor="cfg-minLength">Min length</Label>
-        <Input
-          id="cfg-minLength"
-          type="number"
-          min={0}
-          placeholder="0"
-          value={typeof config['minLength'] === 'number' ? config['minLength'] : ''}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => {
-            set('minLength', e.target.value !== '' ? Number(e.target.value) : undefined);
-          }}
-        />
+    <div className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="cfg-minLength">Min length</Label>
+          <Input
+            id="cfg-minLength"
+            type="number"
+            min={0}
+            placeholder="0"
+            value={typeof config['minLength'] === 'number' ? config['minLength'] : ''}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+              set('minLength', e.target.value !== '' ? Number(e.target.value) : undefined);
+            }}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="cfg-maxLength">Max length</Label>
+          <Input
+            id="cfg-maxLength"
+            type="number"
+            min={1}
+            placeholder="255"
+            value={typeof config['maxLength'] === 'number' ? config['maxLength'] : ''}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+              set('maxLength', e.target.value !== '' ? Number(e.target.value) : undefined);
+            }}
+          />
+        </div>
       </div>
-      <div className="grid gap-y-2">
-        <Label htmlFor="cfg-maxLength">Max length</Label>
-        <Input
-          id="cfg-maxLength"
-          type="number"
-          min={1}
-          placeholder="255"
-          value={typeof config['maxLength'] === 'number' ? config['maxLength'] : ''}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => {
-            set('maxLength', e.target.value !== '' ? Number(e.target.value) : undefined);
-          }}
-        />
-      </div>
-      <div className="grid gap-y-2">
+      <div className="space-y-2">
         <Label htmlFor="cfg-regex">Regex pattern</Label>
         <Input
           id="cfg-regex"
+          className="font-mono"
           placeholder="^[a-z]+$"
           value={typeof config['regex'] === 'string' ? config['regex'] : ''}
           onChange={(e: ChangeEvent<HTMLInputElement>) => {
             set('regex', e.target.value !== '' ? e.target.value : undefined);
           }}
         />
+        <FieldHint>Values that do not match are rejected on save.</FieldHint>
       </div>
     </div>
   );
@@ -77,39 +103,39 @@ function NumberConfig({
   set: (k: string, v: unknown) => void;
 }): JSX.Element {
   return (
-    <div className="grid gap-y-4">
-      <div className="grid gap-y-2">
-        <Label htmlFor="cfg-min">Min value</Label>
-        <Input
-          id="cfg-min"
-          type="number"
-          value={typeof config['min'] === 'number' ? config['min'] : ''}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => {
-            set('min', e.target.value !== '' ? Number(e.target.value) : undefined);
-          }}
-        />
+    <div className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="cfg-min">Min value</Label>
+          <Input
+            id="cfg-min"
+            type="number"
+            value={typeof config['min'] === 'number' ? config['min'] : ''}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+              set('min', e.target.value !== '' ? Number(e.target.value) : undefined);
+            }}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="cfg-max">Max value</Label>
+          <Input
+            id="cfg-max"
+            type="number"
+            value={typeof config['max'] === 'number' ? config['max'] : ''}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+              set('max', e.target.value !== '' ? Number(e.target.value) : undefined);
+            }}
+          />
+        </div>
       </div>
-      <div className="grid gap-y-2">
-        <Label htmlFor="cfg-max">Max value</Label>
-        <Input
-          id="cfg-max"
-          type="number"
-          value={typeof config['max'] === 'number' ? config['max'] : ''}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => {
-            set('max', e.target.value !== '' ? Number(e.target.value) : undefined);
-          }}
-        />
-      </div>
-      <div className="flex items-center justify-between">
-        <Label htmlFor="cfg-isInteger">Integer only</Label>
-        <Switch
-          id="cfg-isInteger"
-          checked={config['isInteger'] === true}
-          onCheckedChange={(checked) => {
-            set('isInteger', checked);
-          }}
-        />
-      </div>
+      <ToggleRow
+        id="cfg-isInteger"
+        label="Integer only"
+        checked={config['isInteger'] === true}
+        onCheckedChange={(checked) => {
+          set('isInteger', checked);
+        }}
+      />
     </div>
   );
 }
@@ -125,21 +151,20 @@ function MediaConfig({
     ? (config['allowedMimeTypes'] as string[]).join(', ')
     : '';
   return (
-    <div className="grid gap-y-4">
-      <div className="flex items-center justify-between">
-        <Label htmlFor="cfg-multiple">Allow multiple files</Label>
-        <Switch
-          id="cfg-multiple"
-          checked={config['multiple'] === true}
-          onCheckedChange={(checked) => {
-            set('multiple', checked);
-          }}
-        />
-      </div>
-      <div className="grid gap-y-2">
+    <div className="space-y-4">
+      <ToggleRow
+        id="cfg-multiple"
+        label="Allow multiple files"
+        checked={config['multiple'] === true}
+        onCheckedChange={(checked) => {
+          set('multiple', checked);
+        }}
+      />
+      <div className="space-y-2">
         <Label htmlFor="cfg-mimeTypes">Allowed MIME types</Label>
         <Input
           id="cfg-mimeTypes"
+          className="font-mono"
           placeholder="image/jpeg, image/png"
           value={mimeVal}
           onChange={(e: ChangeEvent<HTMLInputElement>) => {
@@ -150,7 +175,7 @@ function MediaConfig({
             set('allowedMimeTypes', vals.length > 0 ? vals : undefined);
           }}
         />
-        <p className="text-xs text-muted-foreground">Comma-separated. Leave empty to allow all.</p>
+        <FieldHint>Comma-separated. Leave empty to allow all.</FieldHint>
       </div>
     </div>
   );
@@ -174,7 +199,7 @@ export function FieldTypeConfig({
 
   if (type === 'DATE') {
     return (
-      <div className="grid gap-y-2">
+      <div className="space-y-2">
         <Label htmlFor="cfg-variant">Date variant</Label>
         <Select
           value={typeof config['variant'] === 'string' ? config['variant'] : 'date'}
@@ -200,10 +225,11 @@ export function FieldTypeConfig({
       ? (config['values'] as string[]).join(', ')
       : '';
     return (
-      <div className="grid gap-y-2">
+      <div className="space-y-2">
         <Label htmlFor="cfg-values">Enum values</Label>
         <Input
           id="cfg-values"
+          className="font-mono"
           placeholder="draft, published, archived"
           value={enumVal}
           onChange={(e: ChangeEvent<HTMLInputElement>) => {
@@ -216,26 +242,30 @@ export function FieldTypeConfig({
             );
           }}
         />
-        <p className="text-xs text-muted-foreground">Comma-separated list of allowed values.</p>
+        <FieldHint>Comma-separated list of allowed values.</FieldHint>
       </div>
     );
   }
 
   if (type === 'UID') {
     return (
-      <div className="grid gap-y-2">
-        <Label htmlFor="cfg-targetField">Target field (source for UID generation)</Label>
+      <div className="space-y-2">
+        <Label htmlFor="cfg-targetField">Target field</Label>
         <Input
           id="cfg-targetField"
+          className="font-mono"
           placeholder="title"
           value={typeof config['targetField'] === 'string' ? config['targetField'] : ''}
           onChange={(e: ChangeEvent<HTMLInputElement>) => {
             set('targetField', e.target.value !== '' ? e.target.value : undefined);
           }}
         />
+        <FieldHint>The field the UID is generated from.</FieldHint>
       </div>
     );
   }
 
-  return null;
+  // Every other type is configuration-free. Say so, rather than leaving the
+  // panel that wraps this component looking like it failed to render.
+  return <p className="text-sm text-muted-foreground">This field type has no extra settings.</p>;
 }

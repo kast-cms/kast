@@ -1,38 +1,31 @@
 'use client';
 
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { CheckCircle, Save, Send, XCircle } from 'lucide-react';
+import { SeparatorWithLabel } from '@/components/ui/separator';
+import { AtSign, Mail, Save, Send } from 'lucide-react';
 import { useState, type JSX } from 'react';
+import { SettingsField } from './settings-field';
 import type { UseSettingsReturn } from './use-settings';
 
 interface Props {
   s: UseSettingsReturn;
 }
 
-export function EmailTab({ s }: Props): JSX.Element {
-  const [host, setHost] = useState<string>(() => String(s.getValue('smtp.host') ?? ''));
-  const [port, setPort] = useState<string>(() => String(s.getValue('smtp.port') ?? '587'));
-  const [user, setUser] = useState<string>(() => String(s.getValue('smtp.user') ?? ''));
-  const [pass, setPass] = useState<string>('');
-  const [from, setFrom] = useState<string>(() => String(s.getValue('smtp.from') ?? ''));
-  const [fromName, setFromName] = useState<string>(() => String(s.getValue('smtp.fromName') ?? ''));
+/** Verification panel — deliberately separate from the form it verifies. */
+function TestEmailCard({ s }: Props): JSX.Element {
   const [testTo, setTestTo] = useState('');
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
   const [testing, setTesting] = useState(false);
-
-  const save = async (): Promise<void> => {
-    const patches = [
-      { key: 'smtp.host', value: host },
-      { key: 'smtp.port', value: port },
-      { key: 'smtp.user', value: user },
-      { key: 'smtp.from', value: from },
-      { key: 'smtp.fromName', value: fromName },
-    ];
-    if (pass) patches.push({ key: 'smtp.password', value: pass });
-    await s.patchSettings(patches);
-  };
 
   const sendTest = async (): Promise<void> => {
     setTesting(true);
@@ -48,108 +41,171 @@ export function EmailTab({ s }: Props): JSX.Element {
   };
 
   return (
-    <div className="space-y-6 max-w-lg">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="smtp-host">SMTP Host</Label>
-          <Input
-            id="smtp-host"
-            value={host}
-            onChange={(e) => setHost(e.target.value)}
-            placeholder="smtp.example.com"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="smtp-port">Port</Label>
-          <Input
-            id="smtp-port"
-            value={port}
-            onChange={(e) => setPort(e.target.value)}
-            placeholder="587"
-          />
-        </div>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="smtp-user">Username</Label>
-        <Input
-          id="smtp-user"
-          value={user}
-          onChange={(e) => setUser(e.target.value)}
-          placeholder="user@example.com"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="smtp-pass">Password</Label>
-        <Input
-          id="smtp-pass"
-          type="password"
-          value={pass}
-          onChange={(e) => setPass(e.target.value)}
-          placeholder="Leave blank to keep existing"
-        />
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="smtp-from">From Address</Label>
-          <Input
-            id="smtp-from"
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-            placeholder="noreply@example.com"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="smtp-from-name">From Name</Label>
-          <Input
-            id="smtp-from-name"
-            value={fromName}
-            onChange={(e) => setFromName(e.target.value)}
-            placeholder="My CMS"
-          />
-        </div>
-      </div>
-      <Button
-        onClick={() => {
-          void save();
-        }}
-        disabled={s.saving}
-        className="flex items-center gap-2"
-      >
-        <Save className="size-4" />
-        {s.saving ? 'Saving…' : 'Save Email'}
-      </Button>
-
-      <div className="border-t pt-6 space-y-4">
-        <p className="text-sm font-medium">Send Test Email</p>
-        <div className="flex gap-2">
+    <Card>
+      <CardHeader>
+        <CardTitle>Send Test Email</CardTitle>
+        <CardDescription>
+          Delivers a message using the settings that are currently saved.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4 pt-4">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <Input
             value={testTo}
             onChange={(e) => setTestTo(e.target.value)}
             placeholder="recipient@example.com"
+            aria-label="Test recipient"
+            startAdornment={<Mail />}
           />
           <Button
             variant="outline"
             onClick={() => {
               void sendTest();
             }}
-            disabled={testing || !testTo}
-            className="flex items-center gap-2 whitespace-nowrap bg-white text-gray-700 border-gray-300 hover:bg-gray-100 hover:text-gray-900"
+            disabled={!testTo}
+            loading={testing}
+            className="shrink-0"
           >
-            <Send className="size-4" />
+            {!testing && <Send />}
             {testing ? 'Sending…' : 'Send Test'}
           </Button>
         </div>
+
         {testResult === 'success' && (
-          <p className="flex items-center gap-2 text-sm text-green-600">
-            <CheckCircle className="size-4" /> Test email sent successfully
-          </p>
+          <Alert variant="success">
+            <AlertTitle>Test email sent successfully</AlertTitle>
+            <AlertDescription>Check the inbox for {testTo}.</AlertDescription>
+          </Alert>
         )}
         {testResult === 'error' && (
-          <p className="flex items-center gap-2 text-sm text-destructive">
-            <XCircle className="size-4" /> Failed to send test email — check your SMTP settings
-          </p>
+          <Alert variant="destructive">
+            <AlertTitle>Failed to send test email</AlertTitle>
+            <AlertDescription>
+              Check your SMTP host, port and credentials, then save before retrying.
+            </AlertDescription>
+          </Alert>
         )}
-      </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function EmailTab({ s }: Props): JSX.Element {
+  const [host, setHost] = useState<string>(() => String(s.getValue('smtp.host') ?? ''));
+  const [port, setPort] = useState<string>(() => String(s.getValue('smtp.port') ?? '587'));
+  const [user, setUser] = useState<string>(() => String(s.getValue('smtp.user') ?? ''));
+  const [pass, setPass] = useState<string>('');
+  const [from, setFrom] = useState<string>(() => String(s.getValue('smtp.from') ?? ''));
+  const [fromName, setFromName] = useState<string>(() => String(s.getValue('smtp.fromName') ?? ''));
+
+  const save = async (): Promise<void> => {
+    const patches = [
+      { key: 'smtp.host', value: host },
+      { key: 'smtp.port', value: port },
+      { key: 'smtp.user', value: user },
+      { key: 'smtp.from', value: from },
+      { key: 'smtp.fromName', value: fromName },
+    ];
+    if (pass) patches.push({ key: 'smtp.password', value: pass });
+    await s.patchSettings(patches);
+  };
+
+  return (
+    <div className="max-w-3xl space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>SMTP</CardTitle>
+          <CardDescription>
+            The relay used for password resets, invitations and notifications.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5 pt-4">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <SettingsField
+              className="sm:col-span-2"
+              label="SMTP Host"
+              htmlFor="smtp-host"
+              required
+              hint="Hostname of your mail relay."
+            >
+              <Input
+                id="smtp-host"
+                value={host}
+                onChange={(e) => setHost(e.target.value)}
+                placeholder="smtp.example.com"
+              />
+            </SettingsField>
+
+            <SettingsField label="Port" htmlFor="smtp-port" required hint="587 for STARTTLS.">
+              <Input
+                id="smtp-port"
+                value={port}
+                onChange={(e) => setPort(e.target.value)}
+                placeholder="587"
+              />
+            </SettingsField>
+          </div>
+
+          <SettingsField label="Username" htmlFor="smtp-user">
+            <Input
+              id="smtp-user"
+              value={user}
+              onChange={(e) => setUser(e.target.value)}
+              placeholder="user@example.com"
+            />
+          </SettingsField>
+
+          <SettingsField
+            label="Password"
+            htmlFor="smtp-pass"
+            hint="Write-only — the stored value is never sent back to this screen."
+          >
+            <Input
+              id="smtp-pass"
+              type="password"
+              value={pass}
+              onChange={(e) => setPass(e.target.value)}
+              placeholder="Leave blank to keep existing"
+            />
+          </SettingsField>
+
+          <SeparatorWithLabel>Sender</SeparatorWithLabel>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <SettingsField label="From Address" htmlFor="smtp-from" required>
+              <Input
+                id="smtp-from"
+                value={from}
+                onChange={(e) => setFrom(e.target.value)}
+                placeholder="noreply@example.com"
+                startAdornment={<AtSign />}
+              />
+            </SettingsField>
+
+            <SettingsField label="From Name" htmlFor="smtp-from-name">
+              <Input
+                id="smtp-from-name"
+                value={fromName}
+                onChange={(e) => setFromName(e.target.value)}
+                placeholder="My CMS"
+              />
+            </SettingsField>
+          </div>
+        </CardContent>
+        <CardFooter className="justify-end">
+          <Button
+            onClick={() => {
+              void save();
+            }}
+            loading={s.saving}
+          >
+            {!s.saving && <Save />}
+            {s.saving ? 'Saving…' : 'Save Email'}
+          </Button>
+        </CardFooter>
+      </Card>
+
+      <TestEmailCard s={s} />
     </div>
   );
 }

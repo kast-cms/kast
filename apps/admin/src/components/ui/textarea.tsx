@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import type { JSX, TextareaHTMLAttributes } from 'react';
+import { fieldBaseClasses } from './input';
 
 export function Textarea({
   className,
@@ -8,7 +9,10 @@ export function Textarea({
   return (
     <textarea
       className={cn(
-        'flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+        fieldBaseClasses,
+        // `field-sizing-content` lets the box grow with the text on browsers
+        // that support it, while min-h keeps a sane floor everywhere else.
+        'field-sizing-content min-h-20 px-3 py-2 text-sm',
         className,
       )}
       {...props}

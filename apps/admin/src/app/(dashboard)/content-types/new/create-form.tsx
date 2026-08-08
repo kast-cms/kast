@@ -1,8 +1,10 @@
 'use client';
 
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { FieldHint, Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
@@ -73,90 +75,104 @@ export function CreateContentTypeForm(): JSX.Element {
   );
 
   return (
-    <form
-      onSubmit={(e) => {
-        void handleSubmit(e);
-      }}
-      className="flex flex-col gap-y-6"
-    >
-      {error !== null && (
-        <div className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
-        </div>
-      )}
+    <Card>
+      <form
+        onSubmit={(e) => {
+          void handleSubmit(e);
+        }}
+      >
+        <CardContent className="space-y-5">
+          {error !== null && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
-      <div className="grid gap-y-2">
-        <Label htmlFor="displayName">Display Name</Label>
-        <Input
-          id="displayName"
-          value={displayName}
-          onChange={handleDisplayNameChange}
-          placeholder="Blog Post"
-          required
-          disabled={isSubmitting}
-        />
-        <p className="text-xs text-muted-foreground">The human-readable name shown in the UI.</p>
-      </div>
+          <div className="space-y-2">
+            <Label htmlFor="displayName" required>
+              Display Name
+            </Label>
+            <Input
+              id="displayName"
+              value={displayName}
+              onChange={handleDisplayNameChange}
+              placeholder="Blog Post"
+              required
+              disabled={isSubmitting}
+            />
+            <FieldHint>The human-readable name shown in the UI.</FieldHint>
+          </div>
 
-      <div className="grid gap-y-2">
-        <Label htmlFor="apiId">API ID</Label>
-        <Input
-          id="apiId"
-          value={apiId}
-          onChange={handleApiIdChange}
-          placeholder="blog-post"
-          required
-          pattern="[a-z0-9-]+"
-          disabled={isSubmitting}
-        />
-        <p className="text-xs text-muted-foreground">
-          Used in API endpoints. Only lowercase letters, numbers, and hyphens.
-        </p>
-      </div>
+          <div className="space-y-2">
+            <Label htmlFor="apiId" required>
+              API ID
+            </Label>
+            <Input
+              id="apiId"
+              className="font-mono"
+              value={apiId}
+              onChange={handleApiIdChange}
+              placeholder="blog-post"
+              required
+              pattern="[a-z0-9-]+"
+              disabled={isSubmitting}
+            />
+            <FieldHint>
+              Used in API endpoints. Only lowercase letters, numbers, and hyphens.
+            </FieldHint>
+          </div>
 
-      <div className="grid gap-y-2">
-        <Label htmlFor="description">Description</Label>
-        <Textarea
-          id="description"
-          value={description}
-          onChange={(e) => {
-            setDescription(e.target.value);
-          }}
-          placeholder="A short description (optional)"
-          rows={3}
-          disabled={isSubmitting}
-        />
-      </div>
+          <div className="space-y-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              value={description}
+              onChange={(e) => {
+                setDescription(e.target.value);
+              }}
+              placeholder="A short description (optional)"
+              rows={3}
+              disabled={isSubmitting}
+            />
+          </div>
 
-      <div className="grid gap-y-2">
-        <Label htmlFor="icon">Icon (emoji)</Label>
-        <Input
-          id="icon"
-          value={icon}
-          onChange={(e) => {
-            setIcon(e.target.value);
-          }}
-          placeholder="📝"
-          maxLength={4}
-          disabled={isSubmitting}
-        />
-      </div>
+          <div className="space-y-2">
+            <Label htmlFor="icon">Icon (emoji)</Label>
+            <Input
+              id="icon"
+              className="w-24 text-center text-md"
+              value={icon}
+              onChange={(e) => {
+                setIcon(e.target.value);
+              }}
+              placeholder="📝"
+              maxLength={4}
+              disabled={isSubmitting}
+            />
+            <FieldHint>Shown next to the content type across the admin.</FieldHint>
+          </div>
+        </CardContent>
 
-      <div className="flex items-center gap-x-3 border-t pt-4">
-        <Button type="submit" disabled={isSubmitting || !displayName.trim() || !apiId.trim()}>
-          {isSubmitting ? 'Creating…' : 'Create content type'}
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          disabled={isSubmitting}
-          onClick={() => {
-            router.push('/content-types');
-          }}
-        >
-          Cancel
-        </Button>
-      </div>
-    </form>
+        <CardFooter className="justify-end">
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={isSubmitting}
+            onClick={() => {
+              router.push('/content-types');
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            loading={isSubmitting}
+            disabled={!displayName.trim() || !apiId.trim()}
+          >
+            {isSubmitting ? 'Creating…' : 'Create content type'}
+          </Button>
+        </CardFooter>
+      </form>
+    </Card>
   );
 }

@@ -1,6 +1,10 @@
 'use client';
 
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { PageHeader } from '@/components/ui/page-header';
+import { Skeleton, SkeletonText } from '@/components/ui/skeleton';
 import { useSession } from '@/lib/session';
+import type { Session } from '@/types';
 import type { DashboardActivityEntry, DashboardQueueHealth, DashboardStats } from '@kast-cms/sdk';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
@@ -28,7 +32,7 @@ function DashboardContent({
   return (
     <>
       <StatCards stats={stats} />
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <EntryStatusChart content={stats.contentEntries} />
         <SeoScoreChart seo={stats.seo} />
         <ActivityFeed entries={activity} />
@@ -38,17 +42,36 @@ function DashboardContent({
   );
 }
 
-function Skeleton(): JSX.Element {
+/**
+ * Mirrors the real layout — four stat cards over three panels — so the page
+ * does not visibly reflow when the data lands.
+ */
+function DashboardSkeleton(): JSX.Element {
   return (
-    <div className="animate-pulse space-y-4">
+    <div className="space-y-6" aria-busy="true">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="h-20 rounded-lg bg-gray-200 dark:bg-gray-700" />
+          <Card key={i}>
+            <CardContent className="flex items-start justify-between gap-3">
+              <div className="w-full space-y-2.5">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-6 w-14" />
+              </div>
+              <Skeleton className="size-9 shrink-0 rounded-lg" />
+            </CardContent>
+          </Card>
         ))}
       </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {[0, 1, 2].map((i) => (
-          <div key={i} className="h-44 rounded-lg bg-gray-200 dark:bg-gray-700" />
+          <Card key={i}>
+            <CardHeader>
+              <Skeleton className="h-4 w-32" />
+            </CardHeader>
+            <CardContent className="pt-4">
+              <SkeletonText lines={4} />
+            </CardContent>
+          </Card>
         ))}
       </div>
     </div>
@@ -64,38 +87,37 @@ interface HeaderProps {
 
 function DashboardHeader({ title, welcome, firstName, isAdmin }: HeaderProps): JSX.Element {
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{title}</h1>
-        {firstName && (
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            {welcome}, {firstName}
-          </p>
-        )}
-      </div>
-      <QuickActions isAdmin={isAdmin} />
-    </div>
+    <PageHeader
+      title={title}
+      description={firstName ? `${welcome}, ${firstName}` : undefined}
+      actions={<QuickActions isAdmin={isAdmin} />}
+    />
   );
 }
 
-// eslint-disable-next-line complexity
+/** What to call the signed-in user. The token often carries no name, so the
+ *  email is the realistic fallback. */
+function greetingName(session: Session | null): string {
+  return session?.user.firstName ?? session?.user.email ?? '';
+}
+
 export function DashboardPage(): JSX.Element {
   const t = useTranslations('dashboard');
   const { session } = useSession();
   const { stats, activity, queueHealth, loading, isAdmin } = useDashboard();
 
-  const firstName = session?.user.firstName ?? session?.user.email ?? '';
+  const firstName = greetingName(session);
   const isEmpty = stats !== null && stats.contentEntries.total === 0;
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       <DashboardHeader
         title={t('title')}
         welcome={t('welcome')}
         firstName={firstName}
         isAdmin={isAdmin}
       />
-      {loading && <Skeleton />}
+      {loading && <DashboardSkeleton />}
       {!loading && isEmpty && <OnboardingChecklist />}
       {!loading && stats !== null && (
         <DashboardContent

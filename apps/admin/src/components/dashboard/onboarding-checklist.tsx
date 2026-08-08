@@ -1,5 +1,7 @@
 'use client';
 
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ChevronRight, Rocket } from 'lucide-react';
 import type { Route } from 'next';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
@@ -21,26 +23,43 @@ export function OnboardingChecklist(): JSX.Element {
   const t = useTranslations('dashboard.onboarding');
 
   return (
-    <div className="rounded-lg border border-indigo-100 bg-indigo-50 p-5 shadow-sm dark:border-indigo-900 dark:bg-indigo-950/40">
-      <h2 className="mb-1 text-sm font-semibold text-indigo-700 dark:text-indigo-300">
-        {t('title')}
-      </h2>
-      <p className="mb-4 text-xs text-indigo-600 dark:text-indigo-400">{t('description')}</p>
-      <ol className="space-y-2">
-        {STEPS.map((step, i) => (
-          <li key={step.key} className="flex items-center gap-2 text-sm">
-            <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-indigo-200 text-[10px] font-bold text-indigo-700 dark:bg-indigo-800 dark:text-indigo-200">
-              {i + 1}
-            </span>
-            <Link
-              href={step.href}
-              className="text-indigo-700 underline underline-offset-2 hover:text-indigo-900 dark:text-indigo-300 dark:hover:text-indigo-100"
-            >
-              {t(`steps.${step.key}`)}
-            </Link>
-          </li>
-        ))}
-      </ol>
-    </div>
+    <Card>
+      <CardHeader className="grid-cols-[auto_1fr] items-center gap-x-3">
+        <span
+          aria-hidden="true"
+          className="row-span-2 grid size-9 place-items-center rounded-lg bg-primary-subtle text-primary-subtle-foreground [&_svg]:size-4.5"
+        >
+          <Rocket />
+        </span>
+        <CardTitle className="col-start-2">{t('title')}</CardTitle>
+        <CardDescription className="col-start-2">{t('description')}</CardDescription>
+      </CardHeader>
+      <CardContent className="pt-4">
+        <ol className="space-y-0.5">
+          {STEPS.map((step, i) => (
+            <li key={step.key}>
+              <Link
+                href={step.href}
+                className="focus-ring group flex items-center gap-3 rounded-md px-2 py-2 transition-colors duration-150 ease-out-quad hover:bg-muted"
+              >
+                <span
+                  aria-hidden="true"
+                  className="grid size-6 shrink-0 place-items-center rounded-full bg-primary-subtle text-2xs font-semibold text-primary-subtle-foreground tabular-nums"
+                >
+                  {i + 1}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                  {t(`steps.${step.key}`)}
+                </span>
+                <ChevronRight
+                  aria-hidden="true"
+                  className="size-4 shrink-0 text-muted-foreground transition-colors duration-150 ease-out-quad group-hover:text-foreground rtl:rotate-180"
+                />
+              </Link>
+            </li>
+          ))}
+        </ol>
+      </CardContent>
+    </Card>
   );
 }

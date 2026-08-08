@@ -1,7 +1,13 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -30,6 +36,7 @@ export function CreateRedirectDialog({
 }: CreateRedirectDialogProps): JSX.Element {
   const t = useTranslations('seo.redirects.create');
   const tTypes = useTranslations('seo.redirects.type');
+  const tCommon = useTranslations('common');
   const [fromPath, setFromPath] = useState('');
   const [toPath, setToPath] = useState('');
   const [type, setType] = useState<RedirectType>('PERMANENT');
@@ -63,27 +70,35 @@ export function CreateRedirectDialog({
         <DialogHeader>
           <DialogTitle>{t('title')}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 py-2">
-          <div className="space-y-1">
-            <Label>{t('fromLabel')}</Label>
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="redirect-from" required>
+              {t('fromLabel')}
+            </Label>
             <Input
+              id="redirect-from"
               value={fromPath}
               onChange={(e) => setFromPath(e.target.value)}
               placeholder={t('fromPlaceholder')}
+              className="font-mono"
             />
           </div>
-          <div className="space-y-1">
-            <Label>{t('toLabel')}</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="redirect-to" required>
+              {t('toLabel')}
+            </Label>
             <Input
+              id="redirect-to"
               value={toPath}
               onChange={(e) => setToPath(e.target.value)}
               placeholder={t('toPlaceholder')}
+              className="font-mono"
             />
           </div>
-          <div className="space-y-1">
-            <Label>{t('typeLabel')}</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="redirect-type">{t('typeLabel')}</Label>
             <Select value={type} onValueChange={(v) => setType(v as RedirectType)}>
-              <SelectTrigger>
+              <SelectTrigger id="redirect-type">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -95,15 +110,15 @@ export function CreateRedirectDialog({
               </SelectContent>
             </Select>
           </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => handleOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSubmit} disabled={submitting || !fromPath || !toPath}>
-              {submitting ? t('submitting') : t('submit')}
-            </Button>
-          </div>
         </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => handleOpenChange(false)}>
+            {tCommon('cancel')}
+          </Button>
+          <Button onClick={handleSubmit} loading={submitting} disabled={!fromPath || !toPath}>
+            {submitting ? t('submitting') : t('submit')}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

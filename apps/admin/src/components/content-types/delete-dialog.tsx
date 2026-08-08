@@ -1,5 +1,6 @@
 'use client';
 
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -10,9 +11,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { FieldHint, Label } from '@/components/ui/label';
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
+import { AlertTriangle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useState, type ChangeEvent, type JSX } from 'react';
 
@@ -65,26 +67,41 @@ export function DeleteContentTypeDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Delete content type</DialogTitle>
-          <DialogDescription>
-            This action cannot be undone. All entries and fields associated with this content type
-            will be permanently deleted.
-          </DialogDescription>
+          <div className="flex items-start gap-3">
+            <span
+              aria-hidden="true"
+              className="grid size-9 shrink-0 place-items-center rounded-lg bg-destructive-subtle text-destructive"
+            >
+              <AlertTriangle className="size-4.5" />
+            </span>
+            <div className="space-y-1.5">
+              <DialogTitle>Delete content type</DialogTitle>
+              <DialogDescription>
+                This action cannot be undone. All entries and fields associated with this content
+                type will be permanently deleted.
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
-        <div className="flex flex-col gap-y-4 py-2">
+        <div className="space-y-4">
           {error !== null && (
-            <div className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-              {error}
-            </div>
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           )}
 
-          <div className="grid gap-y-2">
+          <div className="space-y-2">
             <Label htmlFor="confirm-api-id">
-              Type <strong>{apiId}</strong> to confirm:
+              Type
+              <code className="rounded-sm bg-muted px-1.5 py-0.5 font-mono text-xs text-foreground">
+                {apiId}
+              </code>
+              to confirm
             </Label>
             <Input
               id="confirm-api-id"
+              className="font-mono"
               value={confirmation}
               onChange={(e: ChangeEvent<HTMLInputElement>) => {
                 setConfirmation(e.target.value);
@@ -92,11 +109,12 @@ export function DeleteContentTypeDialog({
               placeholder={apiId}
               disabled={isDeleting}
             />
+            <FieldHint>The name must match exactly before deletion is enabled.</FieldHint>
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={onClose} disabled={isDeleting}>
+          <Button variant="outline" onClick={onClose} disabled={isDeleting}>
             Cancel
           </Button>
           <Button
@@ -104,7 +122,8 @@ export function DeleteContentTypeDialog({
             onClick={() => {
               void handleDelete();
             }}
-            disabled={isDeleting || confirmation !== apiId}
+            loading={isDeleting}
+            disabled={confirmation !== apiId}
           >
             {isDeleting ? 'Deleting…' : 'Delete permanently'}
           </Button>

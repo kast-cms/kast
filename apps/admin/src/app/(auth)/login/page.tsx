@@ -1,9 +1,11 @@
 'use client';
 
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Spinner } from '@/components/ui/spinner';
+import { SeparatorWithLabel } from '@/components/ui/separator';
 import { adminRoute, API_URL } from '@/config/env';
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
@@ -54,104 +56,83 @@ export default function LoginPage(): JSX.Element {
   };
 
   return (
-    <div className="rounded-xl border border-[--color-border] bg-[--color-card] p-8 shadow-sm">
-      {/* Header */}
-      <div className="mb-6 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-[--color-foreground]">
-          {t('title')}
-        </h1>
-        <p className="mt-1 text-sm text-[--color-muted-foreground]">{t('subtitle')}</p>
-      </div>
+    <Card variant="elevated">
+      <CardHeader className="px-6 pt-6 text-center">
+        <CardTitle className="text-lg">{t('title')}</CardTitle>
+        <CardDescription>{t('subtitle')}</CardDescription>
+      </CardHeader>
 
-      {/* OAuth buttons */}
-      <div className="mb-4 flex flex-col gap-2">
-        <a
-          href={`${API_URL}/api/v1/auth/oauth/google`}
-          className="flex w-full items-center justify-center gap-2 rounded-md border border-[--color-border] bg-[--color-background] px-4 py-2 text-sm font-medium text-[--color-foreground] transition-colors hover:bg-[--color-muted]"
-        >
-          <GoogleIcon />
-          {t('continueWithGoogle')}
-        </a>
-        <a
-          href={`${API_URL}/api/v1/auth/oauth/github`}
-          className="flex w-full items-center justify-center gap-2 rounded-md border border-[--color-border] bg-[--color-background] px-4 py-2 text-sm font-medium text-[--color-foreground] transition-colors hover:bg-[--color-muted]"
-        >
-          <GitHubIcon />
-          {t('continueWithGitHub')}
-        </a>
-      </div>
-
-      {/* Divider */}
-      <div className="relative mb-4">
-        <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t border-[--color-border]" />
-        </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-[--color-card] px-2 text-[--color-muted-foreground]">
-            {t('orContinueWith')}
-          </span>
-        </div>
-      </div>
-
-      {/* Form */}
-      <form onSubmit={(e) => void handleSubmit(e)} noValidate className="space-y-4">
-        <div className="space-y-1.5">
-          <Label htmlFor="email">{t('emailLabel')}</Label>
-          <Input
-            id="email"
-            type="email"
-            autoComplete="email"
-            placeholder={t('emailPlaceholder')}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            disabled={isPending}
-          />
+      <CardContent className="space-y-5 px-6 pt-5 pb-6">
+        <div className="grid gap-2">
+          <Button variant="outline" className="w-full" asChild>
+            <a href={`${API_URL}/api/v1/auth/oauth/google`}>
+              <GoogleIcon />
+              {t('continueWithGoogle')}
+            </a>
+          </Button>
+          <Button variant="outline" className="w-full" asChild>
+            <a href={`${API_URL}/api/v1/auth/oauth/github`}>
+              <GitHubIcon />
+              {t('continueWithGitHub')}
+            </a>
+          </Button>
         </div>
 
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="password">{t('passwordLabel')}</Label>
-            <Link
-              href="/forgot-password"
-              className="text-xs text-[--color-muted-foreground] hover:text-[--color-foreground] hover:underline"
-            >
-              {t('forgotPassword')}
-            </Link>
+        <SeparatorWithLabel>{t('orContinueWith')}</SeparatorWithLabel>
+
+        <form onSubmit={(e) => void handleSubmit(e)} noValidate className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="email">{t('emailLabel')}</Label>
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              placeholder={t('emailPlaceholder')}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              disabled={isPending}
+            />
           </div>
-          <Input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            placeholder={t('passwordPlaceholder')}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            disabled={isPending}
-          />
-        </div>
 
-        {error && (
-          <p role="alert" className="text-sm text-[--color-destructive]">
-            {error}
-          </p>
-        )}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="password">{t('passwordLabel')}</Label>
+              <Link
+                href="/forgot-password"
+                className="rounded-sm text-xs font-medium text-muted-foreground transition-colors duration-150 ease-out-quad hover:text-foreground"
+              >
+                {t('forgotPassword')}
+              </Link>
+            </div>
+            <Input
+              id="password"
+              type="password"
+              autoComplete="current-password"
+              placeholder={t('passwordPlaceholder')}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              disabled={isPending}
+            />
+          </div>
 
-        <Button type="submit" className="w-full" disabled={isPending}>
-          {isPending ? (
-            <>
-              <Spinner size="sm" />
-              {t('submitting')}
-            </>
-          ) : (
-            t('submit')
+          {error !== null && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           )}
-        </Button>
-      </form>
-    </div>
+
+          <Button type="submit" className="w-full" loading={isPending}>
+            {isPending ? t('submitting') : t('submit')}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
   );
 }
 
+/** Google's mark keeps its brand colours — it is a third-party logo, not UI chrome. */
 function GoogleIcon(): JSX.Element {
   return (
     <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">

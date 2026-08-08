@@ -1,8 +1,15 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -10,9 +17,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { SeparatorWithLabel } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Save } from 'lucide-react';
 import { useState, type JSX } from 'react';
+import { SettingsField, SettingsToggleField } from './settings-field';
 import type { UseSettingsReturn } from './use-settings';
 
 type ContentStatus = 'DRAFT' | 'PUBLISHED';
@@ -45,61 +54,87 @@ export function ContentTab({ s }: Props): JSX.Element {
   };
 
   return (
-    <div className="space-y-6 max-w-lg">
-      <div className="space-y-2">
-        <Label>Default Content Status</Label>
-        <Select value={defaultStatus} onValueChange={(v) => setDefaultStatus(v as ContentStatus)}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="DRAFT">Draft</SelectItem>
-            <SelectItem value="PUBLISHED">Published</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="version-retention">Version Retention Count</Label>
-        <Input
-          id="version-retention"
-          value={versionRetention}
-          onChange={(e) => setVersionRetention(e.target.value)}
-          placeholder="10"
-        />
-        <p className="text-xs text-muted-foreground">
-          Number of historical versions to keep per entry
-        </p>
-      </div>
-      <div className="border-t pt-4 space-y-4">
-        <p className="text-sm font-medium">Media</p>
-        <div className="space-y-2">
-          <Label htmlFor="img-quality">Image Quality (1–100)</Label>
-          <Input
-            id="img-quality"
-            value={imageQuality}
-            onChange={(e) => setImageQuality(e.target.value)}
-            placeholder="80"
+    <div className="max-w-3xl space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Content</CardTitle>
+          <CardDescription>Defaults applied to newly created entries and versions.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5 pt-4">
+          <SettingsField
+            label="Default Content Status"
+            htmlFor="default-status"
+            required
+            hint="The status a new entry starts in before anyone touches it."
+          >
+            <Select
+              value={defaultStatus}
+              onValueChange={(v) => setDefaultStatus(v as ContentStatus)}
+            >
+              <SelectTrigger id="default-status">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="DRAFT">Draft</SelectItem>
+                <SelectItem value="PUBLISHED">Published</SelectItem>
+              </SelectContent>
+            </Select>
+          </SettingsField>
+
+          <SettingsField
+            label="Version Retention Count"
+            htmlFor="version-retention"
+            required
+            hint="Number of historical versions to keep per entry. Older ones are pruned."
+          >
+            <Input
+              id="version-retention"
+              value={versionRetention}
+              onChange={(e) => setVersionRetention(e.target.value)}
+              placeholder="10"
+            />
+          </SettingsField>
+
+          <SeparatorWithLabel>Media</SeparatorWithLabel>
+
+          <SettingsField
+            label="Image Quality"
+            htmlFor="img-quality"
+            hint="1–100. Higher keeps more detail at the cost of file size."
+          >
+            <Input
+              id="img-quality"
+              value={imageQuality}
+              onChange={(e) => setImageQuality(e.target.value)}
+              placeholder="80"
+            />
+          </SettingsField>
+
+          <SettingsToggleField
+            label="Generate Thumbnails"
+            htmlFor="thumbnails"
+            hint="Derive smaller previews when an image is uploaded."
+            control={
+              <Switch
+                id="thumbnails"
+                checked={generateThumbnails}
+                onCheckedChange={setGenerateThumbnails}
+              />
+            }
           />
-        </div>
-        <div className="flex items-center gap-3">
-          <Switch
-            id="thumbnails"
-            checked={generateThumbnails}
-            onCheckedChange={setGenerateThumbnails}
-          />
-          <Label htmlFor="thumbnails">Generate Thumbnails</Label>
-        </div>
-      </div>
-      <Button
-        onClick={() => {
-          void save();
-        }}
-        disabled={s.saving}
-        className="flex items-center gap-2"
-      >
-        <Save className="size-4" />
-        {s.saving ? 'Saving…' : 'Save Content'}
-      </Button>
+        </CardContent>
+        <CardFooter className="justify-end">
+          <Button
+            onClick={() => {
+              void save();
+            }}
+            loading={s.saving}
+          >
+            {!s.saving && <Save />}
+            {s.saving ? 'Saving…' : 'Save Content'}
+          </Button>
+        </CardFooter>
+      </Card>
     </div>
   );
 }

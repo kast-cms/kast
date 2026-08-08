@@ -1,8 +1,9 @@
 'use client';
 
-import { Spinner } from '@/components/ui/spinner';
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
+import { PageHeader } from '@/components/ui/page-header';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings } from 'lucide-react';
 import type { JSX } from 'react';
 import { ContentTab } from './content-tab';
 import { EmailTab } from './email-tab';
@@ -21,26 +22,51 @@ const TABS = [
   { id: 'content', label: 'Content' },
 ] as const;
 
+/**
+ * Mirrors the real layout — a tab bar over a form card — so the page does not
+ * reflow once the settings land.
+ */
+function SettingsSkeleton(): JSX.Element {
+  return (
+    <div className="space-y-6">
+      <div className="flex h-10 items-center gap-6 border-b border-border">
+        {TABS.map((tab) => (
+          <Skeleton key={tab.id} className="h-3.5 w-14" />
+        ))}
+      </div>
+      <Card className="max-w-3xl">
+        <CardHeader>
+          <Skeleton className="h-4 w-36" />
+          <Skeleton className="h-3 w-64" />
+        </CardHeader>
+        <CardContent className="space-y-5 pt-4">
+          {[0, 1, 2].map((row) => (
+            <div key={row} className="space-y-2">
+              <Skeleton className="h-3.5 w-24" />
+              <Skeleton className="h-9 w-full" />
+            </div>
+          ))}
+        </CardContent>
+        <CardFooter className="justify-end">
+          <Skeleton className="h-9 w-32" />
+        </CardFooter>
+      </Card>
+    </div>
+  );
+}
+
 export function SettingsPage(): JSX.Element {
   const s = useSettings();
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div className="flex items-center gap-3">
-        <Settings className="size-6 text-[--color-muted-foreground]" />
-        <div>
-          <h1 className="text-2xl font-semibold">Settings</h1>
-          <p className="text-sm text-[--color-muted-foreground]">Configure your KAST instance</p>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader title="Settings" description="Configure your KAST instance" />
 
       {s.loading ? (
-        <div className="flex items-center gap-2 text-sm text-[--color-muted-foreground]">
-          <Spinner className="size-4" /> Loading settings…
-        </div>
+        <SettingsSkeleton />
       ) : (
-        <Tabs defaultValue="general" className="space-y-6">
-          <TabsList>
+        <Tabs defaultValue="general" className="gap-6">
+          <TabsList variant="underline">
             {TABS.map((tab) => (
               <TabsTrigger key={tab.id} value={tab.id}>
                 {tab.label}

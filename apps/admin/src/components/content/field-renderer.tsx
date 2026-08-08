@@ -136,7 +136,8 @@ export function FieldRenderer({
       <Textarea
         value={getJsonRaw(value)}
         rows={6}
-        className="font-mono text-xs"
+        spellCheck={false}
+        className="min-h-32 font-mono text-xs leading-relaxed"
         onChange={(e) => {
           onChange(e.target.value);
         }}

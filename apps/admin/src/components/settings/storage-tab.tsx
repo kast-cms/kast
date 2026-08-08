@@ -1,8 +1,16 @@
 'use client';
 
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -10,8 +18,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { CheckCircle, Save } from 'lucide-react';
+import { SeparatorWithLabel } from '@/components/ui/separator';
+import { PlugZap, Save } from 'lucide-react';
 import { useState, type JSX } from 'react';
+import { SettingsField } from './settings-field';
 import type { UseSettingsReturn } from './use-settings';
 
 const PROVIDERS = ['LOCAL', 'S3', 'R2', 'MINIO'] as const;
@@ -54,67 +64,105 @@ export function StorageTab({ s }: Props): JSX.Element {
   };
 
   return (
-    <div className="space-y-6 max-w-lg">
-      <div className="space-y-2">
-        <Label>Storage Provider</Label>
-        <Select value={provider} onValueChange={(v) => setProvider(v as StorageProvider)}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {PROVIDERS.map((p) => (
-              <SelectItem key={p} value={p}>
-                {p}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="max-size">Max File Size (MB)</Label>
-        <Input
-          id="max-size"
-          value={maxSizeMb}
-          onChange={(e) => setMaxSizeMb(e.target.value)}
-          placeholder="10"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="mime-types">Allowed MIME Types (comma-separated)</Label>
-        <Input
-          id="mime-types"
-          value={mimeTypes}
-          onChange={(e) => setMimeTypes(e.target.value)}
-          placeholder="image/*, application/pdf"
-        />
-      </div>
-      <div className="flex gap-2">
-        <Button
-          onClick={() => {
-            void save();
-          }}
-          disabled={s.saving}
-          className="flex items-center gap-2"
-        >
-          <Save className="size-4" />
-          {s.saving ? 'Saving…' : 'Save Storage'}
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() => {
-            void runTest();
-          }}
-          disabled={testing}
-          className="flex items-center gap-2 bg-white text-gray-700 border-gray-300 hover:bg-gray-100 hover:text-gray-900"
-        >
-          {testing ? 'Testing…' : 'Test Connection'}
-        </Button>
-      </div>
-      {testResult !== null && (
-        <p className="flex items-center gap-2 text-sm text-green-600">
-          <CheckCircle className="size-4" /> {testResult.provider}: {testResult.status}
-        </p>
-      )}
+    <div className="max-w-3xl space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Storage</CardTitle>
+          <CardDescription>Where uploaded media is written, and what is accepted.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5 pt-4">
+          <SettingsField
+            label="Storage Provider"
+            htmlFor="storage-provider"
+            required
+            hint="LOCAL keeps files on the API server’s disk; the others write to object storage."
+          >
+            <Select value={provider} onValueChange={(v) => setProvider(v as StorageProvider)}>
+              <SelectTrigger id="storage-provider">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PROVIDERS.map((p) => (
+                  <SelectItem key={p} value={p}>
+                    {p}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </SettingsField>
+
+          <SeparatorWithLabel>Upload limits</SeparatorWithLabel>
+
+          <SettingsField
+            label="Max File Size"
+            htmlFor="max-size"
+            required
+            hint="Applies to a single upload. Larger files are rejected before they are stored."
+          >
+            <Input
+              id="max-size"
+              value={maxSizeMb}
+              onChange={(e) => setMaxSizeMb(e.target.value)}
+              placeholder="10"
+              className="pe-12"
+              endAdornment={<span className="text-xs font-medium">MB</span>}
+            />
+          </SettingsField>
+
+          <SettingsField
+            label="Allowed MIME Types"
+            htmlFor="mime-types"
+            hint="Comma-separated. Wildcards such as image/* are allowed."
+          >
+            <Input
+              id="mime-types"
+              value={mimeTypes}
+              onChange={(e) => setMimeTypes(e.target.value)}
+              placeholder="image/*, application/pdf"
+              className="font-mono"
+            />
+          </SettingsField>
+        </CardContent>
+        <CardFooter className="justify-end">
+          <Button
+            onClick={() => {
+              void save();
+            }}
+            loading={s.saving}
+          >
+            {!s.saving && <Save />}
+            {s.saving ? 'Saving…' : 'Save Storage'}
+          </Button>
+        </CardFooter>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Connection</CardTitle>
+          <CardDescription>
+            Checks that the saved provider can be reached with the current credentials.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 pt-4">
+          <Button
+            variant="outline"
+            onClick={() => {
+              void runTest();
+            }}
+            loading={testing}
+          >
+            {!testing && <PlugZap />}
+            {testing ? 'Testing…' : 'Test Connection'}
+          </Button>
+
+          {testResult !== null && (
+            <Alert variant="success">
+              <AlertTitle>{testResult.provider} reachable</AlertTitle>
+              <AlertDescription>{testResult.status}</AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

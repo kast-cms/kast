@@ -1,8 +1,9 @@
 'use client';
 
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { FieldHint, Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -10,10 +11,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import {
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
 import type { AddFieldBody, ContentField, ContentFieldType, UpdateFieldBody } from '@kast-cms/sdk';
-import { type ChangeEvent, type JSX } from 'react';
+import { type ChangeEvent, type JSX, type ReactNode } from 'react';
 import { FieldTypeConfig } from './field-type-config';
 import { useFieldDrawer } from './use-field-drawer';
 
@@ -39,6 +48,30 @@ export interface FieldDrawerProps {
   onSave: (data: AddFieldBody | UpdateFieldBody, fieldName?: string) => Promise<void>;
 }
 
+/**
+ * A titled, bordered block. The drawer has two of these (configuration and
+ * options), and they need to read as siblings rather than as two panels that
+ * happen to share a border radius.
+ */
+function DrawerSection({ title, children }: { title: string; children: ReactNode }): JSX.Element {
+  return (
+    <section className="overflow-hidden rounded-lg border border-border">
+      <h3 className="border-b border-border bg-muted/50 px-4 py-2.5 text-2xs font-semibold tracking-wider text-muted-foreground uppercase">
+        {title}
+      </h3>
+      {children}
+    </section>
+  );
+}
+
+interface FieldOptionRow {
+  id: string;
+  label: string;
+  hint: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}
+
 function FieldOptions({
   isRequired,
   isLocalized,
@@ -60,92 +93,169 @@ function FieldOptions({
   setIsUnique: (v: boolean) => void;
   setIsHidden: (v: boolean) => void;
 }): JSX.Element {
+  const rows: FieldOptionRow[] = [
+    {
+      id: 'opt-required',
+      label: 'Required',
+      hint: 'Entries cannot be saved while this field is empty.',
+      checked: isRequired,
+      onChange: setIsRequired,
+    },
+    {
+      id: 'opt-unique',
+      label: 'Unique',
+      hint: 'No two entries may share the same value.',
+      checked: isUnique,
+      onChange: setIsUnique,
+    },
+    {
+      id: 'opt-localized',
+      label: 'Localized',
+      hint: 'Stores a separate value for each locale.',
+      checked: isLocalized,
+      onChange: setIsLocalized,
+    },
+    {
+      id: 'opt-hidden',
+      label: 'Hidden',
+      hint: 'Stays in the API but is hidden from the entry editor.',
+      checked: isHidden,
+      onChange: setIsHidden,
+    },
+  ];
+
   return (
-    <div className="rounded-md border p-4">
-      <p className="mb-3 text-sm font-medium">Options</p>
-      <div className="flex flex-col gap-y-3">
-        <div className="flex items-center justify-between">
-          <Label htmlFor="opt-required" className="cursor-pointer">
-            Required
-          </Label>
-          <Switch
-            id="opt-required"
-            checked={isRequired}
-            onCheckedChange={setIsRequired}
-            disabled={isSaving}
-          />
-        </div>
-        <div className="flex items-center justify-between">
-          <Label htmlFor="opt-unique" className="cursor-pointer">
-            Unique
-          </Label>
-          <Switch
-            id="opt-unique"
-            checked={isUnique}
-            onCheckedChange={setIsUnique}
-            disabled={isSaving}
-          />
-        </div>
-        <div className="flex items-center justify-between">
-          <Label htmlFor="opt-localized" className="cursor-pointer">
-            Localized
-          </Label>
-          <Switch
-            id="opt-localized"
-            checked={isLocalized}
-            onCheckedChange={setIsLocalized}
-            disabled={isSaving}
-          />
-        </div>
-        <div className="flex items-center justify-between">
-          <Label htmlFor="opt-hidden" className="cursor-pointer">
-            Hidden
-          </Label>
-          <Switch
-            id="opt-hidden"
-            checked={isHidden}
-            onCheckedChange={setIsHidden}
-            disabled={isSaving}
-          />
-        </div>
+    <DrawerSection title="Options">
+      <div className="divide-y divide-border">
+        {rows.map((row) => (
+          <div key={row.id} className="flex items-start justify-between gap-4 px-4 py-3">
+            <div className="min-w-0 space-y-1">
+              <Label htmlFor={row.id} className="cursor-pointer">
+                {row.label}
+              </Label>
+              <FieldHint>{row.hint}</FieldHint>
+            </div>
+            <Switch
+              id={row.id}
+              className="mt-0.5 shrink-0"
+              checked={row.checked}
+              onCheckedChange={row.onChange}
+              disabled={isSaving}
+            />
+          </div>
+        ))}
       </div>
+    </DrawerSection>
+  );
+}
+
+/**
+ * A field's type is immutable once it exists — changing it would invalidate
+ * every entry already stored against it — so editing shows a read-only chip
+ * where creating shows a picker.
+ */
+function FieldTypeControl({
+  isEdit,
+  activeType,
+  value,
+  onChange,
+}: {
+  isEdit: boolean;
+  activeType: ContentFieldType;
+  value: ContentFieldType;
+  onChange: (next: ContentFieldType) => void;
+}): JSX.Element {
+  const typeLabel = FIELD_TYPES.find((ft) => ft.value === activeType)?.label ?? activeType;
+
+  return (
+    <div className="space-y-2">
+      {/* Nothing is labelable in the read-only branch, so the association is
+          dropped rather than pointed at a plain <div>. */}
+      <Label htmlFor={isEdit ? undefined : 'field-type'}>Field type</Label>
+      {isEdit ? (
+        <div className="flex h-9 items-center gap-2 rounded-md border border-input bg-muted/60 px-3 text-sm text-muted-foreground">
+          <span className="rounded-sm bg-card px-1.5 py-0.5 font-mono text-2xs font-medium tracking-wider uppercase">
+            {activeType}
+          </span>
+          <span>{typeLabel}</span>
+        </div>
+      ) : (
+        <Select
+          value={value}
+          onValueChange={(v) => {
+            onChange(v as ContentFieldType);
+          }}
+        >
+          <SelectTrigger id="field-type">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {FIELD_TYPES.map((ft) => (
+              <SelectItem key={ft.value} value={ft.value}>
+                {ft.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
     </div>
+  );
+}
+
+function DrawerIntro({ field }: { field: ContentField | null }): JSX.Element {
+  return (
+    <SheetHeader>
+      <SheetTitle>{field === null ? 'Add field' : 'Edit field'}</SheetTitle>
+      <SheetDescription>
+        {field === null ? (
+          'Fields define what an entry can hold. Name it, pick a type, then tune the details.'
+        ) : (
+          <>
+            Editing <code className="font-mono text-foreground">{field.name}</code>. The API ID and
+            type are fixed once a field exists.
+          </>
+        )}
+      </SheetDescription>
+    </SheetHeader>
   );
 }
 
 export function FieldDrawer({ open, field, onClose, onSave }: FieldDrawerProps): JSX.Element {
   const isEdit = field !== null;
   const s = useFieldDrawer({ open, field, onClose, onSave });
+  const activeType = isEdit ? field.type : s.type;
 
   return (
     <Sheet open={open} onOpenChange={s.handleOpenChange}>
-      <SheetContent className="flex flex-col gap-y-0 overflow-y-auto sm:max-w-md">
-        <SheetHeader className="pb-4">
-          <SheetTitle>{isEdit ? 'Edit field' : 'Add field'}</SheetTitle>
-        </SheetHeader>
-        <div className="flex flex-1 flex-col gap-y-6 overflow-y-auto pb-6">
+      <SheetContent className="sm:max-w-lg">
+        <DrawerIntro field={field} />
+
+        <SheetBody className="space-y-6">
           {s.error !== null && (
-            <div className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-              {s.error}
-            </div>
+            <Alert variant="destructive">
+              <AlertDescription>{s.error}</AlertDescription>
+            </Alert>
           )}
+
           {!isEdit && (
-            <div className="grid gap-y-2">
-              <Label htmlFor="field-name">Field name (API ID)</Label>
+            <div className="space-y-2">
+              <Label htmlFor="field-name" required>
+                Field name (API ID)
+              </Label>
               <Input
                 id="field-name"
+                className="font-mono"
                 value={s.name}
                 onChange={s.handleNameChange}
                 placeholder="title"
                 required
                 disabled={s.isSaving}
               />
-              <p className="text-xs text-muted-foreground">
-                Only lowercase letters, numbers, and underscores.
-              </p>
+              <FieldHint>Only lowercase letters, numbers, and underscores.</FieldHint>
             </div>
           )}
-          <div className="grid gap-y-2">
+
+          <div className="space-y-2">
             <Label htmlFor="field-displayName">Display name</Label>
             <Input
               id="field-displayName"
@@ -157,37 +267,22 @@ export function FieldDrawer({ open, field, onClose, onSave }: FieldDrawerProps):
                 s.setDisplayName(e.target.value);
               }}
             />
+            <FieldHint>What editors see above the input.</FieldHint>
           </div>
-          {!isEdit && (
-            <div className="grid gap-y-2">
-              <Label htmlFor="field-type">Field type</Label>
-              <Select
-                value={s.type}
-                onValueChange={(v) => {
-                  s.setType(v as ContentFieldType);
-                }}
-              >
-                <SelectTrigger id="field-type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {FIELD_TYPES.map((ft) => (
-                    <SelectItem key={ft.value} value={ft.value}>
-                      {ft.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+
+          <FieldTypeControl
+            isEdit={isEdit}
+            activeType={activeType}
+            value={s.type}
+            onChange={s.setType}
+          />
+
+          <DrawerSection title="Configuration">
+            <div className="px-4 py-4">
+              <FieldTypeConfig type={activeType} config={s.config} onConfigChange={s.setConfig} />
             </div>
-          )}
-          <div className="rounded-md border p-4">
-            <p className="mb-3 text-sm font-medium">Configuration</p>
-            <FieldTypeConfig
-              type={isEdit ? field.type : s.type}
-              config={s.config}
-              onConfigChange={s.setConfig}
-            />
-          </div>
+          </DrawerSection>
+
           <FieldOptions
             isRequired={s.isRequired}
             isLocalized={s.isLocalized}
@@ -199,12 +294,17 @@ export function FieldDrawer({ open, field, onClose, onSave }: FieldDrawerProps):
             setIsUnique={s.setIsUnique}
             setIsHidden={s.setIsHidden}
           />
-        </div>
-        <SheetFooter className="border-t pt-4">
+        </SheetBody>
+
+        <SheetFooter>
           <Button variant="ghost" onClick={onClose} disabled={s.isSaving}>
             Cancel
           </Button>
-          <Button onClick={s.handleSaveClick} disabled={s.isSaving || (!isEdit && !s.name.trim())}>
+          <Button
+            onClick={s.handleSaveClick}
+            loading={s.isSaving}
+            disabled={!isEdit && !s.name.trim()}
+          >
             {s.isSaving ? 'Saving…' : 'Save field'}
           </Button>
         </SheetFooter>

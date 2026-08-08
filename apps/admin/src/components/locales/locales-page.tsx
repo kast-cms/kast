@@ -2,7 +2,10 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Spinner } from '@/components/ui/spinner';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageHeader } from '@/components/ui/page-header';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -11,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Hint } from '@/components/ui/tooltip';
 import type { LocaleSummary } from '@kast-cms/sdk';
 import { Languages, Plus, Star, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -19,7 +23,11 @@ import { CreateLocaleDialog } from './create-locale-dialog';
 import { useLocales } from './use-locales';
 
 function DirectionBadge({ direction }: { direction: string }): JSX.Element {
-  return <Badge variant={direction === 'RTL' ? 'warning' : 'secondary'}>{direction}</Badge>;
+  return (
+    <Badge variant="outline" size="sm" className="font-mono">
+      {direction}
+    </Badge>
+  );
 }
 
 function LocaleActions({
@@ -33,28 +41,68 @@ function LocaleActions({
 }): JSX.Element {
   const t = useTranslations('locales');
   if (locale.isDefault) {
-    return <Badge variant="success">{t('defaultBadge')}</Badge>;
+    return (
+      <div className="flex items-center justify-end">
+        <Badge variant="brand">
+          <Star />
+          {t('defaultBadge')}
+        </Badge>
+      </div>
+    );
   }
   return (
-    <div className="flex items-center gap-2">
-      <Button
-        size="sm"
-        variant="ghost"
-        onClick={() => onSetDefault(locale.code)}
-        title={t('setDefault')}
-      >
-        <Star className="size-4" />
-      </Button>
-      <Button
-        size="sm"
-        variant="ghost"
-        onClick={() => onDelete(locale.code)}
-        title={t('delete')}
-        className="text-destructive hover:text-destructive"
-      >
-        <Trash2 className="size-4" />
-      </Button>
+    <div className="flex items-center justify-end gap-1">
+      <Hint label={t('setDefault')}>
+        <Button
+          size="icon-sm"
+          variant="ghost"
+          aria-label={t('setDefault')}
+          onClick={() => onSetDefault(locale.code)}
+        >
+          <Star />
+        </Button>
+      </Hint>
+      <Hint label={t('delete')}>
+        <Button
+          size="icon-sm"
+          variant="ghost-destructive"
+          aria-label={t('delete')}
+          onClick={() => onDelete(locale.code)}
+        >
+          <Trash2 />
+        </Button>
+      </Hint>
     </div>
+  );
+}
+
+/** Placeholder rows so the table keeps its shape while the first load runs. */
+function LocalesTableSkeleton(): JSX.Element {
+  return (
+    <>
+      {Array.from({ length: 4 }, (_, i) => (
+        <TableRow key={i} className="hover:bg-transparent">
+          <TableCell>
+            <Skeleton className="h-3.5 w-10" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="h-3.5 w-28" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="h-3.5 w-24" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="h-4.5 w-12 rounded-sm" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="h-4.5 w-16 rounded-md" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="ms-auto h-8 w-20" />
+          </TableCell>
+        </TableRow>
+      ))}
+    </>
   );
 }
 
@@ -72,24 +120,21 @@ export function LocalesPage(): JSX.Element {
     void deleteLocale(code);
   };
 
+  const isEmpty = locales.length === 0;
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Languages className="size-5" />
-          <h1 className="text-xl font-semibold">{t('title')}</h1>
-        </div>
-        <Button onClick={() => setShowCreate(true)}>
-          <Plus className="me-2 size-4" />
-          {t('addLocale')}
-        </Button>
-      </div>
+      <PageHeader
+        title={t('title')}
+        actions={
+          <Button onClick={() => setShowCreate(true)}>
+            <Plus />
+            {t('addLocale')}
+          </Button>
+        }
+      />
 
-      {loading && <Spinner />}
-
-      {!loading && locales.length === 0 && <p className="text-muted-foreground">{t('empty')}</p>}
-
-      {!loading && locales.length > 0 && (
+      <Card className="overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
@@ -98,20 +143,41 @@ export function LocalesPage(): JSX.Element {
               <TableHead>{t('columns.nativeName')}</TableHead>
               <TableHead>{t('columns.direction')}</TableHead>
               <TableHead>{t('columns.active')}</TableHead>
-              <TableHead>{t('columns.actions')}</TableHead>
+              <TableHead className="w-40 text-end">
+                <span className="sr-only">{t('columns.actions')}</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
+            {isEmpty && loading && <LocalesTableSkeleton />}
+            {isEmpty && !loading && (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={6} className="p-0">
+                  <EmptyState
+                    Icon={Languages}
+                    size="sm"
+                    title={t('empty')}
+                    className="rounded-none border-0"
+                    action={
+                      <Button variant="outline" size="sm" onClick={() => setShowCreate(true)}>
+                        <Plus />
+                        {t('addLocale')}
+                      </Button>
+                    }
+                  />
+                </TableCell>
+              </TableRow>
+            )}
             {locales.map((locale) => (
               <TableRow key={locale.code}>
-                <TableCell className="font-mono">{locale.code}</TableCell>
-                <TableCell>{locale.name}</TableCell>
-                <TableCell>{locale.nativeName}</TableCell>
+                <TableCell className="font-mono text-xs font-medium">{locale.code}</TableCell>
+                <TableCell className="font-medium text-foreground">{locale.name}</TableCell>
+                <TableCell className="text-muted-foreground">{locale.nativeName}</TableCell>
                 <TableCell>
                   <DirectionBadge direction={locale.direction} />
                 </TableCell>
                 <TableCell>
-                  <Badge variant={locale.isActive ? 'success' : 'secondary'}>
+                  <Badge variant={locale.isActive ? 'success' : 'muted'} dot>
                     {locale.isActive ? t('active') : t('inactive')}
                   </Badge>
                 </TableCell>
@@ -126,7 +192,7 @@ export function LocalesPage(): JSX.Element {
             ))}
           </TableBody>
         </Table>
-      )}
+      </Card>
 
       <CreateLocaleDialog open={showCreate} onOpenChange={setShowCreate} onCreate={createLocale} />
     </div>

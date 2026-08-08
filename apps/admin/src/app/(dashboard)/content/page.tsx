@@ -1,4 +1,7 @@
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageHeader } from '@/components/ui/page-header';
 import { createServerApiClient } from '@/lib/api';
 import type { ContentTypeSummary } from '@kast-cms/sdk';
 import { Database, FileText, Plus } from 'lucide-react';
@@ -19,40 +22,23 @@ function ContentTypeCard({ contentType, entriesLabel }: ContentTypeCardProps): J
   return (
     <Link
       href={`/content/${name}`}
-      className="group flex flex-col gap-y-3 rounded-lg border border-[--color-border] bg-[--color-background] p-5 transition-colors hover:border-[--color-primary] hover:bg-[--color-accent]"
+      className="group rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
-      <div className="flex items-center gap-x-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[--color-muted] text-lg">
-          {icon !== null && icon !== '' ? (
-            icon
-          ) : (
-            <FileText className="h-5 w-5 text-[--color-muted-foreground]" />
-          )}
-        </span>
-        <div className="min-w-0">
-          <p className="truncate font-medium">{displayName}</p>
-          <code className="text-xs text-[--color-muted-foreground]">{name}</code>
+      <Card interactive className="flex h-full flex-col gap-4 p-5">
+        <div className="flex items-center gap-x-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-primary-subtle text-md text-primary-subtle-foreground">
+            {icon !== null && icon !== '' ? icon : <FileText className="size-5" />}
+          </span>
+          <div className="min-w-0">
+            <p className="truncate font-medium text-foreground transition-colors duration-150 ease-out-quad group-hover:text-primary">
+              {displayName}
+            </p>
+            <code className="text-2xs text-muted-foreground">{name}</code>
+          </div>
         </div>
-      </div>
-      <p className="text-sm text-[--color-muted-foreground]">{entriesLabel}</p>
+        <p className="mt-auto text-sm text-muted-foreground">{entriesLabel}</p>
+      </Card>
     </Link>
-  );
-}
-
-async function EmptyState(): Promise<JSX.Element> {
-  const t = await getTranslations('content.landing');
-  return (
-    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-[--color-border] py-20 text-center">
-      <Database className="mb-4 h-12 w-12 text-[--color-muted-foreground]" />
-      <h3 className="mb-1 text-lg font-semibold">{t('emptyTitle')}</h3>
-      <p className="mb-6 text-sm text-[--color-muted-foreground]">{t('emptyDescription')}</p>
-      <Button asChild>
-        <Link href="/content-types/new">
-          <Plus className="me-2 h-4 w-4" />
-          {t('manageTypes')}
-        </Link>
-      </Button>
-    </div>
   );
 }
 
@@ -70,19 +56,31 @@ export default async function ContentPage(): Promise<JSX.Element> {
   }
 
   return (
-    <div className="flex flex-col gap-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">{t('title')}</h1>
-          <p className="text-sm text-[--color-muted-foreground]">{tLanding('description')}</p>
-        </div>
-        <Button asChild variant="outline">
-          <Link href="/content-types">{tLanding('manageTypes')}</Link>
-        </Button>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title={t('title')}
+        description={tLanding('description')}
+        actions={
+          <Button asChild variant="outline">
+            <Link href="/content-types">{tLanding('manageTypes')}</Link>
+          </Button>
+        }
+      />
 
       {contentTypes.length === 0 ? (
-        <EmptyState />
+        <EmptyState
+          Icon={Database}
+          title={tLanding('emptyTitle')}
+          description={tLanding('emptyDescription')}
+          action={
+            <Button asChild>
+              <Link href="/content-types/new">
+                <Plus />
+                {tLanding('manageTypes')}
+              </Link>
+            </Button>
+          }
+        />
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {contentTypes.map((ct) => (

@@ -15,32 +15,34 @@ export function QuickActions({ isAdmin }: QuickActionsProps): JSX.Element {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Button asChild size="sm">
-        <Link href="/content">
-          <FileText size={14} className="mr-1" />
-          {t('newEntry')}
-        </Link>
-      </Button>
       <Button asChild size="sm" variant="outline">
         <Link href="/media">
-          <Image size={14} className="mr-1" />
+          <Image />
           {t('uploadMedia')}
         </Link>
       </Button>
       <Button asChild size="sm" variant="outline">
         <Link href="/audit-log">
-          <List size={14} className="mr-1" />
+          <List />
           {t('viewAuditLog')}
         </Link>
       </Button>
       {isAdmin && (
         <Button asChild size="sm" variant="outline">
           <Link href="/settings">
-            <Settings size={14} className="mr-1" />
+            <Settings />
             {t('systemSettings')}
           </Link>
         </Button>
       )}
+      {/* Primary action sits last, matching the platform convention used by
+          <PageHeader actions>. */}
+      <Button asChild size="sm">
+        <Link href="/content">
+          <FileText />
+          {t('newEntry')}
+        </Link>
+      </Button>
     </div>
   );
 }

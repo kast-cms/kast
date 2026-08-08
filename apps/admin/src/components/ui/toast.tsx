@@ -3,8 +3,8 @@
 import { cn } from '@/lib/utils';
 import * as ToastPrimitive from '@radix-ui/react-toast';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { X } from 'lucide-react';
-import type { ComponentProps, JSX } from 'react';
+import { AlertTriangle, CheckCircle2, Info, X, XCircle } from 'lucide-react';
+import type { ComponentProps, ComponentType, JSX } from 'react';
 
 export const ToastProvider = ToastPrimitive.Provider;
 
@@ -15,7 +15,7 @@ export function ToastViewport({
   return (
     <ToastPrimitive.Viewport
       className={cn(
-        'fixed bottom-0 end-0 z-[100] flex max-h-screen w-full flex-col-reverse gap-2 p-4 sm:max-w-sm',
+        'fixed bottom-0 end-0 z-100 flex max-h-screen w-full flex-col-reverse gap-2 p-4 outline-none sm:max-w-sm',
         className,
       )}
       {...props}
@@ -24,35 +24,55 @@ export function ToastViewport({
 }
 
 const toastVariants = cva(
-  'group pointer-events-auto relative flex w-full items-start justify-between gap-3 overflow-hidden rounded-md border p-4 shadow-lg transition-all data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-80 data-[state=open]:slide-in-from-bottom-full',
+  [
+    'group pointer-events-auto relative flex w-full items-start gap-3 overflow-hidden',
+    'rounded-lg border bg-popover p-4 pe-10 text-popover-foreground shadow-lg',
+    'data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom-4 data-[state=open]:fade-in-0',
+    'data-[state=closed]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-4',
+    'data-[swipe=move]:translate-x-(--radix-toast-swipe-move-x) data-[swipe=move]:transition-none',
+    'data-[swipe=cancel]:translate-x-0 data-[swipe=end]:animate-out data-[swipe=end]:fade-out-0',
+  ],
   {
     variants: {
       variant: {
-        default: 'border-[--color-border] bg-[--color-background] text-[--color-foreground]',
-        success:
-          'border-[--color-border] bg-[--color-background] text-[--color-foreground] [&_[data-toast-accent]]:bg-emerald-500',
-        destructive:
-          'border-[--color-destructive] bg-[--color-background] text-[--color-foreground] [&_[data-toast-accent]]:bg-[--color-destructive]',
+        default: 'border-border [&_[data-toast-icon]]:text-muted-foreground',
+        success: 'border-success/30 [&_[data-toast-icon]]:text-success',
+        destructive: 'border-destructive/30 [&_[data-toast-icon]]:text-destructive',
+        warning: 'border-warning/30 [&_[data-toast-icon]]:text-warning',
+        info: 'border-info/30 [&_[data-toast-icon]]:text-info',
       },
     },
-    defaultVariants: {
-      variant: 'default',
-    },
+    defaultVariants: { variant: 'default' },
   },
 );
+
+const TOAST_ICONS: Record<string, ComponentType<{ className?: string }>> = {
+  success: CheckCircle2,
+  destructive: XCircle,
+  warning: AlertTriangle,
+  info: Info,
+};
 
 interface ToastProps extends ToastPrimitive.ToastProps, VariantProps<typeof toastVariants> {}
 
 export function Toast({ className, variant, children, ...props }: ToastProps): JSX.Element {
+  // Variant names are always non-empty strings, so a truthy check covers both
+  // `null` and `undefined` without reaching for a loose equality comparison.
+  const Icon = variant ? TOAST_ICONS[variant] : undefined;
+
   return (
     <ToastPrimitive.Root className={cn(toastVariants({ variant }), className)} {...props}>
-      <span data-toast-accent className="absolute inset-y-0 start-0 w-1" aria-hidden="true" />
-      <div className="flex-1 ps-2">{children}</div>
+      {Icon && <Icon data-toast-icon className="mt-px size-4.5 shrink-0" />}
+      <div className="flex-1 space-y-1">{children}</div>
       <ToastPrimitive.Close
-        className="rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-[--color-ring]"
+        className={cn(
+          'absolute end-3 top-3 grid size-6 place-items-center rounded-md text-muted-foreground',
+          'transition-colors hover:bg-muted hover:text-foreground',
+          'outline-none focus-visible:ring-2 focus-visible:ring-ring/70',
+        )}
         aria-label="Close"
       >
-        <X className="h-4 w-4" />
+        <X className="size-3.5" />
       </ToastPrimitive.Close>
     </ToastPrimitive.Root>
   );
@@ -62,7 +82,12 @@ export function ToastTitle({
   className,
   ...props
 }: ComponentProps<typeof ToastPrimitive.Title>): JSX.Element {
-  return <ToastPrimitive.Title className={cn('text-sm font-semibold', className)} {...props} />;
+  return (
+    <ToastPrimitive.Title
+      className={cn('text-sm leading-tight font-semibold', className)}
+      {...props}
+    />
+  );
 }
 
 export function ToastDescription({
@@ -71,7 +96,24 @@ export function ToastDescription({
 }: ComponentProps<typeof ToastPrimitive.Description>): JSX.Element {
   return (
     <ToastPrimitive.Description
-      className={cn('mt-1 text-sm text-[--color-muted-foreground]', className)}
+      className={cn('text-sm text-pretty text-muted-foreground', className)}
+      {...props}
+    />
+  );
+}
+
+export function ToastAction({
+  className,
+  ...props
+}: ComponentProps<typeof ToastPrimitive.Action>): JSX.Element {
+  return (
+    <ToastPrimitive.Action
+      className={cn(
+        'mt-1 inline-flex h-7 items-center rounded-md border border-border px-2.5 text-xs font-medium',
+        'transition-colors hover:bg-muted',
+        'outline-none focus-visible:ring-2 focus-visible:ring-ring/70',
+        className,
+      )}
       {...props}
     />
   );

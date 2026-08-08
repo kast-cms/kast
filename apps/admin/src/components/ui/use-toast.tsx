@@ -17,7 +17,7 @@ import {
   type ReactNode,
 } from 'react';
 
-export type ToastVariant = 'default' | 'success' | 'destructive';
+export type ToastVariant = 'default' | 'success' | 'destructive' | 'warning' | 'info';
 
 export interface ToastOptions {
   title: string;
@@ -36,6 +36,10 @@ interface ToastContextValue {
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
+/** Errors stay up longer — they usually carry something worth reading. */
+const DEFAULT_DURATION = 5000;
+const ERROR_DURATION = 8000;
+
 let nextId = 0;
 
 export function ToastContextProvider({ children }: { children: ReactNode }): JSX.Element {
@@ -47,7 +51,8 @@ export function ToastContextProvider({ children }: { children: ReactNode }): JSX
 
   const toast = useCallback((options: ToastOptions): void => {
     const id = nextId++;
-    setToasts((prev) => [...prev, { id, ...options }]);
+    // Cap the stack so a burst of failures cannot bury the whole screen.
+    setToasts((prev) => [...prev, { id, ...options }].slice(-4));
   }, []);
 
   const value = useMemo(() => ({ toast }), [toast]);
@@ -60,7 +65,10 @@ export function ToastContextProvider({ children }: { children: ReactNode }): JSX
           <Toast
             key={entry.id}
             variant={entry.variant ?? 'default'}
-            duration={entry.duration ?? 5000}
+            duration={
+              entry.duration ??
+              (entry.variant === 'destructive' ? ERROR_DURATION : DEFAULT_DURATION)
+            }
             onOpenChange={(open) => {
               if (!open) remove(entry.id);
             }}
