@@ -104,7 +104,8 @@ async function resolveIds() {
 }
 
 /* ── Screen list ──────────────────────────────────────────────────────────── */
-function buildScreens(ids) {
+/** `all: true` ignores `--only`, so the index can still list every screen. */
+function buildScreens(ids, all = false) {
   const screens = [
     { slug: '01-login', url: '/login', title: 'Sign in', auth: false },
     { slug: '02-forgot-password', url: '/forgot-password', title: 'Forgot password', auth: false },
@@ -162,7 +163,7 @@ function buildScreens(ids) {
     { slug: '34-not-found', url: '/this-route-does-not-exist', title: 'Not found' },
   ].filter(Boolean);
 
-  return onlySet ? screens.filter((s) => onlySet.has(s.slug)) : screens;
+  return onlySet && !all ? screens.filter((s) => onlySet.has(s.slug)) : screens;
 }
 
 /** Captured a second time with the Arabic locale, to show the RTL layout. */
@@ -268,7 +269,6 @@ async function main() {
   const browser = await chromium.launch(launch);
 
   const captured = [];
-  const rtlCaptured = [];
   let failures = 0;
   let bytes = 0;
 
@@ -323,13 +323,13 @@ async function main() {
      * logical-property layout and the Arabic webfont actually hold up.
      * Selecting the locale is just a cookie — see src/i18n/request.ts.
      */
-    if (!onlySet) {
+    const rtlWanted = onlySet ? RTL_SCREENS.filter((s) => onlySet.has(s.slug)) : RTL_SCREENS;
+    if (rtlWanted.length > 0) {
       await context.addCookies([
         { name: 'NEXT_LOCALE', value: 'ar', url: 'http://localhost:3001' },
       ]);
-      for (const rtl of RTL_SCREENS) {
-        await capture({ ...rtl, slug: `${rtl.slug}` });
-        if (theme === THEMES[0]) rtlCaptured.push(rtl);
+      for (const rtl of rtlWanted) {
+        await capture(rtl);
       }
       await context.addCookies([
         { name: 'NEXT_LOCALE', value: 'en', url: 'http://localhost:3001' },
@@ -340,9 +340,16 @@ async function main() {
   }
 
   await browser.close();
-  await writeIndex([...captured, ...rtlCaptured]);
 
-  const total = (captured.length + rtlCaptured.length) * THEMES.length - failures;
+  /*
+   * The index is rebuilt from the FULL screen list, not just this run's
+   * captures, and each entry is kept only if its PNG exists on disk. That way a
+   * targeted re-run (`--only=03-dashboard`) refreshes those images without
+   * truncating the index down to the handful of screens it just shot.
+   */
+  await writeIndex([...buildScreens(ids, true), ...RTL_SCREENS]);
+
+  const total = captured.length * THEMES.length - failures;
   console.log(
     `\nDone: ${total} images, ${(bytes / 1024 / 1024).toFixed(1)} MB${
       failures > 0 ? `, ${failures} failed` : ''

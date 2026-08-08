@@ -115,31 +115,34 @@ interface EntryStatusChartProps {
 
 export function EntryStatusChart({ content }: EntryStatusChartProps): JSX.Element {
   const t = useTranslations('dashboard.charts');
+  // Reuses the same status labels the entry list and StatusBadge already use,
+  // so the legend is translated and cannot drift from the rest of the UI.
+  const tStatus = useTranslations('content.status');
 
   const segments: DonutSegment[] = [
     {
       value: content.byStatus.published,
       stroke: 'stroke-chart-1',
       swatch: 'bg-chart-1',
-      label: 'Published',
+      label: tStatus('PUBLISHED'),
     },
     {
       value: content.byStatus.draft,
       stroke: 'stroke-chart-4',
       swatch: 'bg-chart-4',
-      label: 'Draft',
+      label: tStatus('DRAFT'),
     },
     {
       value: content.byStatus.scheduled,
       stroke: 'stroke-chart-2',
       swatch: 'bg-chart-2',
-      label: 'Scheduled',
+      label: tStatus('SCHEDULED'),
     },
     {
       value: content.byStatus.archived,
       stroke: 'stroke-border-strong',
       swatch: 'bg-border-strong',
-      label: 'Archived',
+      label: tStatus('ARCHIVED'),
     },
   ];
 
