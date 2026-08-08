@@ -33,8 +33,8 @@ It then generates a complete project, installs dependencies, and prints next ste
 ✓ Done! Project created in ./my-site
 
   cd my-site
-  cp .env.example .env
-  docker-compose up
+  # .env is created from .env.example during scaffolding.
+  docker compose up
 
   Admin:  http://localhost:3001/admin
   API:    http://localhost:3000/api/v1
@@ -60,7 +60,7 @@ If you run the CLI with Node.js < 20, it exits immediately:
 
 ---
 
-## Option B — Manual Docker Compose
+## Option B — Manual Docker Compose from this repository
 
 Clone the repository and start services directly:
 
@@ -68,7 +68,7 @@ Clone the repository and start services directly:
 git clone https://github.com/kast-cms/kast.git
 cd kast
 cp .env.example .env
-docker-compose up
+docker compose up --build
 ```
 
 The compose file starts:
@@ -77,6 +77,9 @@ The compose file starts:
 - **Redis 7** on port 6379
 - **Kast API** (NestJS) on port 3000
 - **Kast Admin** (Next.js) on port 3001
+
+The compose file keeps `.env` friendly for local development and overrides the
+API container's database and Redis hosts to use the Docker service names.
 
 ---
 

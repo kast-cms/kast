@@ -1,17 +1,12 @@
 // docker-compose.yml Handlebars template for generated projects.
 // This file is provided for running Kast CMS with Docker (local dev or production).
 // For local development without Docker, run: <pm> run dev
-//
-// When using Docker:
-//   - Override REDIS_HOST=redis in .env (Docker service name)
-//   - Override DATABASE_URL host to "postgres" in .env
 export const DOCKER_COMPOSE_TEMPLATE = `# ── Docker Compose ─────────────────────────────────────────────────────────
 # Use this file to run Kast CMS with Docker.
 # For local development without Docker, run: {{packageManager}} run dev
 #
-# When using Docker, update your .env:
-#   REDIS_HOST=redis
-#   DATABASE_URL=postgresql://kast:kast_secret@postgres:5432/kast_db
+# The API service overrides the host-only DATABASE_URL and REDIS_HOST values
+# from .env so docker compose up works without changing local dev settings.
 # ─────────────────────────────────────────────────────────────────────────────
 
 services:
@@ -49,6 +44,11 @@ services:
     image: ghcr.io/kast-cms/kast-api:latest
     restart: unless-stopped
     env_file: .env
+    environment:
+      DATABASE_URL: postgresql://\${POSTGRES_USER:-kast}:\${POSTGRES_PASSWORD:-kast_secret}@postgres:5432/\${POSTGRES_DB:-kast_db}
+      REDIS_HOST: redis
+      STORAGE_LOCAL_DIR: /app/uploads
+    command: sh -c "node_modules/.bin/prisma migrate deploy && node dist/main.js"
     ports:
       - '{{apiPort}}:3000'
     depends_on:
@@ -63,7 +63,8 @@ services:
     image: ghcr.io/kast-cms/kast-admin:latest
     restart: unless-stopped
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:{{apiPort}}/api/v1
+      - NEXT_PUBLIC_API_URL=http://localhost:{{apiPort}}
+      - INTERNAL_API_URL=http://api:3000
     ports:
       - '3001:3001'
     depends_on:
@@ -74,7 +75,7 @@ services:
     image: ghcr.io/kast-cms/web-{{frontendStarter}}:latest
     restart: unless-stopped
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:{{apiPort}}/api/v1
+      - NEXT_PUBLIC_API_URL=http://localhost:{{apiPort}}
     ports:
       - '3002:3002'
     depends_on:

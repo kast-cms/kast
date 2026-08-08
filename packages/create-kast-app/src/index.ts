@@ -42,9 +42,9 @@ function printSuccess(opts: ProjectOptions): void {
         '',
         `  ${pc.bold('Next steps:')}`,
         `  ${pc.dim('$')} cd ${opts.projectName}`,
-        `  ${pc.dim('$')} ${pc.cyan('cp .env.example .env')}  ${pc.dim('# Set JWT_SECRET at minimum')}`,
-        `  ${pc.dim('$')} ${pc.cyan(`${pm} run db:migrate`)}`,
-        `  ${pc.dim('$')} ${pc.cyan(`${pm} run dev`)}`,
+        `  ${pc.dim('$')} ${pc.cyan('$EDITOR .env')}  ${pc.dim('# Review JWT_SECRET and settings')}`,
+        `  ${pc.dim('$')} ${pc.cyan('docker compose up')}  ${pc.dim('# Full stack with migrations')}`,
+        `  ${pc.dim('# Or local dev:')} ${pc.cyan(`${pm} run db:migrate && ${pm} run dev`)}`,
         '',
         `  Admin:  ${pc.underline('http://localhost:3001/admin')}`,
         `  API:    ${pc.underline(apiUrl)}`,
@@ -63,9 +63,9 @@ function printSuccess(opts: ProjectOptions): void {
         '',
         `  ${pc.bold('Next steps:')}`,
         `  ${pc.dim('$')} cd ${opts.projectName}`,
-        `  ${pc.dim('$')} ${pc.cyan('cp .env.example .env')}  ${pc.dim('# Set JWT_SECRET at minimum')}`,
-        `  ${pc.dim('$')} ${pc.cyan(`${pm} run db:migrate`)}`,
-        `  ${pc.dim('$')} ${pc.cyan(`${pm} run dev`)}`,
+        `  ${pc.dim('$')} ${pc.cyan('$EDITOR .env')}  ${pc.dim('# Review JWT_SECRET and settings')}`,
+        `  ${pc.dim('$')} ${pc.cyan('docker compose up')}  ${pc.dim('# API with migrations')}`,
+        `  ${pc.dim('# Or local dev:')} ${pc.cyan(`${pm} run db:migrate && ${pm} run dev`)}`,
         '',
         `  API:    ${pc.underline(apiUrl)}`,
         `  MCP:    ${pc.underline(`http://localhost:${opts.apiPort}/mcp`)}`,
@@ -89,7 +89,7 @@ async function checkDatabaseAndOfferDocker(_targetDir: string): Promise<void> {
   const dockerAvailable = await isDockerAvailable();
   if (dockerAvailable) {
     process.stdout.write(
-      `  ${pc.dim('Run')} ${pc.cyan('docker-compose up -d')} ${pc.dim('to start PostgreSQL and Redis.')}\n`,
+      `  ${pc.dim('Run')} ${pc.cyan('docker compose up -d')} ${pc.dim('to start PostgreSQL and Redis.')}\n`,
     );
   } else {
     process.stdout.write(

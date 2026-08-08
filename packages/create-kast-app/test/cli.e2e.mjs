@@ -87,6 +87,18 @@ test('docker-compose.yml contains postgres and redis services', async (t) => {
     compose.includes('kast-api'),
     'docker-compose should reference kast-api image for production',
   );
+  assert.ok(
+    compose.includes('DATABASE_URL: postgresql://${POSTGRES_USER:-kast}'),
+    'docker-compose should override DATABASE_URL for the Docker network',
+  );
+  assert.ok(
+    compose.includes('REDIS_HOST: redis'),
+    'docker-compose should override REDIS_HOST for the Docker network',
+  );
+  assert.ok(
+    compose.includes('prisma migrate deploy'),
+    'docker-compose should run migrations before starting the API',
+  );
 });
 
 test('.env.example contains required variables', async (t) => {

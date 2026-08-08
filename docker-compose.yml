@@ -1,22 +1,21 @@
-# Full-stack Docker deployment (Postgres + Redis + API).
-# Before `docker compose up`, copy .env.example to .env and point the API at the
-# compose service names (the API runs inside the network, not on localhost):
-#   DATABASE_URL=postgresql://kast:kast_secret@postgres:5432/kast_db
-#   REDIS_HOST=redis
+# Full-stack Docker deployment (Postgres + Redis + API + Admin).
+# Copy .env.example to .env before running. The API service overrides the
+# host-only DATABASE_URL and REDIS_HOST values from .env so `docker compose up`
+# works without manually changing local development settings.
 services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: kast
-      POSTGRES_PASSWORD: kast_secret
-      POSTGRES_DB: kast_db
+      POSTGRES_USER: ${POSTGRES_USER:-kast}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kast_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-kast_db}
     ports:
       - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U kast -d kast_db']
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER:-kast} -d $${POSTGRES_DB:-kast_db}']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -40,6 +39,10 @@ services:
       dockerfile: apps/api/Dockerfile
     restart: unless-stopped
     env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-kast}:${POSTGRES_PASSWORD:-kast_secret}@postgres:5432/${POSTGRES_DB:-kast_db}
+      REDIS_HOST: redis
+      STORAGE_LOCAL_DIR: /tmp/kast-uploads
     ports:
       - '3000:3000'
     depends_on:
@@ -49,6 +52,19 @@ services:
         condition: service_healthy
     volumes:
       - uploads:/tmp/kast-uploads
+
+  admin:
+    build:
+      context: .
+      dockerfile: apps/admin/Dockerfile
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3000
+      INTERNAL_API_URL: http://api:3000
+    ports:
+      - '3001:3001'
+    depends_on:
+      - api
 
 volumes:
   postgres_data:

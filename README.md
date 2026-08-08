@@ -36,12 +36,10 @@ Kast is a modern headless CMS built on **NestJS + Next.js** with a built-in **MC
 ```bash
 npx create-kast-app my-site
 cd my-site
-# .env is copied automatically — edit it with your DB credentials
-pnpm run db:migrate
-pnpm run dev
+docker compose up
 ```
 
-> **Production with Docker?** A `docker-compose.yml` is included in the generated project. Run `docker-compose up` after filling in `.env`.
+> Prefer local dev? `.env` is created automatically — edit it, then run `pnpm run db:migrate && pnpm run dev`.
 
 | Service            | URL                            |
 | ------------------ | ------------------------------ |

@@ -39,6 +39,5 @@ ENV NODE_ENV=production
 COPY --from=deployer /deploy .
 COPY --from=builder /app/apps/api/dist ./dist
 EXPOSE 3000
-# Run database migrations before starting (manual step), e.g.:
-#   docker compose run --rm api node_modules/.bin/prisma migrate deploy
-CMD ["node", "dist/main.js"]
+# Apply pending migrations before starting so Docker Compose boots a usable API.
+CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && node dist/main.js"]

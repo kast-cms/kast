@@ -5,15 +5,15 @@ export const README_TEMPLATE = `# {{projectName}}
 ## Quick Start
 
 \`\`\`bash
-# 1. Configure environment
-cp .env.example .env
-# Edit .env — set JWT_SECRET and DATABASE_URL at minimum
+# 1. Review environment
+# .env is created from .env.example during scaffolding.
+# Edit .env — set JWT_SECRET and review settings.
 
-# 2. Run database migrations
-{{packageManager}} run db:migrate
+# 2. Start the full stack with Docker
+docker compose up
 
-# 3. Start all services in development mode
-{{packageManager}} run dev
+# Or run locally against your own Postgres/Redis:
+{{packageManager}} run db:migrate && {{packageManager}} run dev
 \`\`\`
 
 The admin panel opens at **http://localhost:3001/admin**.

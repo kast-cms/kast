@@ -60,7 +60,7 @@ npx create-kast-app my-project --skip-interactive
 ```bash
 cd my-project
 nano .env               # Set JWT_SECRET and review settings
-docker-compose up       # Start the full stack
+docker compose up       # Start the full stack
 ```
 
 | Service      | URL                          |

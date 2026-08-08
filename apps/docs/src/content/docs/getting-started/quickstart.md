@@ -12,18 +12,19 @@ This guide takes you from zero to a running Kast instance with a super-admin acc
 ```bash
 npx create-kast-app my-blog
 cd my-blog
-cp .env.example .env
 ```
 
-The generated `.env` is pre-configured for local development. You don't need to change anything to start.
+The generated `.env` is pre-configured for local development and Docker Compose.
+Review `JWT_SECRET` before production.
 
 ## 2. Start services
 
 ```bash
-docker-compose up
+docker compose up
 ```
 
-Docker pulls and starts PostgreSQL, Redis, the API, and the admin panel. Wait for:
+Docker starts PostgreSQL, Redis, the API, and the admin panel. The API runs
+pending Prisma migrations before it starts. Wait for:
 
 ```
 kast-api   | [Nest] Application is running on: http://localhost:3000
