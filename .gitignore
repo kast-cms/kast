@@ -37,3 +37,8 @@ docker-compose.override.yml
 
 # Upload temp
 uploads/temp/
+
+# Written and re-added by `next dev` (Next 16) in each Next app — generated
+# agent instructions, not project source. Commit them deliberately if wanted.
+apps/*/AGENTS.md
+apps/*/CLAUDE.md

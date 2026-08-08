@@ -12,6 +12,7 @@ import { randomUUID } from 'crypto';
 import { lookup } from 'dns/promises';
 import { isIP } from 'net';
 import { extname } from 'path';
+import sharp from 'sharp';
 import type { PaginatedResult } from '../../common/types/auth.types';
 import { validateMagicBytes } from '../../common/utils/mime-magic.util';
 import { isPrivateAddress } from '../../common/utils/ssrf-guard.util';
@@ -22,8 +23,6 @@ import { ListMediaDto } from './dto/list-media.dto';
 import type { MediaJobData } from './media.processor';
 import { MediaRepository } from './media.repository';
 import type { StorageAdapter } from './storage/storage.adapter';
-
-const sizeOf = require('image-size') as (buf: Buffer) => { width?: number; height?: number } | null;
 
 const IMAGE_MIME_TYPES = new Set([
   'image/jpeg',
@@ -92,7 +91,7 @@ export class MediaService {
     const ext = extname(file.originalname);
     const key = `${randomUUID()}${ext}`;
     const { url, storageKey } = await this.storage.upload(key, file.buffer, file.mimetype);
-    const { width, height } = this.getImageDimensions(file);
+    const { width, height } = await this.getImageDimensions(file);
 
     const media = await this.repo.create({
       filename: key,
@@ -116,17 +115,21 @@ export class MediaService {
     return { data: media };
   }
 
-  private getImageDimensions(file: Express.Multer.File): {
-    width?: number;
-    height?: number;
-  } {
+  /**
+   * Reads dimensions with sharp, which this module already uses for
+   * optimisation. It replaced `image-size`, whose DoS advisories
+   * (GHSA-w3rx-r6r6-pgpr, GHSA-5p2g-fcmc-qvqq) have no patched release — and
+   * this path parses attacker-supplied uploads.
+   */
+  private async getImageDimensions(file: {
+    mimetype: string;
+    buffer: Buffer;
+    originalname: string;
+  }): Promise<{ width?: number; height?: number }> {
     if (!IMAGE_MIME_TYPES.has(file.mimetype)) return {};
     try {
-      const dim = sizeOf(file.buffer);
-      const result: { width?: number; height?: number } = {};
-      if (dim?.width !== undefined) result.width = dim.width;
-      if (dim?.height !== undefined) result.height = dim.height;
-      return result;
+      const meta = await sharp(file.buffer).metadata();
+      return { width: meta.width, height: meta.height };
     } catch {
       this.logger.warn(`Could not get dimensions for ${file.originalname}`);
       return {};
@@ -190,7 +193,7 @@ export class MediaService {
     const ext = extname(originalName);
     const key = `${randomUUID()}${ext}`;
     const { url: storedUrl, storageKey } = await this.storage.upload(key, buffer, mimeType);
-    const { width, height } = this.getImageDimensions({
+    const { width, height } = await this.getImageDimensions({
       mimetype: mimeType,
       buffer,
       originalname: originalName,
