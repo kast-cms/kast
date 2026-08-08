@@ -4,6 +4,7 @@ import type {
   Redirect,
   SeoMeta,
   SeoScore,
+  SitemapEntry,
   UpdateRedirectBody,
   UpsertSeoMetaBody,
 } from './seo-types.js';
@@ -28,8 +29,17 @@ export class SeoResource {
     return this.client.request(`/api/v1/seo/validate/${entryId}`, { method: 'POST' });
   }
 
+  /**
+   * Raw sitemap XML. `request` parses JSON, so this goes through the text
+   * variant — calling it via `request` throws on the leading `<?xml`.
+   */
   getSitemap(): Promise<string> {
-    return this.client.request('/api/v1/seo/sitemap.xml');
+    return this.client.requestText('/api/v1/seo/sitemap.xml');
+  }
+
+  /** The same entries as JSON, for rendering a list in an admin UI. */
+  listSitemapEntries(): Promise<ApiResponse<SitemapEntry[]>> {
+    return this.client.request('/api/v1/seo/sitemap');
   }
 
   listRedirects(params?: { limit?: number; cursor?: string }): Promise<ApiListResponse<Redirect>> {

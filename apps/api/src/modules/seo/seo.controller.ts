@@ -99,6 +99,22 @@ export class SeoController {
     return buildSitemapXml(entries);
   }
 
+  /**
+   * JSON view of the same entries. The admin sitemap screen lists the URLs in a
+   * table, and parsing the XML document in the browser just to render rows is
+   * needless work — the SDK is a JSON client.
+   */
+  @Get('sitemap')
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.VIEWER, SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
+  @ApiOperation({ summary: 'List sitemap entries as JSON' })
+  async listSitemapEntries(): Promise<{ data: { canonicalUrl: string; updatedAt: string }[] }> {
+    const entries = await this.service.buildSitemapEntries();
+    return {
+      data: entries.map((e) => ({ canonicalUrl: e.loc, updatedAt: e.lastmod.toISOString() })),
+    };
+  }
+
   @Get('redirects')
   @ApiBearerAuth()
   @Roles(SYSTEM_ROLES.VIEWER, SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)

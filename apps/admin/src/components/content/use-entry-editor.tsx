@@ -98,7 +98,7 @@ function useAutosave({
     if (createdEntryId) {
       await client.content.update(typeId, createdEntryId, { data: payload });
     } else {
-      const res = await client.content.create(typeId, { data: payload, status: 'DRAFT' });
+      const res = await client.content.create(typeId, { data: payload });
       setCreatedEntryId(res.data.id);
     }
     setAutosaved(true);
@@ -164,7 +164,7 @@ export function useEntryEditor({
       if (createdEntryId) {
         await client.content.update(typeId, createdEntryId, { data: payload, status: 'DRAFT' });
       } else {
-        const res = await client.content.create(typeId, { data: payload, status: 'DRAFT' });
+        const res = await client.content.create(typeId, { data: payload });
         setCreatedEntryId(res.data.id);
       }
       setStatus('DRAFT');
@@ -179,7 +179,7 @@ export function useEntryEditor({
       const payload = { ...data, _seo: seo };
       let id = createdEntryId;
       if (!id) {
-        const res = await client.content.create(typeId, { data: payload, status: 'DRAFT' });
+        const res = await client.content.create(typeId, { data: payload });
         id = res.data.id;
         setCreatedEntryId(id);
       } else {

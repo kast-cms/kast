@@ -36,7 +36,9 @@ export function createBullBoardAuthMiddleware(
           httpOnly: true,
           sameSite: 'lax',
           maxAge: 15 * 60 * 1000,
-          path: '/bull-board',
+          // Must match the mounted path, which carries the global 'api' prefix,
+          // or the browser never sends this cookie back to the board.
+          path: '/api/bull-board',
         });
       }
 

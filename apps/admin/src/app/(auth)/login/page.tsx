@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
-import { API_URL } from '@/config/env';
+import { adminRoute, API_URL } from '@/config/env';
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
 import type { TokenPair } from '@/types';
@@ -34,7 +34,7 @@ export default function LoginPage(): JSX.Element {
       const pair = res.data;
 
       // Persist refresh token in HttpOnly cookie via server route
-      await fetch('/api/auth/set-session', {
+      await fetch(adminRoute('/api/auth/set-session'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refreshToken: pair.refreshToken }),

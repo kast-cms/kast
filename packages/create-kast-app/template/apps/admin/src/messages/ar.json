@@ -182,7 +182,7 @@
       "title": "حذف نوع المحتوى",
       "description": "لا يمكن التراجع عن هذا الإجراء. ستُحذف جميع المدخلات والحقول المرتبطة بهذا النوع نهائياً.",
       "confirmLabel": "اكتب معرف API للتأكيد:",
-      "confirmPlaceholder": "اكتب {{apiId}} للتأكيد",
+      "confirmPlaceholder": "اكتب {apiId} للتأكيد",
       "deleteButton": "حذف نهائي",
       "deleting": "جارٍ الحذف…"
     }
@@ -214,13 +214,13 @@
       "SCHEDULED": "مجدول"
     },
     "bulk": {
-      "selected": "{{count}} محدد",
+      "selected": "{count} محدد",
       "publish": "نشر",
       "unpublish": "إلغاء النشر",
       "trash": "نقل إلى المهملات",
-      "confirmTrash": "نقل {{count}} مدخلات إلى المهملات؟",
-      "confirmPublish": "نشر {{count}} مدخلات؟",
-      "confirmUnpublish": "إلغاء نشر {{count}} مدخلات؟"
+      "confirmTrash": "نقل {count} مدخلات إلى المهملات؟",
+      "confirmPublish": "نشر {count} مدخلات؟",
+      "confirmUnpublish": "إلغاء نشر {count} مدخلات؟"
     },
     "editor": {
       "newTitle": "مدخل جديد",
@@ -241,7 +241,7 @@
       "scheduledFor": "مجدول لـ {date}",
       "autosaved": "تم حفظ المسودة",
       "unsavedChanges": "تغييرات غير محفوظة",
-      "localeTab": "{{locale}}"
+      "localeTab": "{locale}"
     },
     "seo": {
       "panelTitle": "تحسين محركات البحث",
@@ -313,7 +313,7 @@
       "dimensions": "الأبعاد",
       "uploaded": "تاريخ الرفع",
       "url": "الرابط",
-      "usedIn": "مستخدم في {{count}} مدخلات",
+      "usedIn": "مستخدم في {count} مدخلات",
       "trash": "نقل إلى المهملات",
       "trashDisabled": "قيد الاستخدام — لا يمكن نقله"
     },
@@ -397,7 +397,7 @@
       "cancel": "إلغاء"
     },
     "permissions": {
-      "title": "الصلاحيات — {{name}}",
+      "title": "الصلاحيات — {name}",
       "readOnly": "صلاحيات الأدوار النظامية للقراءة فقط.",
       "actions": {
         "read": "قراءة",
@@ -419,7 +419,7 @@
       "saving": "جارٍ الحفظ…",
       "viewEdit": "الصلاحيات",
       "delete": "حذف",
-      "deleteConfirm": "حذف الدور \"{{name}}\"؟ لا يمكن التراجع عن هذا الإجراء."
+      "deleteConfirm": "حذف الدور \"{name}\"؟ لا يمكن التراجع عن هذا الإجراء."
     },
     "noRoles": "لا توجد أدوار."
   },
@@ -470,7 +470,7 @@
     "never": "أبداً",
     "noExpiry": "لا انتهاء",
     "revoke": "إلغاء",
-    "revokeConfirm": "إلغاء الرمز \"{{name}}\"؟ ستفقد جميع الخدمات التي تستخدمه الوصول."
+    "revokeConfirm": "إلغاء الرمز \"{name}\"؟ ستفقد جميع الخدمات التي تستخدمه الوصول."
   },
   "seo": {
     "title": "تحسين محركات البحث",
@@ -520,7 +520,7 @@
         "submit": "إضافة إعادة توجيه",
         "submitting": "جارٍ الإضافة…"
       },
-      "deleteConfirm": "حذف إعادة التوجيه من \"{{from}}\"؟",
+      "deleteConfirm": "حذف إعادة التوجيه من \"{from}\"؟",
       "toggleActive": "تبديل الحالة"
     },
     "sitemap": {
@@ -529,7 +529,7 @@
       "copyAll": "نسخ جميع الروابط",
       "copied": "تم النسخ!",
       "empty": "لا توجد مدخلات منشورة بروابط معيارية.",
-      "urlCount": "{{count}} روابط"
+      "urlCount": "{count} روابط"
     }
   },
   "locales": {

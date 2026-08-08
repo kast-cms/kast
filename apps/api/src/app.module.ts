@@ -48,12 +48,12 @@ import { PrismaModule } from './prisma/prisma.module';
     }),
     ScheduleModule.forRoot(),
     EventEmitterModule.forRoot(),
-    ThrottlerModule.forRoot([
-      { name: 'public', ttl: 60000, limit: 100 },
-      { name: 'auth', ttl: 900000, limit: 20 },
-      { name: 'admin', ttl: 60000, limit: 300 },
-      { name: 'apiKey', ttl: 60000, limit: 1000 },
-    ]),
+    // A single global bucket — every named throttler registered here is
+    // enforced on EVERY route, so registering the tight `auth` bucket globally
+    // would cap the whole API at 20 requests / 15 min per IP. Tighter or looser
+    // per-route limits are applied with @Throttle({ default: ... }) on the
+    // handler, as described in docs/architecture/KAST_SECURITY_MODEL.md §14.
+    ThrottlerModule.forRoot([{ name: 'default', ttl: 60000, limit: 100 }]),
     PrismaModule,
     QueueModule,
     HealthModule,

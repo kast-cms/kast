@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import type { User } from '@prisma/client';
 import * as argon2 from 'argon2';
@@ -8,6 +13,7 @@ import { QueueAdapter } from '../queue/queue.adapter';
 import { QUEUE_NAMES } from '../queue/queue.constants';
 import { AuthRepository } from './auth.repository';
 import type { LoginDto } from './dto/login.dto';
+import type { SetupDto } from './dto/setup.dto';
 import type { UpdateProfileDto } from './dto/update-profile.dto';
 import type { OAuthProfile } from './types/oauth.types';
 
@@ -18,6 +24,33 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly queueAdapter: QueueAdapter,
   ) {}
+
+  /** True while the install has no users and the setup endpoint is still open. */
+  async isSetupRequired(): Promise<boolean> {
+    return (await this.authRepository.countUsers()) === 0;
+  }
+
+  /**
+   * Creates the first owner account on a fresh install. Only ever succeeds while
+   * the users table is empty — once anyone exists this is permanently closed, so
+   * it cannot be used to mint an extra super admin on a live install.
+   */
+  async setup(dto: SetupDto): Promise<UserSummary> {
+    if (!(await this.isSetupRequired())) {
+      throw new ForbiddenException('Setup has already been completed');
+    }
+
+    const user = await this.authRepository.createInitialOwner({
+      email: dto.email,
+      passwordHash: await argon2.hash(dto.password, { type: argon2.argon2id }),
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+    });
+    // The transaction returns null when another request won the race.
+    if (!user) throw new ForbiddenException('Setup has already been completed');
+
+    return this.toSummary(user, ['super_admin']);
+  }
 
   async login(dto: LoginDto): Promise<TokenPair> {
     const user = await this.authRepository.findUserByEmail(dto.email);

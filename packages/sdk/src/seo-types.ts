@@ -73,3 +73,9 @@ export interface UpdateRedirectBody {
   type?: RedirectType;
   isActive?: boolean;
 }
+
+/** One URL in the generated sitemap, as returned by GET /api/v1/seo/sitemap. */
+export interface SitemapEntry {
+  canonicalUrl: string;
+  updatedAt: string;
+}

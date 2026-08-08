@@ -1,5 +1,6 @@
 'use client';
 
+import { adminRoute } from '@/config/env';
 import type { Session, SessionUser, TokenPair } from '@/types';
 import {
   createContext,
@@ -62,21 +63,25 @@ export function SessionProvider({ children }: SessionProviderProps): JSX.Element
   const clearSession = useCallback((): void => {
     setSessionState(null);
     setStatus('unauthenticated');
-    void fetch('/api/auth/logout', { method: 'POST' });
+    void fetch(adminRoute('/api/auth/logout'), { method: 'POST' });
   }, []);
 
   const refreshSession = useCallback(async (): Promise<boolean> => {
     if (refreshingRef.current) return false;
     refreshingRef.current = true;
     try {
-      const res = await fetch('/api/auth/refresh', { method: 'POST' });
+      const res = await fetch(adminRoute('/api/auth/refresh'), { method: 'POST' });
       if (!res.ok) {
         setSessionState(null);
         setStatus('unauthenticated');
         return false;
       }
-      const json = (await res.json()) as TokenPair;
-      setSessionState(buildSession(json));
+      // The route handler wraps the pair as { data: TokenPair } — reading the
+      // envelope as a bare TokenPair leaves accessToken undefined, which makes
+      // expiresAt NaN and schedules an immediate re-refresh, rotating the
+      // refresh token in a loop until the API rejects it and logs the user out.
+      const json = (await res.json()) as { data: TokenPair };
+      setSessionState(buildSession(json.data));
       setStatus('authenticated');
       return true;
     } catch {

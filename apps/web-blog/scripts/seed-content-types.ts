@@ -1,10 +1,10 @@
 /**
- * Seed script: creates blog-post and blog-category content types in Kast CMS.
+ * Seed script: creates the blog-post and blog-category content types in Kast CMS.
  *
  * Usage:
  *   KAST_API_URL=http://localhost:3000 KAST_ADMIN_TOKEN=your-token pnpm seed
  */
-import { KastClient } from '@kast-cms/sdk';
+import { KastClient, type AddFieldBody } from '@kast-cms/sdk';
 
 const apiUrl = process.env.KAST_API_URL ?? '';
 const adminToken = process.env.KAST_ADMIN_TOKEN ?? '';
@@ -24,132 +24,88 @@ const kast = new KastClient({
   accessToken: adminToken,
 });
 
-async function createContentType(slug: string, payload: unknown) {
+interface TypeSpec {
+  /** Identifier the blog queries by — see src/lib/content.ts. */
+  name: string;
+  displayName: string;
+  description: string;
+  fields: AddFieldBody[];
+}
+
+function isAlreadyExists(err: unknown): boolean {
+  const error = err as { status?: number; message?: string };
+  return error.status === 409 || (error.message?.includes('already exists') ?? false);
+}
+
+function describe(err: unknown): string {
+  const error = err as { message?: string };
+  return error.message ?? String(err);
+}
+
+/**
+ * Content types and their fields are separate resources: the type is created
+ * first, then each field is posted to /content-types/:name/fields.
+ */
+async function seedType(spec: TypeSpec): Promise<void> {
   try {
-    await kast.contentTypes.create(payload as Parameters<typeof kast.contentTypes.create>[0]);
-    console.log(`✓ Created content type: ${slug}`);
-  } catch (err: unknown) {
-    const error = err as { status?: number; message?: string };
-    if (error.status === 409 || (error.message && error.message.includes('already exists'))) {
-      console.log(`- Content type already exists: ${slug}`);
-    } else {
-      console.error(`✗ Failed to create ${slug}:`, error.message ?? error);
+    await kast.contentTypes.create({
+      name: spec.name,
+      displayName: spec.displayName,
+      description: spec.description,
+    });
+    console.log(`✓ Created content type: ${spec.name}`);
+  } catch (err) {
+    if (!isAlreadyExists(err)) {
+      console.error(`✗ Failed to create ${spec.name}: ${describe(err)}`);
+      return;
+    }
+    console.log(`- Content type already exists: ${spec.name}`);
+  }
+
+  for (const [position, field] of spec.fields.entries()) {
+    try {
+      await kast.contentTypes.addField(spec.name, { ...field, position });
+      console.log(`  ✓ ${spec.name}.${field.name}`);
+    } catch (err) {
+      if (isAlreadyExists(err)) console.log(`  - ${spec.name}.${field.name} already exists`);
+      else console.error(`  ✗ ${spec.name}.${field.name}: ${describe(err)}`);
     }
   }
 }
 
-async function main() {
-  console.log('Seeding Kast CMS content types for web-blog...\n');
-
-  // Blog Category
-  await createContentType('blog-category', {
-    name: 'Blog Category',
-    slug: 'blog-category',
+const TYPES: TypeSpec[] = [
+  {
+    name: 'blog-category',
+    displayName: 'Blog Category',
     description: 'Taxonomy categories for blog posts',
     fields: [
-      {
-        name: 'name',
-        label: 'Category Name',
-        type: 'TEXT',
-        required: true,
-        order: 0,
-      },
-      {
-        name: 'slug',
-        label: 'URL Slug',
-        type: 'TEXT',
-        required: true,
-        order: 1,
-      },
-      {
-        name: 'description',
-        label: 'Description',
-        type: 'TEXTAREA',
-        required: false,
-        order: 2,
-      },
+      { name: 'name', displayName: 'Category Name', type: 'TEXT', isRequired: true },
+      { name: 'slug', displayName: 'URL Slug', type: 'TEXT', isRequired: true, isUnique: true },
+      { name: 'description', displayName: 'Description', type: 'TEXT' },
     ],
-  });
-
-  // Blog Post
-  await createContentType('blog-post', {
-    name: 'Blog Post',
-    slug: 'blog-post',
+  },
+  {
+    name: 'blog-post',
+    displayName: 'Blog Post',
     description: 'Blog article content type',
     fields: [
-      {
-        name: 'title',
-        label: 'Title',
-        type: 'TEXT',
-        required: true,
-        order: 0,
-      },
-      {
-        name: 'slug',
-        label: 'URL Slug',
-        type: 'TEXT',
-        required: true,
-        order: 1,
-      },
-      {
-        name: 'excerpt',
-        label: 'Excerpt',
-        type: 'TEXTAREA',
-        required: false,
-        order: 2,
-      },
-      {
-        name: 'body',
-        label: 'Body',
-        type: 'RICH_TEXT',
-        required: true,
-        order: 3,
-      },
-      {
-        name: 'coverImage',
-        label: 'Cover Image URL',
-        type: 'TEXT',
-        required: false,
-        order: 4,
-      },
-      {
-        name: 'publishedAt',
-        label: 'Published At',
-        type: 'DATE',
-        required: false,
-        order: 5,
-      },
-      {
-        name: 'author',
-        label: 'Author',
-        type: 'TEXT',
-        required: false,
-        order: 6,
-      },
-      {
-        name: 'category',
-        label: 'Category Slug',
-        type: 'TEXT',
-        required: false,
-        order: 7,
-      },
-      {
-        name: 'tags',
-        label: 'Tags',
-        type: 'JSON',
-        required: false,
-        order: 8,
-      },
-      {
-        name: 'readTimeMinutes',
-        label: 'Read Time (minutes)',
-        type: 'NUMBER',
-        required: false,
-        order: 9,
-      },
+      { name: 'title', displayName: 'Title', type: 'TEXT', isRequired: true, isLocalized: true },
+      { name: 'slug', displayName: 'URL Slug', type: 'TEXT', isRequired: true, isUnique: true },
+      { name: 'excerpt', displayName: 'Excerpt', type: 'TEXT', isLocalized: true },
+      { name: 'body', displayName: 'Body', type: 'RICH_TEXT', isRequired: true, isLocalized: true },
+      { name: 'coverImage', displayName: 'Cover Image URL', type: 'URL' },
+      { name: 'publishedAt', displayName: 'Published At', type: 'DATE' },
+      { name: 'author', displayName: 'Author', type: 'TEXT' },
+      { name: 'category', displayName: 'Category Slug', type: 'TEXT' },
+      { name: 'tags', displayName: 'Tags', type: 'JSON' },
+      { name: 'readTimeMinutes', displayName: 'Read Time (minutes)', type: 'NUMBER' },
     ],
-  });
+  },
+];
 
+async function main(): Promise<void> {
+  console.log('Seeding Kast CMS content types for web-blog...\n');
+  for (const spec of TYPES) await seedType(spec);
   console.log('\nDone! You can now create content in the Kast Admin panel.');
   console.log(`Admin URL: ${apiUrl.replace(':3000', ':3001')}/admin`);
 }

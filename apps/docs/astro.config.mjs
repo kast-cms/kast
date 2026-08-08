@@ -6,6 +6,9 @@ export default defineConfig({
     starlight({
       title: 'Kast CMS',
       description: 'Open-source, AI-native headless CMS. Cast your content everywhere.',
+      // Starlight looks for /favicon.svg by default, which this site does not
+      // ship — every page load 404'd on it.
+      favicon: '/favicon.png',
       logo: {
         light: './src/assets/logo-light.png',
         dark: './src/assets/logo-dark.png',

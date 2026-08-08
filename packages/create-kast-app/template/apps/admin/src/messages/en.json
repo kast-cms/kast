@@ -182,7 +182,7 @@
       "title": "Delete content type",
       "description": "This action cannot be undone. All entries and fields associated with this content type will be permanently deleted.",
       "confirmLabel": "Type the API ID to confirm:",
-      "confirmPlaceholder": "Type {{apiId}} to confirm",
+      "confirmPlaceholder": "Type {apiId} to confirm",
       "deleteButton": "Delete permanently",
       "deleting": "Deleting…"
     }
@@ -214,13 +214,13 @@
       "SCHEDULED": "Scheduled"
     },
     "bulk": {
-      "selected": "{{count}} selected",
+      "selected": "{count} selected",
       "publish": "Publish",
       "unpublish": "Unpublish",
       "trash": "Move to Trash",
-      "confirmTrash": "Move {{count}} entries to trash?",
-      "confirmPublish": "Publish {{count}} entries?",
-      "confirmUnpublish": "Unpublish {{count}} entries?"
+      "confirmTrash": "Move {count} entries to trash?",
+      "confirmPublish": "Publish {count} entries?",
+      "confirmUnpublish": "Unpublish {count} entries?"
     },
     "editor": {
       "newTitle": "New entry",
@@ -241,7 +241,7 @@
       "scheduledFor": "Scheduled for {date}",
       "autosaved": "Draft saved",
       "unsavedChanges": "Unsaved changes",
-      "localeTab": "{{locale}}"
+      "localeTab": "{locale}"
     },
     "seo": {
       "panelTitle": "SEO",
@@ -313,7 +313,7 @@
       "dimensions": "Dimensions",
       "uploaded": "Uploaded",
       "url": "URL",
-      "usedIn": "Used in {{count}} entries",
+      "usedIn": "Used in {count} entries",
       "trash": "Move to trash",
       "trashDisabled": "In use — cannot trash"
     },
@@ -397,7 +397,7 @@
       "cancel": "Cancel"
     },
     "permissions": {
-      "title": "Permissions — {{name}}",
+      "title": "Permissions — {name}",
       "readOnly": "System role permissions are read-only.",
       "actions": {
         "read": "Read",
@@ -419,7 +419,7 @@
       "saving": "Saving…",
       "viewEdit": "Permissions",
       "delete": "Delete",
-      "deleteConfirm": "Delete role \"{{name}}\"? This cannot be undone."
+      "deleteConfirm": "Delete role \"{name}\"? This cannot be undone."
     },
     "noRoles": "No roles found."
   },
@@ -470,7 +470,7 @@
     "never": "Never",
     "noExpiry": "No expiry",
     "revoke": "Revoke",
-    "revokeConfirm": "Revoke token \"{{name}}\"? Any services using it will lose access."
+    "revokeConfirm": "Revoke token \"{name}\"? Any services using it will lose access."
   },
   "seo": {
     "title": "SEO",
@@ -520,7 +520,7 @@
         "submit": "Add redirect",
         "submitting": "Adding…"
       },
-      "deleteConfirm": "Delete redirect from \"{{from}}\"?",
+      "deleteConfirm": "Delete redirect from \"{from}\"?",
       "toggleActive": "Toggle active"
     },
     "sitemap": {
@@ -529,7 +529,7 @@
       "copyAll": "Copy all URLs",
       "copied": "Copied!",
       "empty": "No published entries with canonical URLs found.",
-      "urlCount": "{{count}} URLs"
+      "urlCount": "{count} URLs"
     }
   },
   "locales": {

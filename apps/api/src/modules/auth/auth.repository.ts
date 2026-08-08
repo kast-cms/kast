@@ -7,7 +7,50 @@ import type {
   User,
 } from '@prisma/client';
 import { createHash, randomBytes } from 'crypto';
+import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
 import { PrismaService } from '../../prisma/prisma.service';
+
+/** Mirrors prisma/seed.ts — the roles the RBAC guard expects to exist. */
+const SYSTEM_ROLE_SEED = [
+  {
+    name: 'super_admin',
+    displayName: 'Super Admin',
+    description: 'Full system access',
+    isSystem: true,
+  },
+  {
+    name: 'admin',
+    displayName: 'Admin',
+    description: 'Manage content, users, and settings',
+    isSystem: true,
+  },
+  {
+    name: 'editor',
+    displayName: 'Editor',
+    description: 'Create and publish content',
+    isSystem: true,
+  },
+  { name: 'viewer', displayName: 'Viewer', description: 'Read-only access', isSystem: true },
+] as const;
+
+const DEFAULT_LOCALE_SEED = [
+  {
+    code: 'en',
+    name: 'English',
+    nativeName: 'English',
+    isDefault: true,
+    isActive: true,
+    direction: 'LTR',
+  },
+  {
+    code: 'ar',
+    name: 'Arabic',
+    nativeName: 'العربية',
+    isDefault: false,
+    isActive: true,
+    direction: 'RTL',
+  },
+] as const;
 
 @Injectable()
 export class AuthRepository {
@@ -125,7 +168,13 @@ export class AuthRepository {
   }
 
   findDefaultRole(): Promise<{ id: string } | null> {
-    return this.prisma.role.findFirst({ where: { name: 'EDITOR' }, select: { id: true } });
+    // Role names are stored lowercase (see prisma/seed.ts and SYSTEM_ROLES);
+    // the literal 'EDITOR' never matched, so OAuth signup for a new user always
+    // failed with "No default role configured".
+    return this.prisma.role.findFirst({
+      where: { name: SYSTEM_ROLES.EDITOR },
+      select: { id: true },
+    });
   }
 
   upsertPasswordResetToken(
@@ -161,5 +210,45 @@ export class AuthRepository {
 
   generateHashOnly(raw: string): { hash: string } {
     return { hash: createHash('sha256').update(raw).digest('hex') };
+  }
+
+  countUsers(): Promise<number> {
+    return this.prisma.user.count();
+  }
+
+  /**
+   * Creates the first owner account together with the system roles and default
+   * locales a fresh install needs, in one transaction. The user count is
+   * re-checked inside the transaction so two concurrent setup requests cannot
+   * both create an owner.
+   */
+  async createInitialOwner(data: {
+    email: string;
+    passwordHash: string;
+    firstName: string;
+    lastName: string;
+  }): Promise<User | null> {
+    return this.prisma.$transaction(async (tx) => {
+      if ((await tx.user.count()) > 0) return null;
+
+      for (const role of SYSTEM_ROLE_SEED) {
+        await tx.role.upsert({ where: { name: role.name }, update: {}, create: role });
+      }
+      for (const locale of DEFAULT_LOCALE_SEED) {
+        await tx.locale.upsert({ where: { code: locale.code }, update: {}, create: locale });
+      }
+
+      const superAdmin = await tx.role.findUniqueOrThrow({ where: { name: 'super_admin' } });
+      return tx.user.create({
+        data: {
+          email: data.email,
+          passwordHash: data.passwordHash,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          isActive: true,
+          roles: { create: [{ roleId: superAdmin.id }] },
+        },
+      });
+    });
   }
 }

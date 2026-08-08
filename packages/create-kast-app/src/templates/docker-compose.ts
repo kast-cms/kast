@@ -2,16 +2,11 @@
 // This file is provided for running Kast CMS with Docker (local dev or production).
 // For local development without Docker, run: <pm> run dev
 //
-// When using Docker:
-//   - Override REDIS_HOST=redis in .env (Docker service name)
-//   - Override DATABASE_URL host to "postgres" in .env
+// The api service points itself at the postgres/redis service names via its
+// `environment` block, so a .env copied from .env.example works unedited.
 export const DOCKER_COMPOSE_TEMPLATE = `# ── Docker Compose ─────────────────────────────────────────────────────────
-# Use this file to run Kast CMS with Docker.
+# Use this file to run Kast CMS with Docker: fill in .env, then docker compose up.
 # For local development without Docker, run: {{packageManager}} run dev
-#
-# When using Docker, update your .env:
-#   REDIS_HOST=redis
-#   DATABASE_URL=postgresql://kast:kast_secret@postgres:5432/kast_db
 # ─────────────────────────────────────────────────────────────────────────────
 
 services:
@@ -49,6 +44,16 @@ services:
     image: ghcr.io/kast-cms/kast-api:latest
     restart: unless-stopped
     env_file: .env
+    # \`environment\` beats \`env_file\`. Inside the compose network Postgres and
+    # Redis answer to their service names; .env points at localhost, which in
+    # this container is the container itself. Set DOCKER_DATABASE_URL /
+    # DOCKER_REDIS_HOST to use servers outside compose.
+    environment:
+      DATABASE_URL: \${DOCKER_DATABASE_URL:-postgresql://\${POSTGRES_USER:-kast}:\${POSTGRES_PASSWORD:-kast_secret}@postgres:5432/\${POSTGRES_DB:-kast_db}}
+      REDIS_HOST: \${DOCKER_REDIS_HOST:-redis}
+      REDIS_PORT: \${DOCKER_REDIS_PORT:-6379}
+    # Apply migrations before serving so a fresh volume yields a working API.
+    command: sh -c "node_modules/.bin/prisma migrate deploy && node dist/main.js"
     ports:
       - '{{apiPort}}:3000'
     depends_on:
@@ -63,7 +68,7 @@ services:
     image: ghcr.io/kast-cms/kast-admin:latest
     restart: unless-stopped
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:{{apiPort}}/api/v1
+      - NEXT_PUBLIC_API_URL=http://localhost:{{apiPort}}
     ports:
       - '3001:3001'
     depends_on:
@@ -74,7 +79,7 @@ services:
     image: ghcr.io/kast-cms/web-{{frontendStarter}}:latest
     restart: unless-stopped
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:{{apiPort}}/api/v1
+      - NEXT_PUBLIC_API_URL=http://localhost:{{apiPort}}
     ports:
       - '3002:3002'
     depends_on:

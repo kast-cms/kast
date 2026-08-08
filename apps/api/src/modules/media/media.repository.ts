@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import type { MediaFile, MediaFolder, Prisma } from '@prisma/client';
-import type { PaginationDto } from '../../common/dto/pagination.dto';
+import { SortOrder } from '../../common/dto/pagination.dto';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ListMediaDto, MediaSortField } from './dto/list-media.dto';
 
 export type FolderWithCounts = MediaFolder & {
   _count: { files: number; children: number };
@@ -11,13 +12,31 @@ export type FolderWithCounts = MediaFolder & {
 export class MediaRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(query: PaginationDto): Promise<{ items: MediaFile[]; total: number }> {
+  async findAll(query: ListMediaDto): Promise<{ items: MediaFile[]; total: number }> {
     const limit = query.limit ?? 20;
-    const where: Prisma.MediaFileWhereInput = { trashedAt: null };
+    const search = query.search?.trim();
+    const where: Prisma.MediaFileWhereInput = {
+      trashedAt: null,
+      ...(query.folderId ? { folderId: query.folderId } : {}),
+      // The library filters by MIME prefix ("image/", "video/", ...) as well as
+      // by a full type, so match on the prefix rather than on equality.
+      ...(query.mimeType ? { mimeType: { startsWith: query.mimeType } } : {}),
+      ...(search
+        ? {
+            OR: [
+              { filename: { contains: search, mode: 'insensitive' } },
+              { originalName: { contains: search, mode: 'insensitive' } },
+              { altText: { contains: search, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    };
+    const sortField = query.sort ?? MediaSortField.CREATED_AT;
+    const order = query.order ?? SortOrder.DESC;
     const [items, total] = await Promise.all([
       this.prisma.mediaFile.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { [sortField]: order } as Prisma.MediaFileOrderByWithRelationInput,
         take: limit + 1,
         ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
       }),
