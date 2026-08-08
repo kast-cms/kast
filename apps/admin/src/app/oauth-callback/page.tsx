@@ -1,6 +1,7 @@
 'use client';
 
 import { Spinner } from '@/components/ui/spinner';
+import { adminRoute } from '@/config/env';
 import { useSession } from '@/lib/session';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { type JSX, useEffect } from 'react';
@@ -19,7 +20,7 @@ export default function OAuthCallbackPage(): JSX.Element {
     }
 
     void (async () => {
-      await fetch('/api/auth/set-session', {
+      await fetch(adminRoute('/api/auth/set-session'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refreshToken }),

@@ -12,13 +12,13 @@ import { randomUUID } from 'crypto';
 import { lookup } from 'dns/promises';
 import { isIP } from 'net';
 import { extname } from 'path';
-import type { PaginationDto } from '../../common/dto/pagination.dto';
 import type { PaginatedResult } from '../../common/types/auth.types';
 import { validateMagicBytes } from '../../common/utils/mime-magic.util';
 import { isPrivateAddress } from '../../common/utils/ssrf-guard.util';
 import type { Env } from '../../config/env.schema';
 import { QueueAdapter } from '../queue/queue.adapter';
 import { QUEUE_NAMES } from '../queue/queue.constants';
+import { ListMediaDto } from './dto/list-media.dto';
 import type { MediaJobData } from './media.processor';
 import { MediaRepository } from './media.repository';
 import type { StorageAdapter } from './storage/storage.adapter';
@@ -146,7 +146,7 @@ export class MediaService {
     ]);
   }
 
-  async findAll(query: PaginationDto): Promise<PaginatedResult<MediaFile>> {
+  async findAll(query: ListMediaDto): Promise<PaginatedResult<MediaFile>> {
     const limit = query.limit ?? 20;
     const { items, total } = await this.repo.findAll(query);
     const hasNextPage = items.length > limit;

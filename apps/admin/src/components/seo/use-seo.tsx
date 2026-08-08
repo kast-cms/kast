@@ -86,7 +86,7 @@ export function useSeo(): UseSeoReturn {
   const loadSitemap = useCallback(async (): Promise<void> => {
     setSitemapLoading(true);
     try {
-      const res = (await client.seo.getSitemap()) as unknown as SitemapListResponse;
+      const res: SitemapListResponse = await client.seo.listSitemapEntries();
       setSitemapUrls(Array.isArray(res.data) ? res.data : []);
     } finally {
       setSitemapLoading(false);

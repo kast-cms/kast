@@ -37,3 +37,16 @@ export const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3
 export const INTERNAL_API_URL = process.env['INTERNAL_API_URL'] ?? API_URL;
 
 export const REFRESH_TOKEN_COOKIE = process.env['REFRESH_TOKEN_COOKIE_NAME'] ?? 'kast_rt';
+
+/** Admin basePath — must match `basePath` in next.config.ts. */
+export const ADMIN_BASE_PATH = process.env['NEXT_PUBLIC_ADMIN_BASE_PATH'] ?? '/admin';
+
+/**
+ * Builds a URL for this app's own route handlers. A browser `fetch()` resolves a
+ * root-relative path against the origin and ignores Next's basePath, so plain
+ * '/api/auth/refresh' misses the handler actually mounted at
+ * '/admin/api/auth/refresh' and 404s.
+ */
+export function adminRoute(path: string): string {
+  return `${ADMIN_BASE_PATH}${path}`;
+}

@@ -1,16 +1,9 @@
-import createIntlMiddleware from 'next-intl/middleware';
 import { type NextRequest, NextResponse } from 'next/server';
 
 const REFRESH_COOKIE = process.env['REFRESH_TOKEN_COOKIE_NAME'] ?? 'kast_rt';
 
 /** Paths that do NOT require authentication */
 const PUBLIC_PATHS = new Set(['/login', '/setup']);
-
-const intlMiddleware = createIntlMiddleware({
-  locales: ['en', 'ar'],
-  defaultLocale: 'en',
-  localePrefix: 'never',
-});
 
 export function middleware(request: NextRequest): NextResponse {
   const { pathname } = request.nextUrl;
@@ -27,8 +20,12 @@ export function middleware(request: NextRequest): NextResponse {
     }
   }
 
-  // Run next-intl middleware for locale detection
-  return intlMiddleware(request) as NextResponse;
+  // No next-intl middleware here on purpose. Its middleware rewrites every
+  // request to /<locale><pathname>, which only resolves when the App Router has
+  // a [locale] segment. These routes are unprefixed (src/app/(auth), (dashboard),
+  // setup), so that rewrite made every admin page 404. The locale is resolved
+  // server-side in src/i18n/request.ts from the NEXT_LOCALE cookie instead.
+  return NextResponse.next();
 }
 
 export const config = {

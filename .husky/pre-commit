@@ -1,1 +1,6 @@
-pnpm lint-staged
+# Always use the root config: lint-staged otherwise discovers
+# packages/create-kast-app/template/lint-staged.config.mjs — a file meant for
+# generated projects — and lints the template sources with it. Those have no
+# installed node_modules, so type-aware rules fail on every one of them and no
+# change to the template can be committed.
+pnpm lint-staged --config lint-staged.config.mjs

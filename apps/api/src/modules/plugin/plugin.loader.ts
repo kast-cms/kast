@@ -9,10 +9,18 @@ import { Injectable, Logger, type OnApplicationBootstrap } from '@nestjs/common'
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import * as fs from 'fs';
 import * as path from 'path';
+import { pathToFileURL } from 'url';
 import { PluginRepository } from './plugin.repository';
 
 // Resolved at load time — works both in ts-node (src/) and compiled (dist/)
 const PLUGINS_ROOT = path.resolve(__dirname, '../../../../../plugins');
+
+// This app compiles to CommonJS, and tsc rewrites a literal `import()` into a
+// `require()` call under that target — which cannot load an ES module. Building
+// the import through `new Function` keeps it a real dynamic import at runtime.
+const dynamicImport = new Function('specifier', 'return import(specifier)') as (
+  specifier: string,
+) => Promise<unknown>;
 
 const ALLOWED_PERMISSIONS = new Set([
   'content:read',
@@ -55,7 +63,7 @@ export class PluginLoaderService implements OnApplicationBootstrap {
     const manifest = this.readManifest(dir);
     if (!manifest) return;
     this.enforcePermissions(manifest);
-    const instance = this.resolveInstance(dir, manifest.name);
+    const instance = await this.resolveInstance(dir, manifest.name);
     if (!instance) return;
     await this.repo.upsertFromManifest({
       name: manifest.name,
@@ -95,32 +103,49 @@ export class PluginLoaderService implements OnApplicationBootstrap {
     }
   }
 
-  private resolveInstance(dir: string, name: string): IKastPlugin | null {
+  private async resolveInstance(dir: string, name: string): Promise<IKastPlugin | null> {
     const candidates = [path.join(dir, 'dist', 'index.js'), path.join(dir, 'src', 'index.ts')];
     for (const candidate of candidates) {
       if (!fs.existsSync(candidate)) continue;
-      const instance = this.requirePlugin(candidate, name);
+      const instance = await this.importPlugin(candidate, name);
       if (instance) return instance;
     }
     this.logger.warn(`No loadable entry found for plugin "${name}"`);
     return null;
   }
 
-  private requirePlugin(filePath: string, name: string): IKastPlugin | null {
+  /**
+   * Loads a plugin entry point. CommonJS plugins are require()d; plugins that
+   * are ESM (or that pull in an ESM-only dependency, as the Meilisearch plugin
+   * does) fail that require and are retried through dynamic import(). Node 20
+   * cannot require() an ES module at all, so the import() fallback is what keeps
+   * ESM plugins working on the whole supported Node range, not just Node >= 22.
+   */
+  private async importPlugin(filePath: string, name: string): Promise<IKastPlugin | null> {
+    let mod: unknown;
     try {
-      // require() is intentional — plugins use CommonJS
-      const mod: unknown = require(filePath) as unknown;
-      const m = mod as PluginModule;
-      const Cls = m.default ?? m.Plugin;
-      if (typeof Cls !== 'function') {
-        this.logger.warn(`Plugin "${name}" does not export a default constructor`);
+      mod = require(filePath) as unknown;
+    } catch (requireErr) {
+      try {
+        mod = await dynamicImport(pathToFileURL(filePath).href);
+      } catch (importErr) {
+        this.logger.error(
+          `Failed to load plugin "${name}": ${String(requireErr)} (import fallback: ${String(importErr)})`,
+        );
         return null;
       }
-      return new Cls();
-    } catch (err) {
-      this.logger.error(`Failed to require plugin "${name}": ${String(err)}`);
+    }
+    const m = mod as PluginModule;
+    // An ESM namespace loaded through interop nests the real exports one level
+    // deeper under `default`, so check that shape too.
+    const Cls = [m.default, m.Plugin, (m.default as PluginModule | undefined)?.default].find(
+      (candidate): candidate is new () => IKastPlugin => typeof candidate === 'function',
+    );
+    if (!Cls) {
+      this.logger.warn(`Plugin "${name}" does not export a default constructor`);
       return null;
     }
+    return new Cls();
   }
 
   private buildContext(pluginName: string): KastPluginContext {

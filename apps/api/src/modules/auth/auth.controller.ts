@@ -24,6 +24,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { SetupDto } from './dto/setup.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @ApiTags('auth')
@@ -31,10 +32,27 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Get('setup')
+  @Public()
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @ApiOperation({ summary: 'Whether the install still needs its first account' })
+  async setupRequired(): Promise<{ data: { required: boolean } }> {
+    return { data: { required: await this.authService.isSetupRequired() } };
+  }
+
+  @Post('setup')
+  @Public()
+  @HttpCode(HttpStatus.CREATED)
+  @Throttle({ default: { limit: 5, ttl: 900000 } })
+  @ApiOperation({ summary: 'Create the first owner account on a fresh install' })
+  async setup(@Body() dto: SetupDto): Promise<{ data: UserSummary }> {
+    return { data: await this.authService.setup(dto) };
+  }
+
   @Post('login')
   @Public()
   @HttpCode(HttpStatus.OK)
-  @Throttle({ auth: { limit: 20, ttl: 900000 } })
+  @Throttle({ default: { limit: 20, ttl: 900000 } })
   @ApiOperation({ summary: 'Login with email and password' })
   login(@Body() dto: LoginDto): Promise<{ data: TokenPair }> {
     return this.authService.login(dto).then((data) => ({ data }));
@@ -43,7 +61,7 @@ export class AuthController {
   @Post('refresh')
   @Public()
   @HttpCode(HttpStatus.OK)
-  @Throttle({ public: { limit: 60, ttl: 60000 } })
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
   @ApiOperation({ summary: 'Refresh access token' })
   refresh(@Body() dto: RefreshTokenDto): Promise<{ data: TokenPair }> {
     return this.authService.refresh(dto.refreshToken).then((data) => ({ data }));
@@ -125,7 +143,7 @@ export class AuthController {
   @Post('forgot-password')
   @Public()
   @HttpCode(HttpStatus.OK)
-  @Throttle({ auth: { limit: 5, ttl: 900000 } })
+  @Throttle({ default: { limit: 5, ttl: 900000 } })
   @ApiOperation({ summary: 'Request a password reset email' })
   async forgotPassword(@Body() dto: ForgotPasswordDto): Promise<{ message: string }> {
     await this.authService.forgotPassword(dto.email);
@@ -135,7 +153,7 @@ export class AuthController {
   @Post('reset-password')
   @Public()
   @HttpCode(HttpStatus.OK)
-  @Throttle({ auth: { limit: 5, ttl: 900000 } })
+  @Throttle({ default: { limit: 5, ttl: 900000 } })
   @ApiOperation({ summary: 'Reset password using token from email' })
   async resetPassword(@Body() dto: ResetPasswordDto): Promise<{ message: string }> {
     await this.authService.resetPassword(dto.token, dto.newPassword);

@@ -3,6 +3,7 @@ import { AuditResource } from './audit-resource.js';
 import { AuthResource, ContentTypesResource, HealthResource } from './content-types-resource.js';
 import { DashboardResource } from './dashboard-resource.js';
 import { FormsResource } from './forms-resource.js';
+import { KastHttpClient } from './http-client.js';
 import { LocalesResource } from './locales-resource.js';
 import { MediaResource } from './media-resource.js';
 import { MenusResource } from './menus-resource.js';
@@ -21,7 +22,6 @@ import type {
   ContentEntryVersion,
   CreateEntryBody,
   EntryListParams,
-  KastClientOptions,
   SchedulePublishBody,
   UpdateEntryBody,
   VersionListParams,
@@ -30,97 +30,7 @@ import { UsersResource } from './users-resource.js';
 import { VersionsResource } from './versions-resource.js';
 import { WebhooksResource } from './webhooks-resource.js';
 
-interface RequestOptions {
-  method?: string;
-  body?: unknown;
-  formData?: FormData;
-  headers?: Record<string, string>;
-}
-
-export class KastClient {
-  private readonly baseUrl: string;
-  private readonly apiKey: string | undefined;
-  private accessToken: string | undefined;
-  private readonly _fetch: typeof globalThis.fetch;
-
-  constructor(options: KastClientOptions) {
-    this.baseUrl = options.baseUrl.replace(/\/$/, '');
-    this.apiKey = options.apiKey;
-    this.accessToken = options.accessToken;
-    this._fetch = options.fetch ?? globalThis.fetch;
-  }
-
-  setAccessToken(token: string): void {
-    this.accessToken = token;
-  }
-
-  getBaseUrl(): string {
-    return this.baseUrl;
-  }
-
-  private buildAuthOnlyHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {};
-    if (this.accessToken) headers['Authorization'] = `Bearer ${this.accessToken}`;
-    else if (this.apiKey) headers['X-Kast-Key'] = this.apiKey;
-    return headers;
-  }
-
-  private buildHeaders(): Record<string, string> {
-    return { 'Content-Type': 'application/json', ...this.buildAuthOnlyHeaders() };
-  }
-
-  private buildRequestInit(options: RequestOptions): {
-    headers: Record<string, string>;
-    body: BodyInit | undefined;
-  } {
-    const isForm = options.formData !== undefined;
-    const headers = isForm
-      ? { ...this.buildAuthOnlyHeaders(), ...(options.headers ?? {}) }
-      : { ...this.buildHeaders(), ...(options.headers ?? {}) };
-    const body: BodyInit | undefined = isForm
-      ? options.formData
-      : options.body !== undefined
-        ? JSON.stringify(options.body)
-        : undefined;
-    return { headers, body };
-  }
-
-  private buildError(json: unknown, status: number): Error & { code?: string; status?: number } {
-    const err = (json as { error?: { message?: string; code?: string } }).error;
-    const message = err?.message ?? `HTTP ${status}`;
-    const error = new Error(message) as Error & { code?: string; status?: number };
-    if (err?.code !== undefined) error.code = err.code;
-    error.status = status;
-    return error;
-  }
-
-  async request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-    const url = `${this.baseUrl}${path}`;
-    const { headers, body } = this.buildRequestInit(options);
-    const res = await this._fetch(url, {
-      method: options.method ?? 'GET',
-      headers,
-      ...(body !== undefined ? { body } : {}),
-    });
-    const json = (await res.json()) as unknown;
-    if (!res.ok) throw this.buildError(json, res.status);
-    return json as T;
-  }
-
-  async requestBlob(path: string, options: RequestOptions = {}): Promise<Blob> {
-    const url = `${this.baseUrl}${path}`;
-    const headers = { ...this.buildAuthOnlyHeaders(), ...(options.headers ?? {}) };
-    const res = await this._fetch(url, {
-      method: options.method ?? 'GET',
-      headers,
-    });
-    if (!res.ok) {
-      const json = (await res.json()) as unknown;
-      throw this.buildError(json, res.status);
-    }
-    return res.blob();
-  }
-
+export class KastClient extends KastHttpClient {
   get agentTokens(): AgentTokensResource {
     return new AgentTokensResource(this);
   }

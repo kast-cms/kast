@@ -26,8 +26,8 @@ import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
-import { PaginationDto } from '../../common/dto/pagination.dto';
 import type { AuthUser, PaginatedResult } from '../../common/types/auth.types';
+import { ListMediaDto } from './dto/list-media.dto';
 import { CreateFolderDto, UpdateFolderDto, UploadFromUrlDto } from './dto/media-folder.dto';
 import { MediaFolderService, type MediaFolderResponse } from './media-folder.service';
 import { MediaService } from './media.service';
@@ -60,7 +60,7 @@ export class MediaController {
   @Get()
   @Public()
   @ApiOperation({ summary: 'List media files' })
-  findAll(@Query() query: PaginationDto): Promise<PaginatedResult<MediaFile>> {
+  findAll(@Query() query: ListMediaDto): Promise<PaginatedResult<MediaFile>> {
     return this.service.findAll(query);
   }
 

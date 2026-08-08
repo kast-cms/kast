@@ -102,7 +102,10 @@ test('.env.example contains required variables', async (t) => {
   }
 });
 
-test('.env is created from .env.example', async (t) => {
+const jwtSecretOf = (env) => /^JWT_SECRET=(.*)$/m.exec(env)?.[1];
+const withoutJwtSecret = (env) => env.replace(/^JWT_SECRET=.*$/m, 'JWT_SECRET=');
+
+test('.env is created from .env.example with a generated JWT_SECRET', async (t) => {
   const tmp = await mkdtemp(join(tmpdir(), 'kast-e2e-'));
   t.after(async () => rm(tmp, { recursive: true, force: true }));
 
@@ -110,7 +113,33 @@ test('.env is created from .env.example', async (t) => {
 
   const example = await readFile(join(tmp, 'dot-env-test', '.env.example'), 'utf-8');
   const dotenv = await readFile(join(tmp, 'dot-env-test', '.env'), 'utf-8');
-  assert.equal(dotenv, example, '.env should be a copy of .env.example');
+
+  assert.equal(
+    withoutJwtSecret(dotenv),
+    withoutJwtSecret(example),
+    '.env should match .env.example apart from JWT_SECRET',
+  );
+
+  const secret = jwtSecretOf(dotenv);
+  assert.ok(secret, '.env should define JWT_SECRET');
+  assert.notEqual(
+    secret,
+    jwtSecretOf(example),
+    'JWT_SECRET must not keep the placeholder from .env.example',
+  );
+  assert.ok(secret.length >= 32, `JWT_SECRET must be at least 32 characters, got ${secret.length}`);
+});
+
+test('each scaffolded project gets its own JWT_SECRET', async (t) => {
+  const tmp = await mkdtemp(join(tmpdir(), 'kast-e2e-'));
+  t.after(async () => rm(tmp, { recursive: true, force: true }));
+
+  await execFileAsync('node', [CLI_BIN, 'secret-a', ...SKIP_FLAGS], { cwd: tmp });
+  await execFileAsync('node', [CLI_BIN, 'secret-b', ...SKIP_FLAGS], { cwd: tmp });
+
+  const a = jwtSecretOf(await readFile(join(tmp, 'secret-a', '.env'), 'utf-8'));
+  const b = jwtSecretOf(await readFile(join(tmp, 'secret-b', '.env'), 'utf-8'));
+  assert.notEqual(a, b, 'two projects must not share a JWT signing key');
 });
 
 test('package.json is valid JSON with correct project name and turbo dev script', async (t) => {

@@ -15,7 +15,7 @@ export default function NotFound(): JSX.Element {
           href="/content-types"
           className="inline-flex items-center gap-2 rounded-md bg-[--color-primary] px-4 py-2 text-sm font-medium text-[--color-primary-foreground] hover:opacity-90"
         >
-          {t('backHome')}
+          {t('back')}
         </Link>
       </div>
     </div>

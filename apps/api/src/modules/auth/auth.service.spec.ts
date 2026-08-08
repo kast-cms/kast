@@ -1,4 +1,4 @@
-import { BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import type { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import type { QueueAdapter } from '../queue/queue.adapter';
@@ -52,6 +52,8 @@ describe('AuthService', () => {
       markPasswordResetTokenUsed: jest.fn().mockResolvedValue(undefined),
       generateResetToken: jest.fn().mockReturnValue({ raw: 'reset-raw', hash: 'reset-hash' }),
       generateHashOnly: jest.fn().mockReturnValue({ hash: 'reset-hash' }),
+      countUsers: jest.fn().mockResolvedValue(0),
+      createInitialOwner: jest.fn(),
     } as unknown as Mocked<AuthRepository>;
 
     jwt = { signAsync: jest.fn().mockResolvedValue('access-jwt') } as unknown as Mocked<JwtService>;
@@ -65,6 +67,52 @@ describe('AuthService', () => {
   });
 
   afterEach(() => jest.restoreAllMocks());
+
+  describe('setup', () => {
+    const dto = {
+      email: 'owner@example.com',
+      password: 'Owner1234!',
+      firstName: 'Owner',
+      lastName: 'One',
+    };
+
+    it('creates the first owner as super_admin while no users exist', async () => {
+      repo.countUsers.mockResolvedValue(0);
+      repo.createInitialOwner.mockResolvedValue(
+        buildUser({ id: 'owner1', email: dto.email, firstName: 'Owner', lastName: 'One' }),
+      );
+
+      const result = await service.setup(dto);
+
+      expect(result.roles).toEqual(['super_admin']);
+      expect(result.email).toBe(dto.email);
+      const passwordHash = repo.createInitialOwner.mock.calls[0]?.[0]?.passwordHash as string;
+      expect(passwordHash).not.toBe(dto.password);
+      await expect(argon2.verify(passwordHash, dto.password)).resolves.toBe(true);
+    });
+
+    it('reports setup as required only while the install has no users', async () => {
+      repo.countUsers.mockResolvedValue(0);
+      await expect(service.isSetupRequired()).resolves.toBe(true);
+
+      repo.countUsers.mockResolvedValue(1);
+      await expect(service.isSetupRequired()).resolves.toBe(false);
+    });
+
+    it('refuses to create another owner once any user exists', async () => {
+      repo.countUsers.mockResolvedValue(1);
+
+      await expect(service.setup(dto)).rejects.toThrow(ForbiddenException);
+      expect(repo.createInitialOwner).not.toHaveBeenCalled();
+    });
+
+    it('refuses when a concurrent request won the race inside the transaction', async () => {
+      repo.countUsers.mockResolvedValue(0);
+      repo.createInitialOwner.mockResolvedValue(null);
+
+      await expect(service.setup(dto)).rejects.toThrow(ForbiddenException);
+    });
+  });
 
   describe('login', () => {
     it('returns a token pair on valid credentials and updates last login', async () => {

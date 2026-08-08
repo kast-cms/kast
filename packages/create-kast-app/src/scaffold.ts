@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import { execa } from 'execa';
 import { cp, mkdir, readFile, rm, writeFile } from 'fs/promises';
 import Handlebars from 'handlebars';
@@ -22,6 +23,22 @@ import { internalDepSpec, rewriteWorkspaceProtocol, wsRun } from './workspace.js
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const TEMPLATE_DIR = join(__dirname, '..', 'template');
+
+/**
+ * Writes the runtime `.env` from `.env.example`, swapping the placeholder
+ * JWT_SECRET for a freshly generated one. The placeholder is long enough to
+ * satisfy the API's min-32-character check, so copying it verbatim would leave
+ * every scaffolded project signing tokens with the same publicly known key
+ * without anything ever failing to prompt the user.
+ */
+async function writeEnvFile(targetDir: string): Promise<void> {
+  const envExample = await readFile(join(targetDir, '.env.example'), 'utf-8');
+  const env = envExample.replace(
+    /^JWT_SECRET=.*$/m,
+    `JWT_SECRET=${randomBytes(48).toString('base64url')}`,
+  );
+  await writeFile(join(targetDir, '.env'), env, 'utf-8');
+}
 
 interface TemplateContext {
   projectName: string;
@@ -232,8 +249,7 @@ async function scaffoldMonorepo(
     await writeFile(join(targetDir, file.path), file.content, 'utf-8');
   }
 
-  const envExample = await readFile(join(targetDir, '.env.example'), 'utf-8');
-  await writeFile(join(targetDir, '.env'), envExample, 'utf-8');
+  await writeEnvFile(targetDir);
 
   if (!scaffoldOpts.skipInstall) {
     process.stdout.write(`\n  Installing dependencies with ${ctx.packageManager}...\n`);
@@ -265,8 +281,7 @@ async function scaffoldApiOnly(
     await writeFile(join(targetDir, file.path), file.content, 'utf-8');
   }
 
-  const envExample = await readFile(join(targetDir, '.env.example'), 'utf-8');
-  await writeFile(join(targetDir, '.env'), envExample, 'utf-8');
+  await writeEnvFile(targetDir);
 
   if (!scaffoldOpts.skipInstall) {
     process.stdout.write(`\n  Installing dependencies with ${ctx.packageManager}...\n`);
