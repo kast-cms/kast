@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -9,9 +10,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Hint } from '@/components/ui/tooltip';
 import type { FormSubmissionSummary } from '@kast-cms/sdk';
-import { Eye, Trash2 } from 'lucide-react';
-import { type useTranslations } from 'next-intl';
+import { ChevronLeft, ChevronRight, Eye, Trash2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import React, { type JSX } from 'react';
 
 type SubmissionsT = ReturnType<typeof useTranslations<'forms.submissions'>>;
@@ -40,10 +42,11 @@ export function SubmissionsPagination({
           setPage((p) => p - 1);
         }}
       >
+        <ChevronLeft className="rtl:rotate-180" />
         {t('prev')}
       </Button>
-      <span className="text-sm text-muted-foreground">
-        {page} / {totalPages}
+      <span className="px-1 text-sm tabular-nums text-muted-foreground">
+        <span className="font-medium text-foreground">{page}</span> / {totalPages}
       </span>
       <Button
         size="sm"
@@ -54,6 +57,7 @@ export function SubmissionsPagination({
         }}
       >
         {t('next')}
+        <ChevronRight className="rtl:rotate-180" />
       </Button>
     </div>
   );
@@ -76,8 +80,10 @@ export function SubmissionsTable({
   onView,
   onDelete,
 }: SubmissionsTableProps): JSX.Element {
+  const tc = useTranslations('common');
+
   return (
-    <div className="overflow-x-auto rounded-md border">
+    <Card className="overflow-hidden">
       <Table>
         <TableHeader>
           <TableRow>
@@ -85,49 +91,55 @@ export function SubmissionsTable({
             {dataKeys.map((k) => (
               <TableHead key={k}>{k}</TableHead>
             ))}
-            <TableHead className="text-right">{t('table.actions')}</TableHead>
+            <TableHead className="w-24 text-end">
+              <span className="sr-only">{t('table.actions')}</span>
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {submissions.map((sub) => (
-            <TableRow key={sub.id}>
-              <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+            <TableRow key={sub.id} className="group">
+              <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
                 {new Date(sub.createdAt).toLocaleString()}
               </TableCell>
               {dataKeys.map((k) => (
-                <TableCell key={k} className="max-w-xs truncate text-sm">
+                <TableCell key={k} className="max-w-xs truncate text-sm text-foreground">
                   {String(sub.data[k] ?? '')}
                 </TableCell>
               ))}
-              <TableCell className="text-right">
+              <TableCell className="text-end">
                 <div className="flex items-center justify-end gap-1">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    aria-label={t('view')}
-                    onClick={() => {
-                      onView(sub);
-                    }}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    disabled={deleting === sub.id}
-                    onClick={() => {
-                      onDelete(sub.id);
-                    }}
-                    className="text-destructive hover:bg-destructive/10"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <Hint label={t('view')}>
+                    <Button
+                      size="icon-sm"
+                      variant="ghost"
+                      aria-label={t('view')}
+                      onClick={() => {
+                        onView(sub);
+                      }}
+                    >
+                      <Eye />
+                    </Button>
+                  </Hint>
+                  <Hint label={tc('delete')}>
+                    <Button
+                      size="icon-sm"
+                      variant="ghost-destructive"
+                      aria-label={tc('delete')}
+                      loading={deleting === sub.id}
+                      onClick={() => {
+                        onDelete(sub.id);
+                      }}
+                    >
+                      {deleting === sub.id ? null : <Trash2 />}
+                    </Button>
+                  </Hint>
                 </div>
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
-    </div>
+    </Card>
   );
 }

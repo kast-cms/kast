@@ -1,12 +1,22 @@
 'use client';
 
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 import type { CreateMenuItemBody, MenuItemSummary, UpdateMenuItemBody } from '@kast-cms/sdk';
-import { ChevronDown, ChevronRight, GripVertical, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Link2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
+import { NodeActions, NodeConnector, NodeGrip, NodeToggle } from './menu-tree-parts';
 
 // ── Link type options ──────────────────────────────────────
 
@@ -35,36 +45,44 @@ export function MenuItemForm({ initial, onSave, onCancel, saving }: ItemFormProp
   }
 
   return (
-    <div className="space-y-4 rounded-lg border bg-muted/30 p-4">
-      <div className="space-y-1">
-        <Label htmlFor="item-label">{t('label')}</Label>
-        <Input
-          id="item-label"
-          value={label}
-          onChange={(e) => {
-            setLabel(e.target.value);
-          }}
-          placeholder={t('labelPlaceholder')}
-        />
+    // Tinted with the brand so an open composer is obviously the live surface,
+    // not just another row in the tree.
+    <div className="space-y-4 rounded-lg border border-primary/25 bg-primary-subtle/40 p-4 shadow-xs">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="item-label">{t('label')}</Label>
+          <Input
+            id="item-label"
+            value={label}
+            onChange={(e) => {
+              setLabel(e.target.value);
+            }}
+            placeholder={t('labelPlaceholder')}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="item-type">{t('linkType')}</Label>
+          <Select
+            value={linkType}
+            onValueChange={(value) => {
+              setLinkType(value as LinkType);
+            }}
+          >
+            <SelectTrigger id="item-type">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {LINK_TYPES.map((lt) => (
+                <SelectItem key={lt} value={lt}>
+                  {t(`types.${lt}`)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
-      <div className="space-y-1">
-        <Label htmlFor="item-type">{t('linkType')}</Label>
-        <select
-          id="item-type"
-          value={linkType}
-          onChange={(e) => {
-            setLinkType(e.target.value as LinkType);
-          }}
-          className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-        >
-          {LINK_TYPES.map((lt) => (
-            <option key={lt} value={lt}>
-              {t(`types.${lt}`)}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="space-y-1">
+
+      <div className="space-y-1.5">
         <Label htmlFor="item-url">{t('url')}</Label>
         <Input
           id="item-url"
@@ -73,13 +91,16 @@ export function MenuItemForm({ initial, onSave, onCancel, saving }: ItemFormProp
             setUrl(e.target.value);
           }}
           placeholder={t('urlPlaceholder')}
+          startAdornment={<Link2 />}
+          className="font-mono text-xs"
         />
       </div>
+
       <div className="flex justify-end gap-2">
-        <Button size="sm" variant="outline" onClick={onCancel}>
+        <Button size="sm" variant="ghost" onClick={onCancel}>
           {t('cancel')}
         </Button>
-        <Button size="sm" disabled={saving || !label} onClick={handleSubmit}>
+        <Button size="sm" disabled={!label} loading={saving} onClick={handleSubmit}>
           {saving ? t('saving') : t('save')}
         </Button>
       </div>
@@ -88,6 +109,19 @@ export function MenuItemForm({ initial, onSave, onCancel, saving }: ItemFormProp
 }
 
 // ── Recursive tree node ────────────────────────────────────
+
+/**
+ * Nested rows sit back a step so the hierarchy reads by weight as well as by
+ * indent.
+ */
+function rowSurfaceClass(depth: number): string {
+  return depth === 0 ? 'border-border bg-card' : 'border-border bg-muted/50';
+}
+
+/** A link target worth showing in the row: present and not blank. */
+function hasVisibleUrl(item: MenuItemSummary): boolean {
+  return item.url !== null && item.url !== '';
+}
 
 interface TreeNodeProps {
   item: MenuItemSummary;
@@ -111,71 +145,70 @@ export function MenuTreeNode({
   return (
     <div className="select-none">
       <div
-        className="flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm"
-        style={{ marginLeft: `${depth * 20}px` }}
-      >
-        <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground" />
-        {hasChildren ? (
-          <button
-            type="button"
-            className="shrink-0"
-            onClick={() => {
-              setExpanded((v) => !v);
-            }}
-          >
-            {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-          </button>
-        ) : (
-          <span className="w-3 shrink-0" />
+        className={cn(
+          'group relative flex items-center gap-2 rounded-lg border px-2.5 py-2 text-sm shadow-2xs',
+          'transition-[border-color,background-color,box-shadow] duration-150 ease-out-quad',
+          'hover:border-border-strong hover:bg-accent/40',
+          'focus-within:border-ring/50 focus-within:shadow-sm',
+          rowSurfaceClass(depth),
         )}
-        <span className="min-w-0 flex-1 truncate font-medium">{item.label}</span>
-        <span className="shrink-0 text-xs text-muted-foreground">{item.url ?? ''}</span>
-        <div className="flex shrink-0 gap-1">
-          {canNest && (
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-6 w-6"
-              onClick={() => {
-                onAddChild(item.id);
-              }}
-            >
-              <Plus className="h-3 w-3" />
-            </Button>
-          )}
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-6 w-6"
-            onClick={() => {
-              onEdit(item);
-            }}
-          >
-            <Pencil className="h-3 w-3" />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-6 w-6 text-destructive"
-            onClick={() => {
-              onDelete(item.id);
-            }}
-          >
-            <Trash2 className="h-3 w-3" />
-          </Button>
-        </div>
+        style={{ marginInlineStart: depth * 24 }}
+      >
+        <NodeConnector depth={depth} />
+
+        <NodeGrip />
+
+        <NodeToggle
+          label={item.label}
+          hasChildren={hasChildren}
+          expanded={expanded}
+          onToggle={() => {
+            setExpanded((v) => !v);
+          }}
+        />
+
+        <span className="min-w-0 flex-1 truncate font-medium text-foreground">{item.label}</span>
+
+        {hasChildren && (
+          <Badge variant="muted" size="sm" className="shrink-0">
+            {item.children.length}
+          </Badge>
+        )}
+
+        {hasVisibleUrl(item) && (
+          <span className="hidden max-w-48 shrink-0 truncate font-mono text-xs text-muted-foreground sm:inline">
+            {item.url}
+          </span>
+        )}
+
+        <NodeActions
+          canNest={canNest}
+          onAddChild={() => {
+            onAddChild(item.id);
+          }}
+          onEdit={() => {
+            onEdit(item);
+          }}
+          onDelete={() => {
+            onDelete(item.id);
+          }}
+        />
       </div>
-      {expanded &&
-        item.children.map((child) => (
-          <MenuTreeNode
-            key={child.id}
-            item={child}
-            depth={depth + 1}
-            onAddChild={onAddChild}
-            onEdit={onEdit}
-            onDelete={onDelete}
-          />
-        ))}
+
+      {expanded && hasChildren && (
+        <div className="mt-1 flex flex-col gap-1">
+          {item.children.map((child) => (
+            <MenuTreeNode
+              key={child.id}
+              item={child}
+              depth={depth + 1}
+              onAddChild={onAddChild}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -195,7 +228,11 @@ export function InlineLabelEdit({ item, onSave }: InlineLabelProps): JSX.Element
     return (
       <button
         type="button"
-        className="text-left underline-offset-2 hover:underline"
+        className={cn(
+          'rounded-sm text-start font-medium text-foreground underline-offset-4',
+          'transition-colors duration-150 ease-out-quad hover:text-primary hover:underline',
+          'outline-none focus-visible:ring-2 focus-visible:ring-ring/70',
+        )}
         onClick={() => {
           setEditing(true);
         }}

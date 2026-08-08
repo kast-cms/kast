@@ -1,9 +1,28 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageHeader } from '@/components/ui/page-header';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Check, Copy, Link2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState, type JSX } from 'react';
 import { useSeo } from './use-seo';
+
+/** Placeholder rows that match the real list density while it loads. */
+function SitemapSkeleton(): JSX.Element {
+  return (
+    <Card className="divide-y divide-border overflow-hidden" aria-busy="true">
+      {Array.from({ length: 6 }, (_, i) => (
+        <div key={i} className="flex items-center justify-between gap-4 px-4 py-2.5">
+          <Skeleton className="h-3.5 w-72 max-w-[60%]" />
+          <Skeleton className="h-3.5 w-20" />
+        </div>
+      ))}
+    </Card>
+  );
+}
 
 export function SitemapPage(): JSX.Element {
   const t = useTranslations('seo.sitemap');
@@ -23,43 +42,44 @@ export function SitemapPage(): JSX.Element {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">{t('title')}</h2>
-          <p className="text-sm text-muted-foreground">{t('description')}</p>
-        </div>
-        {sitemapUrls.length > 0 && (
-          <Button variant="outline" onClick={handleCopyAll}>
-            {copied ? t('copied') : t('copyAll')}
-          </Button>
-        )}
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title={t('title')}
+        description={t('description')}
+        actions={
+          sitemapUrls.length > 0 ? (
+            <Button variant="outline" onClick={handleCopyAll}>
+              {copied ? <Check className="text-success" /> : <Copy />}
+              {copied ? t('copied') : t('copyAll')}
+            </Button>
+          ) : undefined
+        }
+      />
 
       {sitemapLoading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <SitemapSkeleton />
       ) : sitemapUrls.length === 0 ? (
-        <div className="rounded border border-dashed p-8 text-center">
-          <p className="text-sm text-muted-foreground">{t('empty')}</p>
-        </div>
+        <EmptyState Icon={Link2} title={t('empty')} />
       ) : (
-        <div className="space-y-1">
+        <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
             {t('urlCount', { count: sitemapUrls.length })}
           </p>
-          <div className="rounded border divide-y">
+          <Card className="divide-y divide-border overflow-hidden">
             {sitemapUrls.map((entry) => (
               <div
                 key={entry.canonicalUrl}
-                className="flex items-center justify-between px-4 py-2 text-sm"
+                className="flex items-center justify-between gap-4 px-4 py-2.5 text-sm transition-colors duration-150 ease-out-quad hover:bg-muted/50"
               >
-                <span className="font-mono">{entry.canonicalUrl}</span>
-                <span className="text-muted-foreground">
+                <span className="truncate font-mono text-xs text-foreground">
+                  {entry.canonicalUrl}
+                </span>
+                <span className="shrink-0 whitespace-nowrap text-xs tabular-nums text-muted-foreground">
                   {new Date(entry.updatedAt).toLocaleDateString()}
                 </span>
               </div>
             ))}
-          </div>
+          </Card>
         </div>
       )}
     </div>

@@ -1,8 +1,12 @@
 'use client';
 
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
+import { PageHeader } from '@/components/ui/page-header';
 import {
   Select,
   SelectContent,
@@ -10,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -18,8 +23,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Hint } from '@/components/ui/tooltip';
+import { getInitials } from '@/lib/utils';
 import type { UserSummary } from '@kast-cms/sdk';
-import { Pencil, Trash2, UserPlus } from 'lucide-react';
+import { Pencil, Search, Trash2, UserPlus, Users } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useState, type JSX } from 'react';
@@ -37,7 +44,11 @@ function StatusBadge({ user }: { user: UserSummary }): JSX.Element {
   const status = getUserStatus(user);
   const variant =
     status === 'active' ? 'success' : status === 'invited' ? 'warning' : 'destructive';
-  return <Badge variant={variant}>{t(status)}</Badge>;
+  return (
+    <Badge variant={variant} dot>
+      {t(status)}
+    </Badge>
+  );
 }
 
 function formatLastLogin(date: string | null, never: string): string {
@@ -45,10 +56,110 @@ function formatLastLogin(date: string | null, never: string): string {
   return new Date(date).toLocaleDateString();
 }
 
+function fullName(user: UserSummary): string {
+  return `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim();
+}
+
+/** Placeholder rows so the table keeps its shape while the first page loads. */
+function UsersTableSkeleton(): JSX.Element {
+  return (
+    <>
+      {Array.from({ length: 5 }, (_, i) => (
+        <TableRow key={i} className="hover:bg-transparent">
+          <TableCell>
+            <div className="flex items-center gap-3">
+              <Skeleton className="size-7 rounded-full" />
+              <Skeleton className="h-3.5 w-28" />
+            </div>
+          </TableCell>
+          <TableCell>
+            <Skeleton className="h-3.5 w-44" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="h-4.5 w-16 rounded-md" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="h-4.5 w-20 rounded-md" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="h-3.5 w-20" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="ms-auto h-7 w-16" />
+          </TableCell>
+        </TableRow>
+      ))}
+    </>
+  );
+}
+
+interface UserRowProps {
+  user: UserSummary;
+  onTrash: (id: string) => void;
+}
+
+function UserRow({ user, onTrash }: UserRowProps): JSX.Element {
+  const t = useTranslations('users');
+  const tCommon = useTranslations('common');
+  const name = fullName(user);
+
+  return (
+    <TableRow>
+      <TableCell>
+        <div className="flex items-center gap-3">
+          <Avatar size="sm">
+            <AvatarFallback>{getInitials(user.firstName, user.lastName)}</AvatarFallback>
+          </Avatar>
+          <span className="font-medium text-foreground">{name !== '' ? name : '—'}</span>
+        </div>
+      </TableCell>
+      <TableCell className="text-muted-foreground">{user.email}</TableCell>
+      <TableCell>
+        <div className="flex flex-wrap gap-1">
+          {user.roles.length === 0 && <span className="text-muted-foreground">—</span>}
+          {user.roles.map((r) => (
+            <Badge key={r} variant="muted" size="sm" className="capitalize">
+              {r}
+            </Badge>
+          ))}
+        </div>
+      </TableCell>
+      <TableCell>
+        <StatusBadge user={user} />
+      </TableCell>
+      <TableCell className="text-muted-foreground">
+        {formatLastLogin(user.lastLoginAt, t('never'))}
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center justify-end gap-1">
+          <Hint label={tCommon('edit')}>
+            <Button variant="ghost" size="icon-sm" aria-label={tCommon('edit')} asChild>
+              <Link href={`/users/${user.id}`}>
+                <Pencil />
+              </Link>
+            </Button>
+          </Hint>
+          <Hint label={tCommon('delete')}>
+            <Button
+              variant="ghost-destructive"
+              size="icon-sm"
+              aria-label={tCommon('delete')}
+              onClick={() => onTrash(user.id)}
+            >
+              <Trash2 />
+            </Button>
+          </Hint>
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+}
+
 const ALL_ROLES = '__all__';
 
 export function UsersPageClient(): JSX.Element {
   const t = useTranslations('users');
+  const tCommon = useTranslations('common');
   const lib = useUsers();
   const [showInvite, setShowInvite] = useState(false);
 
@@ -57,109 +168,91 @@ export function UsersPageClient(): JSX.Element {
     void lib.trash(id);
   };
 
+  const isEmpty = lib.filteredUsers.length === 0;
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">{t('title')}</h1>
-          <p className="mt-1 text-sm text-[--color-muted-foreground]">{t('description')}</p>
+      <PageHeader
+        title={t('title')}
+        description={t('description')}
+        actions={
+          <Button onClick={() => setShowInvite(true)}>
+            <UserPlus />
+            {t('invite')}
+          </Button>
+        }
+      />
+
+      <Card className="overflow-hidden">
+        <div className="flex flex-col gap-2 border-b border-border p-4 sm:flex-row sm:items-center">
+          <div className="w-full sm:max-w-xs">
+            <Input
+              placeholder={t('searchPlaceholder')}
+              startAdornment={<Search />}
+              value={lib.search}
+              onChange={(e) => lib.setSearch(e.target.value)}
+              aria-label={tCommon('search')}
+            />
+          </div>
+          {/* Radix rejects an empty SelectItem value, so "no filter" travels as a
+              sentinel and is mapped back to '' for the query. */}
+          <Select
+            value={lib.roleFilter || ALL_ROLES}
+            onValueChange={(v) => lib.setRoleFilter(v === ALL_ROLES ? '' : v)}
+          >
+            <SelectTrigger className="w-full sm:w-48" aria-label={t('filterByRole')}>
+              <SelectValue placeholder={t('filterByRole')} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_ROLES}>{t('filterByRole')}</SelectItem>
+              {lib.roles.map((r) => (
+                <SelectItem key={r.id} value={r.name}>
+                  {r.displayName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-        <Button onClick={() => setShowInvite(true)}>
-          <UserPlus className="me-2 h-4 w-4" />
-          {t('invite')}
-        </Button>
-      </div>
 
-      <div className="flex gap-3">
-        <Input
-          className="max-w-xs"
-          placeholder={t('searchPlaceholder')}
-          value={lib.search}
-          onChange={(e) => lib.setSearch(e.target.value)}
-        />
-        {/* Radix rejects an empty SelectItem value, so "no filter" travels as a
-            sentinel and is mapped back to '' for the query. */}
-        <Select
-          value={lib.roleFilter || ALL_ROLES}
-          onValueChange={(v) => lib.setRoleFilter(v === ALL_ROLES ? '' : v)}
-        >
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder={t('filterByRole')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_ROLES}>{t('filterByRole')}</SelectItem>
-            {lib.roles.map((r) => (
-              <SelectItem key={r.id} value={r.name}>
-                {r.displayName}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>{t('table.name')}</TableHead>
-            <TableHead>{t('table.email')}</TableHead>
-            <TableHead>{t('table.roles')}</TableHead>
-            <TableHead>{t('table.status')}</TableHead>
-            <TableHead>{t('table.lastLogin')}</TableHead>
-            <TableHead className="w-24" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {lib.filteredUsers.length === 0 && (
+        <Table>
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={6} className="py-10 text-center text-[--color-muted-foreground]">
-                {lib.loading ? '…' : t('noUsers')}
-              </TableCell>
+              <TableHead>{t('table.name')}</TableHead>
+              <TableHead>{t('table.email')}</TableHead>
+              <TableHead>{t('table.roles')}</TableHead>
+              <TableHead>{t('table.status')}</TableHead>
+              <TableHead>{t('table.lastLogin')}</TableHead>
+              <TableHead className="w-24 text-end">
+                <span className="sr-only">{t('table.actions')}</span>
+              </TableHead>
             </TableRow>
-          )}
-          {lib.filteredUsers.map((u) => (
-            <TableRow key={u.id}>
-              <TableCell className="font-medium">
-                {u.firstName || u.lastName
-                  ? `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim()
-                  : '—'}
-              </TableCell>
-              <TableCell>{u.email}</TableCell>
-              <TableCell>
-                <div className="flex flex-wrap gap-1">
-                  {u.roles.map((r) => (
-                    <Badge key={r} variant="outline" className="text-xs capitalize">
-                      {r}
-                    </Badge>
-                  ))}
-                </div>
-              </TableCell>
-              <TableCell>
-                <StatusBadge user={u} />
-              </TableCell>
-              <TableCell className="text-sm text-[--color-muted-foreground]">
-                {formatLastLogin(u.lastLoginAt, t('never'))}
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="icon" asChild>
-                    <Link href={`/users/${u.id}`}>
-                      <Pencil className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => handleTrash(u.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {isEmpty && lib.loading && <UsersTableSkeleton />}
+            {isEmpty && !lib.loading && (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={6} className="p-0">
+                  <EmptyState
+                    Icon={Users}
+                    size="sm"
+                    title={t('noUsers')}
+                    className="rounded-none border-0"
+                    action={
+                      <Button variant="outline" size="sm" onClick={() => setShowInvite(true)}>
+                        <UserPlus />
+                        {t('invite')}
+                      </Button>
+                    }
+                  />
+                </TableCell>
+              </TableRow>
+            )}
+            {lib.filteredUsers.map((u) => (
+              <UserRow key={u.id} user={u} onTrash={handleTrash} />
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
 
       <InviteUserDialog
         open={showInvite}

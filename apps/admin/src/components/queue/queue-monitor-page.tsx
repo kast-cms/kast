@@ -1,8 +1,12 @@
 'use client';
 
-import { Spinner } from '@/components/ui/spinner';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageHeader } from '@/components/ui/page-header';
+import { LoadingBlock } from '@/components/ui/spinner';
 import { API_URL } from '@/config/env';
 import { useSession } from '@/lib/session';
+import { ShieldAlert } from 'lucide-react';
 import { useEffect, useRef, useState, type JSX } from 'react';
 
 export function QueueMonitorPage(): JSX.Element {
@@ -19,40 +23,33 @@ export function QueueMonitorPage(): JSX.Element {
   }, [status, session]);
 
   if (status === 'loading') {
-    return (
-      <div className="flex flex-1 items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
+    return <LoadingBlock />;
   }
 
   if (!iframeUrl) {
     return (
-      <div className="flex flex-1 items-center justify-center text-sm text-[--color-muted-foreground]">
-        Unauthorized
-      </div>
+      <EmptyState
+        Icon={ShieldAlert}
+        title="Unauthorized"
+        description="You do not have permission to view the queue monitor."
+      />
     );
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-[--color-border] px-6 py-4">
-        <div>
-          <h1 className="text-xl font-semibold text-[--color-foreground]">Queue Monitor</h1>
-          <p className="mt-0.5 text-sm text-[--color-muted-foreground]">
-            Inspect and manage background job queues
-          </p>
-        </div>
-      </div>
-      <div className="relative flex-1">
+    <div className="space-y-6">
+      <PageHeader title="Queue Monitor" description="Inspect and manage background job queues" />
+      {/* The embedded board owns its own chrome, so the card is just a frame:
+          no padding, clipped corners, and a viewport-height canvas. */}
+      <Card className="overflow-hidden p-0">
         <iframe
           ref={iframeRef}
           src={iframeUrl}
           title="Bull Board Queue Monitor"
-          className="absolute inset-0 h-full w-full border-0"
+          className="block h-[calc(100vh-16rem)] min-h-[32rem] w-full border-0 bg-card"
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
         />
-      </div>
+      </Card>
     </div>
   );
 }

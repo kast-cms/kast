@@ -1,118 +1,630 @@
 @import 'tailwindcss';
+@import 'tw-animate-css';
+
+/*
+ * Kast design system
+ * ==================
+ * Two layers, on purpose:
+ *
+ *   1. A palette layer — raw, theme-independent colour ramps in `@theme`.
+ *      These never change between light and dark.
+ *   2. A semantic layer — role tokens (`--background`, `--primary`, …) declared
+ *      on `:root` and re-declared on `.dark`, then re-exported through
+ *      `@theme inline` so every utility resolves to `var(--token)` at runtime.
+ *
+ * The `inline` keyword is what makes theme switching work without a rebuild:
+ * `bg-primary` compiles to `background-color: var(--color-primary)` rather than
+ * being frozen to a literal colour at build time.
+ *
+ * Colours are OKLCH so that a single lightness step means the same perceived
+ * step on every hue, which keeps the ramps consistent with each other.
+ */
+
+/* Theme is driven by a class on <html>, set before paint by the inline script
+   in app/layout.tsx. The `:where()` keeps specificity at 0 so plain utilities
+   can still override a dark-mode rule. */
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  /* ── Brand colours ──────────────────────────────── */
-  --color-brand-50: oklch(0.97 0.01 265);
-  --color-brand-100: oklch(0.94 0.03 265);
-  --color-brand-200: oklch(0.87 0.06 265);
-  --color-brand-300: oklch(0.78 0.1 265);
-  --color-brand-400: oklch(0.67 0.15 265);
-  --color-brand-500: oklch(0.56 0.21 265);
-  --color-brand-600: oklch(0.47 0.22 265);
-  --color-brand-700: oklch(0.39 0.19 265);
-  --color-brand-800: oklch(0.3 0.15 265);
-  --color-brand-900: oklch(0.22 0.1 265);
-  --color-brand-950: oklch(0.14 0.07 265);
+  /* ── Brand ramp ────────────────────────────────────────────────────────
+     Hue 285.55° is sampled straight from the Kast mark (#4216a5), so the
+     product and the logo are the same violet rather than two near-misses. */
+  --color-brand-50: oklch(0.977 0.011 285.55);
+  --color-brand-100: oklch(0.947 0.026 285.55);
+  --color-brand-200: oklch(0.898 0.052 285.55);
+  --color-brand-300: oklch(0.828 0.09 285.55);
+  --color-brand-400: oklch(0.735 0.143 285.55);
+  --color-brand-500: oklch(0.638 0.204 285.55);
+  --color-brand-600: oklch(0.545 0.244 285.55);
+  --color-brand-700: oklch(0.457 0.216 285.55);
+  --color-brand-800: oklch(0.382 0.176 285.55);
+  --color-brand-900: oklch(0.323 0.137 285.55);
+  --color-brand-950: oklch(0.216 0.094 285.55);
 
-  /* ── Semantic tokens (light mode defaults) ──────── */
-  --color-background: oklch(1 0 0);
-  --color-foreground: oklch(0.14 0 0);
-  --color-card: oklch(1 0 0);
-  --color-card-foreground: oklch(0.14 0 0);
-  --color-popover: oklch(1 0 0);
-  --color-popover-foreground: oklch(0.14 0 0);
-  --color-primary: oklch(0.47 0.22 265);
-  --color-primary-foreground: oklch(0.98 0 0);
-  --color-secondary: oklch(0.96 0 0);
-  --color-secondary-foreground: oklch(0.14 0 0);
-  --color-muted: oklch(0.96 0 0);
-  --color-muted-foreground: oklch(0.52 0 0);
-  --color-accent: oklch(0.96 0 0);
-  --color-accent-foreground: oklch(0.14 0 0);
-  --color-destructive: oklch(0.58 0.22 27);
-  --color-destructive-foreground: oklch(0.98 0 0);
-  --color-border: oklch(0.9 0 0);
-  --color-input: oklch(0.9 0 0);
-  --color-ring: oklch(0.47 0.22 265);
-  --color-sidebar: oklch(0.97 0 0);
-  --color-sidebar-foreground: oklch(0.14 0 0);
-  --color-sidebar-primary: oklch(0.47 0.22 265);
-  --color-sidebar-primary-foreground: oklch(0.98 0 0);
-  --color-sidebar-accent: oklch(0.93 0.01 265);
-  --color-sidebar-accent-foreground: oklch(0.47 0.22 265);
-  --color-sidebar-border: oklch(0.9 0 0);
+  /* ── Neutral ramp ──────────────────────────────────────────────────────
+     A hint of the brand hue (0.004–0.02 chroma) keeps greys from looking
+     muddy next to the violet without reading as coloured. */
+  --color-ink-50: oklch(0.985 0.002 285.55);
+  --color-ink-100: oklch(0.968 0.004 285.55);
+  --color-ink-200: oklch(0.925 0.006 285.55);
+  --color-ink-300: oklch(0.868 0.009 285.55);
+  --color-ink-400: oklch(0.708 0.014 285.55);
+  --color-ink-500: oklch(0.556 0.016 285.55);
+  --color-ink-600: oklch(0.446 0.017 285.55);
+  --color-ink-700: oklch(0.37 0.016 285.55);
+  --color-ink-800: oklch(0.269 0.014 285.55);
+  --color-ink-900: oklch(0.208 0.012 285.55);
+  --color-ink-950: oklch(0.145 0.011 285.55);
+  --color-ink-975: oklch(0.115 0.009 285.55);
 
-  /* ── Radius ─────────────────────────────────────── */
-  --radius-sm: 0.25rem;
-  --radius-md: 0.375rem;
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.75rem;
-  --radius-full: 9999px;
+  /* ── Status ramps ──────────────────────────────────────────────────────
+     Only the stops the UI actually uses, at matched lightness across hues so
+     a success chip and a warning chip carry the same visual weight. */
+  --color-success-100: oklch(0.945 0.055 155);
+  --color-success-200: oklch(0.885 0.098 155);
+  --color-success-500: oklch(0.68 0.16 155);
+  --color-success-600: oklch(0.596 0.145 155);
+  --color-success-700: oklch(0.5 0.125 155);
+  --color-success-900: oklch(0.31 0.075 155);
+  --color-success-950: oklch(0.23 0.055 155);
 
-  /* ── Typography ─────────────────────────────────── */
+  --color-warning-100: oklch(0.955 0.06 85);
+  --color-warning-200: oklch(0.9 0.11 85);
+  --color-warning-500: oklch(0.79 0.16 85);
+  --color-warning-600: oklch(0.7 0.155 70);
+  --color-warning-700: oklch(0.58 0.135 62);
+  --color-warning-900: oklch(0.36 0.085 62);
+  --color-warning-950: oklch(0.26 0.06 62);
+
+  --color-danger-100: oklch(0.945 0.03 25);
+  --color-danger-200: oklch(0.888 0.06 25);
+  --color-danger-500: oklch(0.637 0.208 25);
+  --color-danger-600: oklch(0.577 0.213 25);
+  --color-danger-700: oklch(0.505 0.19 25);
+  --color-danger-900: oklch(0.33 0.12 25);
+  --color-danger-950: oklch(0.24 0.085 25);
+
+  --color-info-100: oklch(0.95 0.03 235);
+  --color-info-200: oklch(0.895 0.058 235);
+  --color-info-500: oklch(0.66 0.155 235);
+  --color-info-600: oklch(0.58 0.16 245);
+  --color-info-700: oklch(0.5 0.145 250);
+  --color-info-900: oklch(0.33 0.09 250);
+  --color-info-950: oklch(0.24 0.065 250);
+
+  /* ── Radius ────────────────────────────────────────────────────────────
+     Driven off a single `--radius` so the whole UI can be squared off or
+     rounded from one line. */
+  --radius: 0.625rem;
+  --radius-xs: calc(var(--radius) - 0.375rem);
+  --radius-sm: calc(var(--radius) - 0.25rem);
+  --radius-md: calc(var(--radius) - 0.125rem);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 0.25rem);
+  --radius-2xl: calc(var(--radius) + 0.5rem);
+  --radius-3xl: calc(var(--radius) + 1rem);
+
+  /* ── Type scale ────────────────────────────────────────────────────────
+     Sizes are paired with line-heights and tracking here so callers get
+     typographically correct text from `text-sm` alone. */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+  --text-2xs--letter-spacing: 0.01em;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.125rem;
+  --text-xs--letter-spacing: 0.005em;
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 0.875rem;
+  --text-base--line-height: 1.375rem;
+  --text-md: 0.9375rem;
+  --text-md--line-height: 1.5rem;
+  --text-lg: 1.0625rem;
+  --text-lg--line-height: 1.5rem;
+  --text-lg--letter-spacing: -0.01em;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.75rem;
+  --text-xl--letter-spacing: -0.015em;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 2rem;
+  --text-2xl--letter-spacing: -0.02em;
+  --text-3xl: 1.875rem;
+  --text-3xl--line-height: 2.25rem;
+  --text-3xl--letter-spacing: -0.022em;
+  --text-4xl: 2.25rem;
+  --text-4xl--line-height: 2.5rem;
+  --text-4xl--letter-spacing: -0.025em;
+
+  /* ── Motion ────────────────────────────────────────────────────────────
+     Short and snappy: an admin panel is used all day, so anything over
+     ~200ms starts to feel like it is in the way. */
+  --ease-out-quad: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-duration: 150ms;
+
+  /* Loading sheen for <Skeleton>. A travelling highlight reads as "content is
+     coming"; a pulse just reads as blinking. */
+  --animate-shimmer: shimmer 1.6s infinite;
+
+  @keyframes shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  /* ── Typography ────────────────────────────────────────────────────────
+     `--font-inter` etc. are injected by next/font in app/layout.tsx. Noto
+     Sans Arabic sits after Inter so Arabic glyphs resolve per-character
+     without needing a locale-specific override. */
   --font-sans:
-    ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    var(--font-inter), var(--font-noto-arabic), ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
+    Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+  --font-mono:
+    var(--font-jetbrains-mono), ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Consolas,
+    'Liberation Mono', monospace;
 }
 
-/* ── Dark mode ──────────────────────────────────────── */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-background: oklch(0.08 0 0);
-    --color-foreground: oklch(0.96 0 0);
-    --color-card: oklch(0.1 0 0);
-    --color-card-foreground: oklch(0.96 0 0);
-    --color-popover: oklch(0.1 0 0);
-    --color-popover-foreground: oklch(0.96 0 0);
-    --color-primary: oklch(0.67 0.2 265);
-    --color-primary-foreground: oklch(0.08 0 0);
-    --color-secondary: oklch(0.16 0 0);
-    --color-secondary-foreground: oklch(0.96 0 0);
-    --color-muted: oklch(0.16 0 0);
-    --color-muted-foreground: oklch(0.63 0 0);
-    --color-accent: oklch(0.16 0 0);
-    --color-accent-foreground: oklch(0.96 0 0);
-    --color-destructive: oklch(0.65 0.22 27);
-    --color-destructive-foreground: oklch(0.96 0 0);
-    --color-border: oklch(0.2 0 0);
-    --color-input: oklch(0.2 0 0);
-    --color-ring: oklch(0.67 0.2 265);
-    --color-sidebar: oklch(0.1 0 0);
-    --color-sidebar-foreground: oklch(0.96 0 0);
-    --color-sidebar-primary: oklch(0.67 0.2 265);
-    --color-sidebar-primary-foreground: oklch(0.08 0 0);
-    --color-sidebar-accent: oklch(0.15 0.02 265);
-    --color-sidebar-accent-foreground: oklch(0.67 0.2 265);
-    --color-sidebar-border: oklch(0.2 0 0);
+/* ──────────────────────────────────────────────────────────────────────────
+   Semantic tokens — light
+   ────────────────────────────────────────────────────────────────────────── */
+:root {
+  color-scheme: light;
+
+  --background: oklch(0.988 0.002 285.55);
+  --foreground: oklch(0.208 0.012 285.55);
+
+  /* Cards sit *above* the page: the page is faintly tinted, cards are pure
+     white. In dark mode the relationship inverts (cards lighten). */
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.208 0.012 285.55);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.208 0.012 285.55);
+
+  --primary: oklch(0.478 0.229 285.55);
+  --primary-foreground: oklch(0.99 0 0);
+  --primary-hover: oklch(0.42 0.212 285.55);
+  --primary-subtle: oklch(0.955 0.024 285.55);
+  --primary-subtle-foreground: oklch(0.41 0.2 285.55);
+
+  --secondary: oklch(0.955 0.005 285.55);
+  --secondary-foreground: oklch(0.269 0.014 285.55);
+  --secondary-hover: oklch(0.925 0.006 285.55);
+
+  --muted: oklch(0.962 0.004 285.55);
+  --muted-foreground: oklch(0.502 0.017 285.55);
+
+  --accent: oklch(0.955 0.012 285.55);
+  --accent-foreground: oklch(0.33 0.14 285.55);
+
+  --destructive: oklch(0.577 0.213 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --destructive-hover: oklch(0.51 0.196 25);
+  --destructive-subtle: oklch(0.958 0.022 25);
+  --destructive-subtle-foreground: oklch(0.46 0.176 25);
+
+  /* Lightness is pinned at the point where near-white text clears 4.5:1 —
+     see the contrast audit in scripts/audit-contrast.mjs. */
+  --success: oklch(0.53 0.145 155);
+  --success-foreground: oklch(0.99 0 0);
+  --success-subtle: oklch(0.955 0.035 155);
+  --success-subtle-foreground: oklch(0.42 0.11 155);
+
+  --warning: oklch(0.7 0.155 70);
+  --warning-foreground: oklch(0.19 0.03 70);
+  --warning-subtle: oklch(0.964 0.042 85);
+  --warning-subtle-foreground: oklch(0.46 0.115 62);
+
+  --info: oklch(0.54 0.16 245);
+  --info-foreground: oklch(0.99 0 0);
+  --info-subtle: oklch(0.958 0.028 235);
+  --info-subtle-foreground: oklch(0.44 0.13 245);
+
+  --border: oklch(0.912 0.006 285.55);
+  --border-strong: oklch(0.855 0.009 285.55);
+  --input: oklch(0.895 0.007 285.55);
+  --ring: oklch(0.478 0.229 285.55);
+  --overlay: oklch(0.208 0.012 285.55 / 0.45);
+
+  /* The sidebar is a distinct surface, so it gets its own token family rather
+     than borrowing the card tokens and drifting out of sync. */
+  --sidebar: oklch(0.972 0.004 285.55);
+  --sidebar-foreground: oklch(0.33 0.014 285.55);
+  --sidebar-muted-foreground: oklch(0.545 0.016 285.55);
+  --sidebar-primary: oklch(0.478 0.229 285.55);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(1 0 0);
+  --sidebar-accent-foreground: oklch(0.41 0.2 285.55);
+  --sidebar-border: oklch(0.912 0.006 285.55);
+  --sidebar-ring: oklch(0.478 0.229 285.55);
+
+  /* Categorical series for the dashboard charts, spaced around the wheel so
+     adjacent series stay distinguishable. */
+  --chart-1: oklch(0.545 0.244 285.55);
+  --chart-2: oklch(0.66 0.155 235);
+  --chart-3: oklch(0.68 0.16 155);
+  --chart-4: oklch(0.75 0.16 75);
+  --chart-5: oklch(0.637 0.208 25);
+  --chart-6: oklch(0.62 0.19 330);
+
+  /* Layered shadows: a tight contact shadow plus a wider ambient one reads as
+     a real object, where a single blur reads as a smudge. */
+  --shadow-2xs: 0 1px 2px 0 oklch(0.208 0.012 285.55 / 0.04);
+  --shadow-xs:
+    0 1px 2px -1px oklch(0.208 0.012 285.55 / 0.07), 0 1px 3px 0 oklch(0.208 0.012 285.55 / 0.05);
+  --shadow-sm:
+    0 1px 2px -1px oklch(0.208 0.012 285.55 / 0.08), 0 2px 6px -1px oklch(0.208 0.012 285.55 / 0.07);
+  --shadow-md:
+    0 2px 4px -2px oklch(0.208 0.012 285.55 / 0.08),
+    0 6px 14px -3px oklch(0.208 0.012 285.55 / 0.09);
+  --shadow-lg:
+    0 4px 8px -4px oklch(0.208 0.012 285.55 / 0.09),
+    0 14px 28px -6px oklch(0.208 0.012 285.55 / 0.12);
+  --shadow-xl:
+    0 8px 16px -8px oklch(0.208 0.012 285.55 / 0.1),
+    0 24px 48px -12px oklch(0.208 0.012 285.55 / 0.16);
+  --shadow-focus: 0 0 0 3px oklch(0.478 0.229 285.55 / 0.16);
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Semantic tokens — dark
+
+   Not an inversion. Surfaces get *lighter* as they come forward, chroma is
+   pulled back on large fills to avoid vibration, and accent colours are
+   lifted in lightness so they still pass contrast on a dark ground.
+   ────────────────────────────────────────────────────────────────────────── */
+.dark {
+  color-scheme: dark;
+
+  --background: oklch(0.145 0.011 285.55);
+  --foreground: oklch(0.955 0.004 285.55);
+
+  --card: oklch(0.185 0.012 285.55);
+  --card-foreground: oklch(0.955 0.004 285.55);
+  --popover: oklch(0.208 0.013 285.55);
+  --popover-foreground: oklch(0.955 0.004 285.55);
+
+  --primary: oklch(0.685 0.185 285.55);
+  --primary-foreground: oklch(0.16 0.03 285.55);
+  --primary-hover: oklch(0.74 0.165 285.55);
+  --primary-subtle: oklch(0.28 0.075 285.55);
+  --primary-subtle-foreground: oklch(0.83 0.09 285.55);
+
+  --secondary: oklch(0.255 0.013 285.55);
+  --secondary-foreground: oklch(0.955 0.004 285.55);
+  --secondary-hover: oklch(0.3 0.014 285.55);
+
+  --muted: oklch(0.245 0.012 285.55);
+  --muted-foreground: oklch(0.7 0.014 285.55);
+
+  --accent: oklch(0.278 0.03 285.55);
+  --accent-foreground: oklch(0.9 0.05 285.55);
+
+  --destructive: oklch(0.63 0.2 25);
+  --destructive-foreground: oklch(0.16 0.02 25);
+  --destructive-hover: oklch(0.685 0.185 25);
+  --destructive-subtle: oklch(0.28 0.075 25);
+  --destructive-subtle-foreground: oklch(0.84 0.09 25);
+
+  --success: oklch(0.7 0.15 155);
+  --success-foreground: oklch(0.16 0.03 155);
+  --success-subtle: oklch(0.28 0.06 155);
+  --success-subtle-foreground: oklch(0.85 0.11 155);
+
+  --warning: oklch(0.79 0.15 80);
+  --warning-foreground: oklch(0.18 0.03 80);
+  --warning-subtle: oklch(0.3 0.06 75);
+  --warning-subtle-foreground: oklch(0.88 0.11 85);
+
+  --info: oklch(0.7 0.14 235);
+  --info-foreground: oklch(0.16 0.03 235);
+  --info-subtle: oklch(0.28 0.06 240);
+  --info-subtle-foreground: oklch(0.85 0.09 235);
+
+  --border: oklch(0.298 0.014 285.55);
+  --border-strong: oklch(0.38 0.016 285.55);
+  --input: oklch(0.33 0.015 285.55);
+  --ring: oklch(0.685 0.185 285.55);
+  --overlay: oklch(0.09 0.008 285.55 / 0.7);
+
+  --sidebar: oklch(0.175 0.012 285.55);
+  --sidebar-foreground: oklch(0.885 0.006 285.55);
+  --sidebar-muted-foreground: oklch(0.66 0.014 285.55);
+  --sidebar-primary: oklch(0.685 0.185 285.55);
+  --sidebar-primary-foreground: oklch(0.16 0.03 285.55);
+  --sidebar-accent: oklch(0.255 0.02 285.55);
+  --sidebar-accent-foreground: oklch(0.9 0.06 285.55);
+  --sidebar-border: oklch(0.278 0.014 285.55);
+  --sidebar-ring: oklch(0.685 0.185 285.55);
+
+  --chart-1: oklch(0.685 0.185 285.55);
+  --chart-2: oklch(0.72 0.14 235);
+  --chart-3: oklch(0.73 0.15 155);
+  --chart-4: oklch(0.8 0.145 80);
+  --chart-5: oklch(0.68 0.185 25);
+  --chart-6: oklch(0.7 0.17 330);
+
+  /* Shadows alone are nearly invisible on a dark ground, so they are deepened
+     and paired with lighter surfaces to carry elevation. */
+  --shadow-2xs: 0 1px 2px 0 oklch(0 0 0 / 0.3);
+  --shadow-xs: 0 1px 2px -1px oklch(0 0 0 / 0.4), 0 1px 3px 0 oklch(0 0 0 / 0.3);
+  --shadow-sm: 0 1px 2px -1px oklch(0 0 0 / 0.45), 0 2px 6px -1px oklch(0 0 0 / 0.4);
+  --shadow-md: 0 2px 4px -2px oklch(0 0 0 / 0.45), 0 6px 14px -3px oklch(0 0 0 / 0.5);
+  --shadow-lg: 0 4px 8px -4px oklch(0 0 0 / 0.5), 0 14px 28px -6px oklch(0 0 0 / 0.55);
+  --shadow-xl: 0 8px 16px -8px oklch(0 0 0 / 0.55), 0 24px 48px -12px oklch(0 0 0 / 0.6);
+  --shadow-focus: 0 0 0 3px oklch(0.685 0.185 285.55 / 0.25);
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Re-export semantic tokens as utilities.
+   `inline` keeps the var() reference in the compiled CSS, which is what lets
+   `.dark` swap the whole theme at runtime.
+   ────────────────────────────────────────────────────────────────────────── */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-subtle: var(--primary-subtle);
+  --color-primary-subtle-foreground: var(--primary-subtle-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary-hover: var(--secondary-hover);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-hover: var(--destructive-hover);
+  --color-destructive-subtle: var(--destructive-subtle);
+  --color-destructive-subtle-foreground: var(--destructive-subtle-foreground);
+
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-subtle: var(--success-subtle);
+  --color-success-subtle-foreground: var(--success-subtle-foreground);
+
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-warning-subtle-foreground: var(--warning-subtle-foreground);
+
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-subtle: var(--info-subtle);
+  --color-info-subtle-foreground: var(--info-subtle-foreground);
+
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-overlay: var(--overlay);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted-foreground: var(--sidebar-muted-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+
+  --shadow-2xs: var(--shadow-2xs);
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+  --shadow-focus: var(--shadow-focus);
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Base layer
+   ────────────────────────────────────────────────────────────────────────── */
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    tab-size: 4;
+    scrollbar-gutter: stable;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: var(--text-base--line-height);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    /* cv11 = single-storey 'a'/'g' alternates, ss01 = disambiguated I/l,
+       both of which make dense admin tables easier to scan. */
+    font-feature-settings:
+      'cv11' 1,
+      'ss01' 1;
+    font-variation-settings: normal;
+  }
+
+  /* Headings carry the display treatment once, here, instead of every screen
+     re-deriving `font-bold tracking-tight` by hand. */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-weight: 600;
+    letter-spacing: -0.014em;
+    text-wrap: balance;
+  }
+
+  p,
+  li {
+    text-wrap: pretty;
+  }
+
+  /* Numbers in tables and stat cards line up column-wise. */
+  table,
+  [data-tabular] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  code,
+  kbd,
+  pre,
+  samp {
+    font-family: var(--font-mono);
+    font-feature-settings: normal;
+  }
+
+  ::placeholder {
+    color: var(--color-muted-foreground);
+    opacity: 1;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--color-primary) 22%, transparent);
+    color: var(--color-foreground);
+  }
+
+  /* One focus treatment for the whole app. Components opt into the richer
+     ring-plus-glow via `.focus-ring`; everything else still gets this. */
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+    border-radius: var(--radius-xs);
+  }
+
+  /* Thin, theme-aware scrollbars — the default chrome-grey bars are the most
+     obvious tell that an app never got a design pass. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border-strong) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--color-border-strong);
+    border: 3px solid transparent;
+    border-radius: var(--radius-full, 9999px);
+    background-clip: content-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-muted-foreground);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
-/* ── Base resets ────────────────────────────────────── */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  border-width: 0;
-  border-style: solid;
-  border-color: var(--color-border);
+/* ──────────────────────────────────────────────────────────────────────────
+   Component-level helpers
+   ────────────────────────────────────────────────────────────────────────── */
+@layer components {
+  /* Interactive focus state: a crisp ring plus a soft outer glow. Used by
+     buttons, inputs and menu items so focus reads identically everywhere. */
+  .focus-ring {
+    @apply outline-none focus-visible:ring-2 focus-visible:ring-ring/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
+  /* Standard page container: keeps every screen on the same gutter and max
+     measure instead of each one picking its own padding. */
+  .page-container {
+    @apply mx-auto w-full max-w-[100rem] px-4 py-5 sm:px-6 lg:px-8;
+  }
+
+  /* Subtle top-lit gradient used on the auth screens and empty states. */
+  .surface-gradient {
+    background-image:
+      radial-gradient(
+        ellipse 80% 60% at 50% -10%,
+        color-mix(in oklab, var(--color-primary) 12%, transparent),
+        transparent 70%
+      ),
+      radial-gradient(
+        ellipse 60% 50% at 90% 10%,
+        color-mix(in oklab, var(--color-info) 8%, transparent),
+        transparent 60%
+      );
+  }
+
+  /* Thin 1px hairline that survives dark mode, where a plain border often
+     disappears against the surface. */
+  .hairline {
+    box-shadow: inset 0 0 0 1px var(--color-border);
+  }
+
+  /* Sun/moon crossfade for the theme toggle. Both icons are always mounted and
+     the visible one is chosen by CSS, so the markup is identical on the server
+     and the first client render — branching on the resolved theme in React
+     would either mismatch during hydration or flash the wrong icon. The
+     geometry lives here rather than as `dark:` utilities in JSX so theme-
+     conditional styling stays in the stylesheet with the tokens. */
+  .theme-icon {
+    @apply size-4 transition-transform duration-300 ease-spring;
+  }
+
+  .theme-icon-sun {
+    @apply scale-100 rotate-0;
+  }
+
+  .theme-icon-moon {
+    @apply absolute scale-0 rotate-90;
+  }
+
+  .dark .theme-icon-sun {
+    @apply scale-0 -rotate-90;
+  }
+
+  .dark .theme-icon-moon {
+    @apply scale-100 rotate-0;
+  }
 }
 
-html {
-  font-family: var(--font-sans);
-  -webkit-text-size-adjust: 100%;
-  tab-size: 4;
-}
-
-body {
-  margin: 0;
-  background-color: var(--color-background);
-  color: var(--color-foreground);
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-}
-
-/* ── Focus ring ─────────────────────────────────────── */
-:focus-visible {
-  outline: 2px solid var(--color-ring);
-  outline-offset: 2px;
+/* ──────────────────────────────────────────────────────────────────────────
+   Utilities
+   ────────────────────────────────────────────────────────────────────────── */
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }

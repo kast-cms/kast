@@ -1,10 +1,19 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import {
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import type { CreateWebhookBody } from '@kast-cms/sdk';
+import { Link2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
@@ -56,14 +65,17 @@ export function CreateWebhookDrawer({ open, onOpenChange, onCreate }: Props): JS
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+      <SheetContent className="w-full sm:max-w-md">
         <SheetHeader>
           <SheetTitle>{t('title')}</SheetTitle>
         </SheetHeader>
 
-        <div className="mt-6 space-y-5">
-          <div className="space-y-2">
-            <Label htmlFor="webhook-name">{t('nameLabel')}</Label>
+        {/* Only the middle scrolls, so the title and the submit button stay put. */}
+        <SheetBody className="space-y-5">
+          <div className="space-y-1.5">
+            <Label htmlFor="webhook-name" required>
+              {t('nameLabel')}
+            </Label>
             <Input
               id="webhook-name"
               value={name}
@@ -72,40 +84,45 @@ export function CreateWebhookDrawer({ open, onOpenChange, onCreate }: Props): JS
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="webhook-url">{t('urlLabel')}</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="webhook-url" required>
+              {t('urlLabel')}
+            </Label>
             <Input
               id="webhook-url"
               type="url"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://example.com/webhook"
+              startAdornment={<Link2 />}
+              className="font-mono text-xs"
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label>{t('eventsLabel')}</Label>
-            <div className="space-y-2 rounded-md border p-3">
+            <div className="space-y-0.5 rounded-lg border border-border bg-muted/40 p-2">
               {ALL_EVENTS.map((event) => (
-                <label key={event} className="flex items-center gap-2 cursor-pointer text-sm">
-                  <input
-                    type="checkbox"
+                <label
+                  key={event}
+                  className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors duration-150 ease-out-quad hover:bg-accent"
+                >
+                  <Checkbox
                     checked={selectedEvents.includes(event)}
-                    onChange={() => toggleEvent(event)}
-                    className="h-4 w-4"
+                    onCheckedChange={() => toggleEvent(event)}
                   />
-                  <span className="font-mono text-xs">{event}</span>
+                  <span className="font-mono text-xs text-foreground">{event}</span>
                 </label>
               ))}
             </div>
           </div>
-        </div>
+        </SheetBody>
 
-        <SheetFooter className="mt-6 gap-2">
+        <SheetFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             {t('cancel')}
           </Button>
-          <Button disabled={!isValid || submitting} onClick={handleSubmit}>
+          <Button disabled={!isValid} loading={submitting} onClick={handleSubmit}>
             {submitting ? t('creating') : t('create')}
           </Button>
         </SheetFooter>

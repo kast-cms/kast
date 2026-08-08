@@ -2,8 +2,19 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Hint } from '@/components/ui/tooltip';
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
+import { cn } from '@/lib/utils';
 import {
   closestCenter,
   DndContext,
@@ -21,23 +32,29 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { AddFieldBody, ContentField, ContentTypeDetail, UpdateFieldBody } from '@kast-cms/sdk';
-import { GripVertical, Pencil, Plus, Trash2 } from 'lucide-react';
+import { GripVertical, Pencil, Plus, Rows3, Trash2 } from 'lucide-react';
 import { useCallback, useState, type JSX } from 'react';
 import { FieldDrawer } from './field-drawer';
 
-const FIELD_TYPE_COLORS: Record<string, string> = {
-  TEXT: 'bg-blue-100 text-blue-800',
-  RICH_TEXT: 'bg-purple-100 text-purple-800',
-  NUMBER: 'bg-yellow-100 text-yellow-800',
-  BOOLEAN: 'bg-green-100 text-green-800',
-  DATE: 'bg-orange-100 text-orange-800',
-  MEDIA: 'bg-pink-100 text-pink-800',
-  RELATION: 'bg-cyan-100 text-cyan-800',
-  JSON: 'bg-gray-100 text-gray-800',
-  EMAIL: 'bg-indigo-100 text-indigo-800',
-  URL: 'bg-teal-100 text-teal-800',
-  ENUM: 'bg-rose-100 text-rose-800',
-  UID: 'bg-lime-100 text-lime-800',
+/**
+ * Field type is a categorical dimension, not a status — a URL field is not
+ * "info" and an enum is not "success" — so the chips draw from the chart ramp
+ * instead of the status palette. Related types share a hue so the list reads in
+ * families (text-ish, numeric, boolean-ish, references, binary, structured).
+ */
+const FIELD_TYPE_DOT: Record<string, string> = {
+  TEXT: 'bg-chart-1',
+  RICH_TEXT: 'bg-chart-1',
+  UID: 'bg-chart-1',
+  NUMBER: 'bg-chart-4',
+  DATE: 'bg-chart-4',
+  BOOLEAN: 'bg-chart-3',
+  ENUM: 'bg-chart-3',
+  EMAIL: 'bg-chart-2',
+  URL: 'bg-chart-2',
+  RELATION: 'bg-chart-2',
+  MEDIA: 'bg-chart-6',
+  JSON: 'bg-chart-5',
 };
 
 interface SortableFieldRowProps {
@@ -54,67 +71,99 @@ function SortableFieldRow({ field, onEdit, onDelete }: SortableFieldRowProps): J
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
   };
 
-  const colorClass = FIELD_TYPE_COLORS[field.type] ?? 'bg-gray-100 text-gray-800';
+  const dotClass = FIELD_TYPE_DOT[field.type] ?? 'bg-muted-foreground';
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-x-3 rounded-md border bg-background px-4 py-3"
+      className={cn(
+        'group relative flex items-start gap-3 rounded-lg border bg-card px-3 py-2.5',
+        'transition-[border-color,background-color,box-shadow] duration-150 ease-out-quad',
+        // Lifted and ringed while it travels, so the row being moved is never
+        // confused with the gap it left behind.
+        isDragging
+          ? 'z-10 border-primary/40 shadow-lg ring-1 ring-ring/20'
+          : 'border-border shadow-2xs hover:border-border-strong hover:bg-accent/40',
+      )}
     >
       <button
         type="button"
         {...attributes}
         {...listeners}
-        className="cursor-grab text-muted-foreground hover:text-foreground active:cursor-grabbing"
-        aria-label="Drag to reorder"
+        className={cn(
+          'grid size-7 shrink-0 cursor-grab touch-none place-items-center rounded-md',
+          'text-muted-foreground/60 transition-colors duration-150 ease-out-quad',
+          'hover:bg-muted hover:text-foreground active:cursor-grabbing',
+          'outline-none focus-visible:ring-2 focus-visible:ring-ring/70 focus-visible:ring-offset-2 focus-visible:ring-offset-card',
+          isDragging && 'cursor-grabbing bg-muted text-foreground',
+        )}
+        aria-label={`Reorder ${field.displayName}`}
       >
-        <GripVertical className="h-4 w-4" />
+        <GripVertical className="size-4" />
       </button>
 
-      <div className="flex flex-1 items-center gap-x-3 overflow-hidden">
-        <span className="truncate font-medium text-sm">{field.displayName}</span>
-        <code className="text-xs text-muted-foreground">{field.name}</code>
-        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${colorClass}`}>
-          {field.type}
-        </span>
-        {field.isRequired && (
-          <Badge variant="outline" className="text-xs">
-            Required
-          </Badge>
-        )}
-        {field.isLocalized && (
-          <Badge variant="outline" className="text-xs">
-            i18n
-          </Badge>
-        )}
+      <div className="flex min-w-0 flex-1 flex-col gap-1 py-0.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="truncate text-sm font-medium text-foreground">{field.displayName}</span>
+          {field.isRequired && (
+            <Badge variant="outline" size="sm">
+              Required
+            </Badge>
+          )}
+          {field.isUnique && (
+            <Badge variant="outline" size="sm">
+              Unique
+            </Badge>
+          )}
+          {field.isLocalized && (
+            <Badge variant="outline" size="sm">
+              i18n
+            </Badge>
+          )}
+          {field.isHidden && (
+            <Badge variant="muted" size="sm">
+              Hidden
+            </Badge>
+          )}
+        </div>
+
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="inline-flex items-center gap-1.5 rounded-sm border border-border bg-muted px-1.5 py-0.5 font-mono text-2xs font-medium tracking-wider text-muted-foreground uppercase">
+            <span aria-hidden="true" className={cn('size-1.5 shrink-0 rounded-full', dotClass)} />
+            {field.type}
+          </span>
+          <code className="truncate font-mono text-xs text-muted-foreground">{field.name}</code>
+        </div>
       </div>
 
-      <div className="flex items-center gap-x-1">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            onEdit(field);
-          }}
-          aria-label={`Edit ${field.displayName}`}
-        >
-          <Pencil className="h-3.5 w-3.5" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            onDelete(field.name);
-          }}
-          aria-label={`Delete ${field.displayName}`}
-          className="text-destructive hover:text-destructive"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
+      <div className="flex shrink-0 items-center gap-1">
+        <Hint label="Edit field">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => {
+              onEdit(field);
+            }}
+            aria-label={`Edit ${field.displayName}`}
+          >
+            <Pencil />
+          </Button>
+        </Hint>
+        <Hint label="Delete field">
+          <Button
+            variant="ghost-destructive"
+            size="icon-sm"
+            onClick={() => {
+              onDelete(field.name);
+            }}
+            aria-label={`Delete ${field.displayName}`}
+          >
+            <Trash2 />
+          </Button>
+        </Hint>
       </div>
     </div>
   );
@@ -205,49 +254,69 @@ export function FieldBuilder({ contentType, onUpdate }: FieldBuilderProps): JSX.
   const sortedFields = [...contentType.fields].sort((a, b) => a.position - b.position);
 
   return (
-    <div className="flex flex-col gap-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Fields</h2>
-        <Button size="sm" onClick={handleAddField}>
-          <Plus className="me-1.5 h-4 w-4" />
-          Add field
-        </Button>
-      </div>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            Fields
+            <Badge variant="muted" size="sm">
+              {sortedFields.length}
+            </Badge>
+          </CardTitle>
+          <CardDescription>
+            The shape of every entry. Drag a row by its handle to change the order fields appear in.
+          </CardDescription>
+          <CardAction>
+            <Button size="sm" onClick={handleAddField}>
+              <Plus />
+              Add field
+            </Button>
+          </CardAction>
+        </CardHeader>
 
-      {sortedFields.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12 text-center">
-          <p className="text-sm font-medium">No fields yet</p>
-          <p className="text-xs text-muted-foreground">
-            Add your first field to define the structure.
-          </p>
-        </div>
-      ) : (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={(e) => {
-            void handleDragEnd(e);
-          }}
-        >
-          <SortableContext
-            items={sortedFields.map((f) => f.name)}
-            strategy={verticalListSortingStrategy}
-          >
-            <div className="flex flex-col gap-y-2">
-              {sortedFields.map((field) => (
-                <SortableFieldRow
-                  key={field.name}
-                  field={field}
-                  onEdit={handleEditField}
-                  onDelete={(name) => {
-                    void handleDeleteField(name);
-                  }}
-                />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
-      )}
+        <CardContent>
+          {sortedFields.length === 0 ? (
+            <EmptyState
+              Icon={Rows3}
+              size="sm"
+              title="No fields yet"
+              description="Add your first field to define the structure of this content type."
+              action={
+                <Button size="sm" variant="outline" onClick={handleAddField}>
+                  <Plus />
+                  Add field
+                </Button>
+              }
+            />
+          ) : (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={(e) => {
+                void handleDragEnd(e);
+              }}
+            >
+              <SortableContext
+                items={sortedFields.map((f) => f.name)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="flex flex-col gap-2">
+                  {sortedFields.map((field) => (
+                    <SortableFieldRow
+                      key={field.name}
+                      field={field}
+                      onEdit={handleEditField}
+                      onDelete={(name) => {
+                        void handleDeleteField(name);
+                      }}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          )}
+        </CardContent>
+      </Card>
 
       <FieldDrawer
         open={drawerOpen}
@@ -257,6 +326,6 @@ export function FieldBuilder({ contentType, onUpdate }: FieldBuilderProps): JSX.
         }}
         onSave={handleDrawerSave}
       />
-    </div>
+    </>
   );
 }

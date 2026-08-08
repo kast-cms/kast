@@ -1,4 +1,5 @@
 import { TrashTabs } from '@/components/trash/trash-tabs';
+import { PageHeader } from '@/components/ui/page-header';
 import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import type { JSX } from 'react';
@@ -10,10 +11,7 @@ export default async function TrashPage(): Promise<JSX.Element> {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">{t('title')}</h2>
-        <p className="text-[--color-muted-foreground]">{t('subtitle')}</p>
-      </div>
+      <PageHeader title={t('title')} description={t('subtitle')} />
       <TrashTabs />
     </div>
   );

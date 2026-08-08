@@ -4,12 +4,14 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { CalendarClock } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
@@ -40,11 +42,17 @@ export function ScheduleDialog({
         if (!o) onCancel();
       }}
     >
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{t('title')}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-info-subtle text-info">
+              <CalendarClock className="size-4" />
+            </span>
+            {t('title')}
+          </DialogTitle>
+          <DialogDescription>{t('hint')}</DialogDescription>
         </DialogHeader>
-        <div className="space-y-3 py-2">
+        <div className="space-y-2">
           <Label htmlFor="schedule-publish-at">{t('publishAt')}</Label>
           <Input
             id="schedule-publish-at"
@@ -55,13 +63,12 @@ export function ScheduleDialog({
             }}
             disabled={isSubmitting}
           />
-          <p className="text-xs text-[--color-muted-foreground]">{t('hint')}</p>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onCancel} disabled={isSubmitting}>
             {t('cancel')}
           </Button>
-          <Button onClick={handleConfirm} disabled={!value || isSubmitting}>
+          <Button onClick={handleConfirm} disabled={!value} loading={isSubmitting}>
             {isSubmitting ? t('scheduling') : t('confirm')}
           </Button>
         </DialogFooter>

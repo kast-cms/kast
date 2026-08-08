@@ -25,9 +25,30 @@
 
 Kast is a modern headless CMS built on **NestJS + Next.js** with a built-in **MCP server** for AI agent control, first-class **SEO tooling**, and **RTL/i18n** support from day one.
 
-[**Docs**](https://kastcms.com/docs) · [**Quick Start**](#quick-start) · [**SDK**](https://www.npmjs.com/package/@kast-cms/sdk) · [**Plugins**](#plugins) · [**Deploy**](#deploy)
+[**Docs**](https://kastcms.com/docs) · [**Quick Start**](#quick-start) · [**Screenshots**](#screenshots) · [**SDK**](https://www.npmjs.com/package/@kast-cms/sdk) · [**Plugins**](#plugins) · [**Deploy**](#deploy)
 
 </div>
+
+---
+
+## Screenshots
+
+<div align="center">
+
+<img src="./docs/screenshots/03-dashboard-light.png" alt="Kast admin dashboard, light theme" width="820" />
+
+<br /><br />
+
+<img src="./docs/screenshots/03-dashboard-dark.png" alt="Kast admin dashboard, dark theme" width="820" />
+
+</div>
+
+The admin panel is built on a purpose-built design system — OKLCH colour tokens
+derived from the Kast mark, self-hosted variable typography, a full light/dark
+theme, and RTL support throughout.
+
+**[→ Every screen, in both themes](./docs/screenshots/README.md)** ·
+**[→ Design system reference](./docs/architecture/KAST_DESIGN_SYSTEM.md)**
 
 ---
 
@@ -375,6 +396,12 @@ Full docs at [kastcms.com/docs](https://kastcms.com/docs)
 - [Plugin Development](https://kastcms.com/docs/plugins)
 - [MCP Server](https://kastcms.com/docs/mcp)
 - [SEO Tooling](https://kastcms.com/docs/seo)
+
+In this repository:
+
+- [Design System](./docs/architecture/KAST_DESIGN_SYSTEM.md) — tokens, typography and component rules for the admin panel
+- [Admin Screenshots](./docs/screenshots/README.md) — every screen, light and dark
+- [Dev Standards](./docs/architecture/KAST_DEV_STANDARDS.md) · [Security Model](./docs/architecture/KAST_SECURITY_MODEL.md) · [Database Schema](./docs/architecture/KAST_DATABASE_SCHEMA.md)
 
 ---
 

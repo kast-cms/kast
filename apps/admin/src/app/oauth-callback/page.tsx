@@ -1,12 +1,15 @@
 'use client';
 
-import { Spinner } from '@/components/ui/spinner';
+import { KastLogo } from '@/components/layout/kast-logo';
+import { LoadingBlock } from '@/components/ui/spinner';
 import { adminRoute } from '@/config/env';
 import { useSession } from '@/lib/session';
+import { useTranslations } from 'next-intl';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { type JSX, useEffect } from 'react';
 
 export default function OAuthCallbackPage(): JSX.Element {
+  const t = useTranslations('common');
   const searchParams = useSearchParams();
   const router = useRouter();
   const { setSession } = useSession();
@@ -31,8 +34,9 @@ export default function OAuthCallbackPage(): JSX.Element {
   }, [searchParams, router, setSession]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <Spinner size="lg" />
+    <div className="surface-gradient flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-4">
+      <KastLogo className="size-10" />
+      <LoadingBlock label={t('loading')} className="py-0" />
     </div>
   );
 }

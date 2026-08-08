@@ -1,10 +1,15 @@
 'use client';
 
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PageHeader } from '@/components/ui/page-header';
 import type { CreateMenuItemBody, MenuDetail, MenuItemSummary } from '@kast-cms/sdk';
-import { Plus } from 'lucide-react';
+import { ListTree, Plus } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useState, type JSX } from 'react';
@@ -29,66 +34,97 @@ function TreeSection({ items, itemSaving, onAdd, onDelete }: TreeSectionProps): 
   const [addingUnder, setAddingUnder] = useState<string | null | false>(false);
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="font-semibold">{t('builder.tree.title')}</h3>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => {
-            setAddingUnder(null);
-          }}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          {t('builder.tree.addItem')}
-        </Button>
-      </div>
-      {addingUnder === null && (
-        <MenuItemForm
-          saving={itemSaving}
-          onCancel={() => {
-            setAddingUnder(false);
-          }}
-          onSave={(body) => {
-            onAdd(body, undefined);
-            setAddingUnder(false);
-          }}
-        />
-      )}
-      {items.length === 0 && addingUnder === false && (
-        <p className="text-center text-sm text-muted-foreground">{t('builder.tree.empty')}</p>
-      )}
-      <div className="space-y-1">
-        {items.map((item) => (
-          <MenuTreeNode
-            key={item.id}
-            item={item}
-            depth={0}
-            onAddChild={(parentId) => {
-              setAddingUnder(parentId);
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          {t('builder.tree.title')}
+          <Badge variant="muted" size="sm">
+            {items.length}
+          </Badge>
+        </CardTitle>
+        <CardAction>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setAddingUnder(null);
             }}
-            onEdit={() => {
-              /* handled inline */
+          >
+            <Plus />
+            {t('builder.tree.addItem')}
+          </Button>
+        </CardAction>
+      </CardHeader>
+
+      <CardContent className="space-y-3">
+        {addingUnder === null && (
+          <MenuItemForm
+            saving={itemSaving}
+            onCancel={() => {
+              setAddingUnder(false);
             }}
-            onDelete={(id) => {
-              onDelete(id);
+            onSave={(body) => {
+              onAdd(body, undefined);
+              setAddingUnder(false);
             }}
           />
-        ))}
-      </div>
-      {typeof addingUnder === 'string' && addingUnder !== '' && (
-        <MenuItemForm
-          saving={itemSaving}
-          onCancel={() => {
-            setAddingUnder(false);
-          }}
-          onSave={(body) => {
-            onAdd(body, addingUnder);
-            setAddingUnder(false);
-          }}
-        />
-      )}
-    </div>
+        )}
+
+        {items.length === 0 && addingUnder === false && (
+          <EmptyState
+            Icon={ListTree}
+            size="sm"
+            title={t('builder.tree.empty')}
+            action={
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setAddingUnder(null);
+                }}
+              >
+                <Plus />
+                {t('builder.tree.addItem')}
+              </Button>
+            }
+          />
+        )}
+
+        {items.length > 0 && (
+          <div className="flex flex-col gap-1">
+            {items.map((item) => (
+              <MenuTreeNode
+                key={item.id}
+                item={item}
+                depth={0}
+                onAddChild={(parentId) => {
+                  setAddingUnder(parentId);
+                }}
+                onEdit={() => {
+                  /* handled inline */
+                }}
+                onDelete={(id) => {
+                  onDelete(id);
+                }}
+              />
+            ))}
+          </div>
+        )}
+
+        {typeof addingUnder === 'string' && addingUnder !== '' && (
+          <MenuItemForm
+            saving={itemSaving}
+            onCancel={() => {
+              setAddingUnder(false);
+            }}
+            onSave={(body) => {
+              onAdd(body, addingUnder);
+              setAddingUnder(false);
+            }}
+          />
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -100,13 +136,35 @@ export function MenuBuilder({ initial }: MenuBuilderProps): JSX.Element {
   const { items, itemSaving, handleAddItem, handleDeleteItem } = useMenuItems(initial?.items ?? []);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8 py-8">
-      <div className="space-y-4 rounded-lg border p-6">
-        <h2 className="text-lg font-semibold">
-          {menuId ? t('builder.editTitle') : t('builder.newTitle')}
-        </h2>
-        <div className="space-y-3">
-          <div className="space-y-1">
+    <div className="mx-auto max-w-3xl space-y-6">
+      <PageHeader
+        title={menuId ? t('builder.editTitle') : t('builder.newTitle')}
+        actions={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => {
+                router.push('/menus');
+              }}
+            >
+              {t('builder.cancel')}
+            </Button>
+            <Button disabled={!name || !slug} loading={saving} onClick={handleSave}>
+              {saving ? t('builder.saving') : t('builder.save')}
+            </Button>
+          </>
+        }
+      />
+
+      {saveError !== '' && (
+        <Alert variant="destructive">
+          <AlertDescription>{saveError}</AlertDescription>
+        </Alert>
+      )}
+
+      <Card>
+        <CardContent className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
             <Label htmlFor="menu-name">{t('builder.fields.name')}</Label>
             <Input
               id="menu-name"
@@ -117,7 +175,7 @@ export function MenuBuilder({ initial }: MenuBuilderProps): JSX.Element {
               placeholder={t('builder.fields.namePlaceholder')}
             />
           </div>
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <Label htmlFor="menu-slug">{t('builder.fields.slug')}</Label>
             <Input
               id="menu-slug"
@@ -126,25 +184,13 @@ export function MenuBuilder({ initial }: MenuBuilderProps): JSX.Element {
                 setSlug(e.target.value);
               }}
               placeholder={t('builder.fields.slugPlaceholder')}
+              className="font-mono text-xs"
             />
           </div>
-        </div>
-        {saveError && <p className="text-sm text-destructive">{saveError}</p>}
-        <div className="flex justify-end gap-2">
-          <Button
-            variant="outline"
-            onClick={() => {
-              router.push('/menus');
-            }}
-          >
-            {t('builder.cancel')}
-          </Button>
-          <Button disabled={saving || !name || !slug} onClick={handleSave}>
-            {saving ? t('builder.saving') : t('builder.save')}
-          </Button>
-        </div>
-      </div>
-      {menuId && (
+        </CardContent>
+      </Card>
+
+      {menuId !== '' && (
         <TreeSection
           menuId={menuId}
           items={items}

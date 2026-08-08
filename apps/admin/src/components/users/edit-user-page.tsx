@@ -1,9 +1,14 @@
 'use client';
 
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PageHeader } from '@/components/ui/page-header';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
@@ -18,8 +23,77 @@ interface Props {
   userId: string;
 }
 
+type UserStatus = 'active' | 'invited' | 'suspended';
+
+function userStatus(user: UserSummary): UserStatus {
+  if (!user.isActive) return 'suspended';
+  if (!user.isVerified) return 'invited';
+  return 'active';
+}
+
+function statusVariant(status: UserStatus): 'success' | 'warning' | 'destructive' {
+  if (status === 'active') return 'success';
+  if (status === 'invited') return 'warning';
+  return 'destructive';
+}
+
+/** Holds the form's shape while the user record and role list load. */
+function EditUserSkeleton(): JSX.Element {
+  return (
+    <div className="space-y-6">
+      <div className="space-y-3">
+        <Skeleton className="h-4 w-28" />
+        <Skeleton className="h-6 w-48" />
+        <Skeleton className="h-3.5 w-64" />
+      </div>
+      <Card className="max-w-2xl">
+        <CardContent className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-9 w-full" />
+          </div>
+          <Skeleton className="h-32 w-full" />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+interface RoleSelectListProps {
+  roles: RoleSummary[];
+  selected: string[];
+  onToggle: (name: string) => void;
+}
+
+function RoleSelectList({ roles, selected, onToggle }: RoleSelectListProps): JSX.Element {
+  const t = useTranslations('users.editPage');
+
+  return (
+    <div className="space-y-2">
+      <Label>{t('roles')}</Label>
+      <div className="divide-y divide-border overflow-hidden rounded-lg border border-border">
+        {roles.map((r) => (
+          <label
+            key={r.id}
+            className="flex cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors duration-150 ease-out-quad hover:bg-muted"
+          >
+            <Checkbox
+              checked={selected.includes(r.name)}
+              onCheckedChange={() => onToggle(r.name)}
+            />
+            <span className="text-sm font-medium text-foreground">{r.displayName}</span>
+            <span className="ms-auto font-mono text-2xs text-muted-foreground">{r.name}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function EditUserPageClient({ userId }: Props): JSX.Element {
   const t = useTranslations('users.editPage');
+  const tStatus = useTranslations('users.status');
+  const tCommon = useTranslations('common');
   const { session } = useSession();
   const client = createApiClient(session?.accessToken);
   const router = useRouter();
@@ -75,70 +149,81 @@ export function EditUserPageClient({ userId }: Props): JSX.Element {
 
   const isSelf = session?.user.id === userId;
 
+  const backLink = (
+    <Link
+      href="/users"
+      className="inline-flex w-fit items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors duration-150 ease-out-quad hover:text-foreground"
+    >
+      <ArrowLeft className="size-4" />
+      {t('back')}
+    </Link>
+  );
+
   if (!user) {
-    return (
-      <div className="flex h-32 items-center justify-center text-[--color-muted-foreground]">…</div>
-    );
+    return <EditUserSkeleton />;
   }
+
+  const status = userStatus(user);
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/users">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <div>
-          <h1 className="text-2xl font-semibold">{t('title')}</h1>
-          <p className="text-sm text-[--color-muted-foreground]">{user.email}</p>
-        </div>
-      </div>
+      <PageHeader
+        breadcrumb={backLink}
+        title={t('title')}
+        description={user.email}
+        actions={
+          <Badge variant={statusVariant(status)} size="lg" dot>
+            {tStatus(status)}
+          </Badge>
+        }
+      />
 
-      <div className="max-w-lg space-y-5">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="edit-first">{t('firstName')}</Label>
-            <Input
-              id="edit-first"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="edit-last">{t('lastName')}</Label>
-            <Input id="edit-last" value={lastName} onChange={(e) => setLastName(e.target.value)} />
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label>{t('roles')}</Label>
-          <div className="space-y-2 rounded-md border border-[--color-border] p-3">
-            {roles.map((r) => (
-              <label key={r.id} className="flex cursor-pointer items-center gap-2">
-                <Checkbox
-                  checked={selectedRoles.includes(r.name)}
-                  onCheckedChange={() => toggleRole(r.name)}
-                />
-                <span className="text-sm">{r.displayName}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-
-        {!isSelf && (
-          <div className="flex items-center justify-between rounded-md border border-[--color-border] p-4">
-            <div>
-              <p className="text-sm font-medium">{t('active')}</p>
+      <Card className="max-w-2xl">
+        <CardContent className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-first">{t('firstName')}</Label>
+              <Input
+                id="edit-first"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+              />
             </div>
-            <Switch checked={isActive} onCheckedChange={setIsActive} />
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-last">{t('lastName')}</Label>
+              <Input
+                id="edit-last"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+              />
+            </div>
           </div>
-        )}
 
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? t('saving') : t('save')}
-        </Button>
-      </div>
+          <RoleSelectList roles={roles} selected={selectedRoles} onToggle={toggleRole} />
+
+          {isSelf ? (
+            <Alert variant="info">
+              <AlertDescription>{t('cannotSelfSuspend')}</AlertDescription>
+            </Alert>
+          ) : (
+            <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted/50 px-4 py-3">
+              <Label htmlFor="edit-active" className="cursor-pointer">
+                {t('active')}
+              </Label>
+              <Switch id="edit-active" checked={isActive} onCheckedChange={setIsActive} />
+            </div>
+          )}
+        </CardContent>
+
+        <CardFooter className="justify-end">
+          <Button variant="outline" asChild>
+            <Link href="/users">{tCommon('cancel')}</Link>
+          </Button>
+          <Button onClick={handleSave} loading={saving}>
+            {saving ? t('saving') : t('save')}
+          </Button>
+        </CardFooter>
+      </Card>
     </div>
   );
 }

@@ -3,10 +3,13 @@
 import { SubmissionDetailDialog } from '@/components/forms/submission-detail-dialog';
 import { SubmissionsPagination, SubmissionsTable } from '@/components/forms/submissions-table';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageHeader } from '@/components/ui/page-header';
+import { Skeleton } from '@/components/ui/skeleton';
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
 import type { FormSubmissionSummary } from '@kast-cms/sdk';
-import { ArrowLeft, Download } from 'lucide-react';
+import { ArrowLeft, Download, Inbox } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState, type JSX } from 'react';
@@ -66,10 +69,53 @@ export function SubmissionsPageClient({
     [session, formId, load, t],
   );
 
-  if (loading && submissions.length === 0) {
+  // The count is meaningless until the first page lands, so it is held back
+  // rather than flashing "0 submissions" at every visitor.
+  const isFirstLoad = loading && submissions.length === 0;
+
+  const header = (
+    <PageHeader
+      title={formName}
+      description={isFirstLoad ? undefined : t('subtitle', { total })}
+      breadcrumb={
+        <Button
+          size="sm"
+          variant="ghost"
+          className="-ms-2 self-start text-muted-foreground hover:text-foreground"
+          onClick={() => {
+            router.push('/forms');
+          }}
+        >
+          <ArrowLeft className="rtl:rotate-180" />
+          {t('back')}
+        </Button>
+      }
+      actions={
+        <Button variant="outline" asChild>
+          <a
+            href={`/api/v1/forms/${formId}/submissions/export`}
+            download={`submissions-${formId}.csv`}
+          >
+            <Download />
+            {t('exportCsv')}
+          </a>
+        </Button>
+      }
+    />
+  );
+
+  if (isFirstLoad) {
     return (
-      <div className="flex items-center justify-center py-20 text-muted-foreground">
-        {t('loading')}
+      <div className="space-y-6" aria-busy="true">
+        {header}
+        <p role="status" className="sr-only">
+          {t('loading')}
+        </p>
+        <div className="space-y-2 rounded-xl border border-border bg-card p-4 shadow-xs">
+          {Array.from({ length: 8 }, (_, i) => (
+            <Skeleton key={i} className="h-6 w-full" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -80,37 +126,10 @@ export function SubmissionsPageClient({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => {
-              router.push('/forms');
-            }}
-          >
-            <ArrowLeft className="me-1 h-4 w-4" />
-            {t('back')}
-          </Button>
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">{formName}</h2>
-            <p className="text-sm text-muted-foreground">{t('subtitle', { total })}</p>
-          </div>
-        </div>
-        <a
-          href={`/api/v1/forms/${formId}/submissions/export`}
-          download={`submissions-${formId}.csv`}
-          className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-accent"
-        >
-          <Download className="h-4 w-4" />
-          {t('exportCsv')}
-        </a>
-      </div>
+      {header}
 
       {submissions.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border p-12 text-center">
-          <p className="text-sm text-muted-foreground">{t('empty')}</p>
-        </div>
+        <EmptyState Icon={Inbox} title={t('empty')} />
       ) : (
         <>
           <SubmissionsTable
