@@ -12,7 +12,9 @@ export function QueueMonitorPage(): JSX.Element {
 
   useEffect((): void => {
     if (status !== 'authenticated' || !session?.accessToken) return;
-    const url = `${API_URL}/bull-board/?token=${encodeURIComponent(session.accessToken)}`;
+    // The API mounts everything behind the global 'api' prefix, so the board
+    // lives at /api/bull-board — /bull-board alone is a 404.
+    const url = `${API_URL}/api/bull-board/?token=${encodeURIComponent(session.accessToken)}`;
     setIframeUrl(url);
   }, [status, session]);
 

@@ -140,10 +140,13 @@ export interface ContentEntryDetail {
   scheduledAt: string | null;
 }
 
+/**
+ * Entries are always created as drafts — the API rejects a `status` here — and
+ * moved on with publish() / unpublish() / archive() or schedulePublish().
+ */
 export interface CreateEntryBody {
   locale?: string;
   data: Record<string, unknown>;
-  status?: EntryStatus;
 }
 
 export interface UpdateEntryBody {

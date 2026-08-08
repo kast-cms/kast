@@ -1,10 +1,10 @@
 /**
- * Seed script: creates doc-page and changelog-entry content types in Kast CMS.
+ * Seed script: creates the doc-page and changelog-entry content types in Kast CMS.
  *
  * Usage:
  *   KAST_API_URL=http://localhost:3000 KAST_ADMIN_TOKEN=your-token pnpm seed
  */
-import { KastClient } from '@kast-cms/sdk';
+import { KastClient, type AddFieldBody } from '@kast-cms/sdk';
 
 const apiUrl = process.env.KAST_API_URL ?? '';
 const adminToken = process.env.KAST_ADMIN_TOKEN ?? '';
@@ -24,132 +24,88 @@ const kast = new KastClient({
   accessToken: adminToken,
 });
 
-async function createContentType(slug: string, payload: unknown) {
+interface TypeSpec {
+  /** Identifier the docs site queries by. */
+  name: string;
+  displayName: string;
+  description: string;
+  fields: AddFieldBody[];
+}
+
+function isAlreadyExists(err: unknown): boolean {
+  const error = err as { status?: number; message?: string };
+  return error.status === 409 || (error.message?.includes('already exists') ?? false);
+}
+
+function describe(err: unknown): string {
+  const error = err as { message?: string };
+  return error.message ?? String(err);
+}
+
+/**
+ * Content types and their fields are separate resources: the type is created
+ * first, then each field is posted to /content-types/:name/fields.
+ */
+async function seedType(spec: TypeSpec): Promise<void> {
   try {
-    await kast.contentTypes.create(payload as Parameters<typeof kast.contentTypes.create>[0]);
-    console.log(`✓ Created content type: ${slug}`);
-  } catch (err: unknown) {
-    const error = err as { status?: number; message?: string };
-    if (error.status === 409 || (error.message && error.message.includes('already exists'))) {
-      console.log(`- Content type already exists: ${slug}`);
-    } else {
-      console.error(`✗ Failed to create ${slug}:`, error.message ?? error);
+    await kast.contentTypes.create({
+      name: spec.name,
+      displayName: spec.displayName,
+      description: spec.description,
+    });
+    console.log(`✓ Created content type: ${spec.name}`);
+  } catch (err) {
+    if (!isAlreadyExists(err)) {
+      console.error(`✗ Failed to create ${spec.name}: ${describe(err)}`);
+      return;
+    }
+    console.log(`- Content type already exists: ${spec.name}`);
+  }
+
+  for (const [position, field] of spec.fields.entries()) {
+    try {
+      await kast.contentTypes.addField(spec.name, { ...field, position });
+      console.log(`  ✓ ${spec.name}.${field.name}`);
+    } catch (err) {
+      if (isAlreadyExists(err)) console.log(`  - ${spec.name}.${field.name} already exists`);
+      else console.error(`  ✗ ${spec.name}.${field.name}: ${describe(err)}`);
     }
   }
 }
 
-async function main() {
-  console.log('Seeding Kast CMS content types for web-docs...\n');
-
-  // Doc Page
-  await createContentType('doc-page', {
-    name: 'Documentation Page',
-    slug: 'doc-page',
+const TYPES: TypeSpec[] = [
+  {
+    name: 'doc-page',
+    displayName: 'Documentation Page',
     description: 'A single documentation page with rich-text body',
     fields: [
-      {
-        name: 'title',
-        label: 'Title',
-        type: 'TEXT',
-        required: true,
-        order: 0,
-      },
-      {
-        name: 'slug',
-        label: 'URL Slug',
-        type: 'TEXT',
-        required: true,
-        order: 1,
-      },
-      {
-        name: 'category',
-        label: 'Category Name',
-        type: 'TEXT',
-        required: true,
-        order: 2,
-      },
-      {
-        name: 'categorySlug',
-        label: 'Category Slug',
-        type: 'TEXT',
-        required: true,
-        order: 3,
-      },
-      {
-        name: 'excerpt',
-        label: 'Short Description',
-        type: 'TEXTAREA',
-        required: false,
-        order: 4,
-      },
-      {
-        name: 'body',
-        label: 'Body',
-        type: 'RICH_TEXT',
-        required: true,
-        order: 5,
-      },
-      {
-        name: 'order',
-        label: 'Sidebar Order',
-        type: 'NUMBER',
-        required: false,
-        order: 6,
-      },
-      {
-        name: 'publishedAt',
-        label: 'Published At',
-        type: 'DATE',
-        required: false,
-        order: 7,
-      },
+      { name: 'title', displayName: 'Title', type: 'TEXT', isRequired: true, isLocalized: true },
+      { name: 'slug', displayName: 'URL Slug', type: 'TEXT', isRequired: true, isUnique: true },
+      { name: 'category', displayName: 'Category Name', type: 'TEXT', isRequired: true },
+      { name: 'categorySlug', displayName: 'Category Slug', type: 'TEXT', isRequired: true },
+      { name: 'excerpt', displayName: 'Short Description', type: 'TEXT', isLocalized: true },
+      { name: 'body', displayName: 'Body', type: 'RICH_TEXT', isRequired: true, isLocalized: true },
+      { name: 'order', displayName: 'Sidebar Order', type: 'NUMBER' },
+      { name: 'publishedAt', displayName: 'Published At', type: 'DATE' },
     ],
-  });
-
-  // Changelog Entry
-  await createContentType('changelog-entry', {
-    name: 'Changelog Entry',
-    slug: 'changelog-entry',
+  },
+  {
+    name: 'changelog-entry',
+    displayName: 'Changelog Entry',
     description: 'A versioned release changelog entry',
     fields: [
-      {
-        name: 'version',
-        label: 'Version',
-        type: 'TEXT',
-        required: true,
-        order: 0,
-      },
-      {
-        name: 'releasedAt',
-        label: 'Released At',
-        type: 'DATE',
-        required: true,
-        order: 1,
-      },
-      {
-        name: 'type',
-        label: 'Release Type',
-        type: 'TEXT',
-        required: false,
-        order: 2,
-      },
-      {
-        name: 'summary',
-        label: 'Summary',
-        type: 'TEXTAREA',
-        required: true,
-        order: 3,
-      },
-      {
-        name: 'body',
-        label: 'Details (Rich Text)',
-        type: 'RICH_TEXT',
-        required: false,
-        order: 4,
-      },
+      { name: 'version', displayName: 'Version', type: 'TEXT', isRequired: true },
+      { name: 'releasedAt', displayName: 'Released At', type: 'DATE', isRequired: true },
+      { name: 'type', displayName: 'Release Type', type: 'TEXT' },
+      { name: 'summary', displayName: 'Summary', type: 'TEXT', isRequired: true },
+      { name: 'body', displayName: 'Details (Rich Text)', type: 'RICH_TEXT' },
     ],
-  });
+  },
+];
 
+async function main(): Promise<void> {
+  console.log('Seeding Kast CMS content types for web-docs...\n');
+  for (const spec of TYPES) await seedType(spec);
   console.log('\nDone! You can now create documentation content in the Kast Admin panel.');
   console.log(`Admin URL: ${apiUrl.replace(':3000', ':3001')}/admin`);
 }

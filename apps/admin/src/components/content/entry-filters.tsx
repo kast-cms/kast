@@ -20,6 +20,9 @@ interface EntryFiltersProps {
   onLocaleChange: (v: string) => void;
 }
 
+const ALL_STATUSES = '__all__';
+const ALL_LOCALES = '__all__';
+
 export function EntryFilters({
   search,
   status,
@@ -39,23 +42,35 @@ export function EntryFilters({
           onSearchChange(e.target.value);
         }}
       />
-      <Select value={status} onValueChange={onStatusChange}>
+      {/* Radix rejects an empty SelectItem value, so "no filter" travels as a
+          sentinel and is mapped back to '' for the query. */}
+      <Select
+        value={status || ALL_STATUSES}
+        onValueChange={(v) => {
+          onStatusChange(v === ALL_STATUSES ? '' : v);
+        }}
+      >
         <SelectTrigger className="h-8 w-36">
           <SelectValue placeholder={t('allStatuses')} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">{t('allStatuses')}</SelectItem>
+          <SelectItem value={ALL_STATUSES}>{t('allStatuses')}</SelectItem>
           <SelectItem value="DRAFT">{t('status.DRAFT')}</SelectItem>
           <SelectItem value="PUBLISHED">{t('status.PUBLISHED')}</SelectItem>
           <SelectItem value="ARCHIVED">{t('status.ARCHIVED')}</SelectItem>
         </SelectContent>
       </Select>
-      <Select value={locale} onValueChange={onLocaleChange}>
+      <Select
+        value={locale || ALL_LOCALES}
+        onValueChange={(v) => {
+          onLocaleChange(v === ALL_LOCALES ? '' : v);
+        }}
+      >
         <SelectTrigger className="h-8 w-36">
           <SelectValue placeholder={t('allLocales')} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">{t('allLocales')}</SelectItem>
+          <SelectItem value={ALL_LOCALES}>{t('allLocales')}</SelectItem>
         </SelectContent>
       </Select>
     </div>

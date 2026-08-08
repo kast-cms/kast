@@ -45,6 +45,12 @@ const envSchema = z.object({
   GITHUB_CLIENT_ID: z.string().optional(),
   GITHUB_CLIENT_SECRET: z.string().optional(),
   SITE_URL: z.string().default('http://localhost:3000'),
+  /**
+   * Origin of the admin panel. It embeds the Bull board in an iframe, so it has
+   * to be named in the API's frame-ancestors directive or the browser blocks the
+   * queue monitor.
+   */
+  ADMIN_URL: z.string().default('http://localhost:3001'),
 
   // SMTP (email queue)
   SMTP_HOST: z.string().default('localhost'),

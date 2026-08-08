@@ -41,6 +41,9 @@ JWT_EXPIRES_IN=15m
 # Comma-separated list of allowed origins. Do not use * in production.
 CORS_ORIGINS=http://localhost:3001,http://localhost:3002
 
+# Admin panel origin. Allowed to frame the API so the queue monitor works.
+ADMIN_URL=http://localhost:3001
+
 # ---------------------------------------------------------------------------
 # Storage
 # ---------------------------------------------------------------------------

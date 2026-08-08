@@ -15,6 +15,9 @@ interface RichTextEditorProps {
 
 export function RichTextEditor({ value, onChange, disabled }: RichTextEditorProps): JSX.Element {
   const editor = useEditor({
+    // Next renders this on the server first; Tiptap throws outright unless it is
+    // told not to build the editor during that pass.
+    immediatelyRender: false,
     extensions: [StarterKit, UnderlineExt, LinkExt.configure({ openOnClick: false })],
     ...(value !== null ? { content: value } : {}),
     editable: !disabled,
@@ -24,8 +27,15 @@ export function RichTextEditor({ value, onChange, disabled }: RichTextEditorProp
   });
 
   useEffect(() => {
-    editor.setEditable(!disabled);
+    editor?.setEditable(!disabled);
   }, [disabled, editor]);
+
+  // Null until the editor is built on the client — see immediatelyRender above.
+  if (!editor) {
+    return (
+      <div className="h-32 rounded-md border border-[--color-border] bg-[--color-background]" />
+    );
+  }
 
   return (
     <div className="rounded-md border border-[--color-border] bg-[--color-background]">

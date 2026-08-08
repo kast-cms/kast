@@ -45,6 +45,8 @@ function formatLastLogin(date: string | null, never: string): string {
   return new Date(date).toLocaleDateString();
 }
 
+const ALL_ROLES = '__all__';
+
 export function UsersPageClient(): JSX.Element {
   const t = useTranslations('users');
   const lib = useUsers();
@@ -75,12 +77,17 @@ export function UsersPageClient(): JSX.Element {
           value={lib.search}
           onChange={(e) => lib.setSearch(e.target.value)}
         />
-        <Select value={lib.roleFilter} onValueChange={lib.setRoleFilter}>
+        {/* Radix rejects an empty SelectItem value, so "no filter" travels as a
+            sentinel and is mapped back to '' for the query. */}
+        <Select
+          value={lib.roleFilter || ALL_ROLES}
+          onValueChange={(v) => lib.setRoleFilter(v === ALL_ROLES ? '' : v)}
+        >
           <SelectTrigger className="w-40">
             <SelectValue placeholder={t('filterByRole')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">{t('filterByRole')}</SelectItem>
+            <SelectItem value={ALL_ROLES}>{t('filterByRole')}</SelectItem>
             {lib.roles.map((r) => (
               <SelectItem key={r.id} value={r.name}>
                 {r.displayName}
