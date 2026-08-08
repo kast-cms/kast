@@ -9,6 +9,7 @@ import { Injectable, Logger, type OnApplicationBootstrap } from '@nestjs/common'
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import * as fs from 'fs';
 import * as path from 'path';
+import { pathToFileURL } from 'url';
 import { PluginRepository } from './plugin.repository';
 
 // Resolved at load time — works both in ts-node (src/) and compiled (dist/)
@@ -55,7 +56,7 @@ export class PluginLoaderService implements OnApplicationBootstrap {
     const manifest = this.readManifest(dir);
     if (!manifest) return;
     this.enforcePermissions(manifest);
-    const instance = this.resolveInstance(dir, manifest.name);
+    const instance = await this.resolveInstance(dir, manifest.name);
     if (!instance) return;
     await this.repo.upsertFromManifest({
       name: manifest.name,
@@ -95,30 +96,47 @@ export class PluginLoaderService implements OnApplicationBootstrap {
     }
   }
 
-  private resolveInstance(dir: string, name: string): IKastPlugin | null {
+  private async resolveInstance(dir: string, name: string): Promise<IKastPlugin | null> {
     const candidates = [path.join(dir, 'dist', 'index.js'), path.join(dir, 'src', 'index.ts')];
     for (const candidate of candidates) {
       if (!fs.existsSync(candidate)) continue;
-      const instance = this.requirePlugin(candidate, name);
+      const instance = await this.createPluginInstance(candidate, name);
       if (instance) return instance;
     }
     this.logger.warn(`No loadable entry found for plugin "${name}"`);
     return null;
   }
 
-  private requirePlugin(filePath: string, name: string): IKastPlugin | null {
+  private async createPluginInstance(filePath: string, name: string): Promise<IKastPlugin | null> {
+    const mod =
+      this.requirePluginModule(filePath, name) ??
+      (filePath.endsWith('.js') && process.env.NODE_ENV !== 'test'
+        ? await this.importPluginModule(filePath, name)
+        : null);
+    if (!mod) return null;
+    const Cls = mod.default ?? mod.Plugin;
+    if (typeof Cls !== 'function') {
+      this.logger.warn(`Plugin "${name}" does not export a default constructor`);
+      return null;
+    }
+    return new Cls();
+  }
+
+  private requirePluginModule(filePath: string, name: string): PluginModule | null {
     try {
-      // require() is intentional — plugins use CommonJS
-      const mod: unknown = require(filePath) as unknown;
-      const m = mod as PluginModule;
-      const Cls = m.default ?? m.Plugin;
-      if (typeof Cls !== 'function') {
-        this.logger.warn(`Plugin "${name}" does not export a default constructor`);
-        return null;
-      }
-      return new Cls();
+      return require(filePath) as PluginModule;
     } catch (err) {
+      if (isEsmLikeRequireError(err)) return null;
       this.logger.error(`Failed to require plugin "${name}": ${String(err)}`);
+      return null;
+    }
+  }
+
+  private async importPluginModule(filePath: string, name: string): Promise<PluginModule | null> {
+    try {
+      return (await import(pathToFileURL(filePath).href)) as PluginModule;
+    } catch (err) {
+      this.logger.error(`Failed to import plugin "${name}": ${String(err)}`);
       return null;
     }
   }
@@ -141,4 +159,13 @@ export class PluginLoaderService implements OnApplicationBootstrap {
       },
     };
   }
+}
+
+function isEsmLikeRequireError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  return (
+    (typeof err === 'object' && err !== null && 'code' in err && err.code === 'ERR_REQUIRE_ESM') ||
+    message.includes('Cannot use import statement outside a module') ||
+    message.includes("Unexpected token 'export'")
+  );
 }

@@ -1,5 +1,24 @@
 import { type IKastPlugin, type KastPluginContext, PluginHook } from '@kast-cms/plugin-sdk';
-import { type Index, Meilisearch, type SearchResponse } from 'meilisearch';
+
+interface SearchResponse<T> {
+  hits: T[];
+  [key: string]: unknown;
+}
+
+interface MeiliIndex<T> {
+  addDocuments(documents: T[]): Promise<unknown>;
+  deleteDocument(documentId: string): Promise<unknown>;
+  search(query: string, options: { limit: number }): Promise<SearchResponse<T>>;
+}
+
+interface MeiliClient {
+  createIndex(uid: string, options: { primaryKey: string }): Promise<unknown>;
+  index<T extends Record<string, unknown>>(uid: string): MeiliIndex<T>;
+}
+
+interface MeilisearchModule {
+  Meilisearch: new (options: { host: string; apiKey: string }) => MeiliClient;
+}
 
 /** Payload emitted on content.published / content.updated. */
 interface ContentLifecyclePayload {
@@ -51,7 +70,7 @@ const LOG_PREFIX = '[kast-plugin-meilisearch]';
  * read API on the context, `fetchEntry` should switch to it.
  */
 export class MeilisearchPlugin implements IKastPlugin {
-  private client: Meilisearch | null = null;
+  private client: MeiliClient | null = null;
   private indexPrefix = 'kast_';
 
   async onLoad(ctx: KastPluginContext): Promise<void> {
@@ -64,6 +83,7 @@ export class MeilisearchPlugin implements IKastPlugin {
       return;
     }
 
+    const { Meilisearch } = require('meilisearch') as MeilisearchModule;
     this.client = new Meilisearch({ host, apiKey });
 
     ctx.on(PluginHook.CONTENT_PUBLISHED, (payload) => this.onUpsert(payload));
@@ -120,7 +140,7 @@ export class MeilisearchPlugin implements IKastPlugin {
     return `${this.indexPrefix}${typeSlug}`;
   }
 
-  private async index(typeSlug: string): Promise<Index<MeiliDocument>> {
+  private async index(typeSlug: string): Promise<MeiliIndex<MeiliDocument>> {
     const client = this.requireClient();
     const uid = this.indexName(typeSlug);
     // Ensure the index exists with `id` as its primary key (idempotent).
@@ -182,7 +202,7 @@ export class MeilisearchPlugin implements IKastPlugin {
     return json.data ?? null;
   }
 
-  private requireClient(): Meilisearch {
+  private requireClient(): MeiliClient {
     if (!this.client) {
       throw new Error(`${LOG_PREFIX} client used before configuration`);
     }
