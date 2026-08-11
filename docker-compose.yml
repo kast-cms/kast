@@ -45,6 +45,10 @@ services:
     # container itself, so the API would crash-loop on startup. Set
     # DOCKER_DATABASE_URL / DOCKER_REDIS_HOST to use servers outside compose.
     environment:
+      # This is a deployment, so it is production regardless of what NODE_ENV a
+      # copied .env happens to carry — env_file must not be able to downgrade it.
+      # KAST_DOCKER_NODE_ENV=development opts a throwaway local stack back out.
+      NODE_ENV: ${KAST_DOCKER_NODE_ENV:-production}
       DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql://kast:kast_secret@postgres:5432/kast_db}
       REDIS_HOST: ${DOCKER_REDIS_HOST:-redis}
       REDIS_PORT: ${DOCKER_REDIS_PORT:-6379}

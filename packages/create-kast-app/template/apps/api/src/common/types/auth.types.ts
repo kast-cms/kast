@@ -1,9 +1,13 @@
+import type { TokenScope } from '@prisma/client';
+
 export interface AuthUser {
   id: string;
   email: string;
   roles: string[];
   isApiToken?: boolean;
   apiTokenId?: string;
+  apiTokenScope?: TokenScope;
+  apiTokenScopeData?: Record<string, string[]>;
   isAgentToken?: boolean;
   agentTokenId?: string;
   agentTokenScopes?: string[];

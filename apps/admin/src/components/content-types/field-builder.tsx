@@ -45,16 +45,20 @@ import { FieldDrawer } from './field-drawer';
 const FIELD_TYPE_DOT: Record<string, string> = {
   TEXT: 'bg-chart-1',
   RICH_TEXT: 'bg-chart-1',
-  UID: 'bg-chart-1',
   NUMBER: 'bg-chart-4',
   DATE: 'bg-chart-4',
+  DATETIME: 'bg-chart-4',
   BOOLEAN: 'bg-chart-3',
-  ENUM: 'bg-chart-3',
+  SELECT: 'bg-chart-3',
+  MULTI_SELECT: 'bg-chart-3',
   EMAIL: 'bg-chart-2',
   URL: 'bg-chart-2',
   RELATION: 'bg-chart-2',
   MEDIA: 'bg-chart-6',
+  COLOR: 'bg-chart-6',
   JSON: 'bg-chart-5',
+  COMPONENT: 'bg-chart-5',
+  BLOCK: 'bg-chart-5',
 };
 
 interface SortableFieldRowProps {

@@ -1,11 +1,13 @@
-import { ValidationPipe, VersioningType, type INestApplication } from '@nestjs/common';
+import { Logger, ValidationPipe, VersioningType, type INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
+import { assertNoKnownWeakCredentials } from './common/utils/weak-credential.util';
 import type { Env } from './config/env.schema';
+import { PrismaService } from './prisma/prisma.service';
 
 function applyHelmet(app: INestApplication, siteUrl: string, adminUrl: string): void {
   app.use(
@@ -119,6 +121,20 @@ async function bootstrap(): Promise<void> {
   if (nodeEnv !== 'production') {
     applySwagger(app);
   }
+
+  // P0-05: a database seeded before the seed-script guard (or restored from an
+  // old dump) can still hold a publicly documented super-admin password. Fatal
+  // unless this install explicitly opted into those logins — NODE_ENV is not
+  // trusted on its own, since deployments routinely inherit `development` from a
+  // copied .env.
+  await assertNoKnownWeakCredentials(
+    app.get(PrismaService).user,
+    {
+      NODE_ENV: nodeEnv,
+      SEED_DEV_ACCOUNTS: configService.get<string>('SEED_DEV_ACCOUNTS', { infer: true }),
+    },
+    new Logger('CredentialCheck'),
+  );
 
   const port: number =
     (configService.get<number>('PORT', { infer: true }) as number | undefined) ?? 3000;

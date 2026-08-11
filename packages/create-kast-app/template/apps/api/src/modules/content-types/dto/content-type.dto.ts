@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ContentFieldType } from '@prisma/client';
 import { Transform } from 'class-transformer';
-import { IsBoolean, IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsBoolean, IsEnum, IsInt, IsObject, IsOptional, IsString, Min } from 'class-validator';
 
 export class CreateContentTypeDto {
   @ApiProperty({ example: 'blog_post' })
@@ -68,6 +68,28 @@ export class CreateFieldDto {
   @IsBoolean()
   isUnique?: boolean;
 
+  @ApiPropertyOptional({
+    description: 'Hidden fields are readable but not writable through the content API.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  isHidden?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'Per-type validation rules enforced on every content write, e.g. { minLength, maxLength, regex } for TEXT, { min, max, isInteger } for NUMBER, { choices } for SELECT.',
+    example: { minLength: 3, maxLength: 120 },
+  })
+  @IsOptional()
+  @IsObject()
+  config?: Record<string, unknown>;
+
+  @ApiPropertyOptional({
+    description: 'Applied when an entry or locale is created without a value for this field.',
+  })
+  @IsOptional()
+  defaultValue?: unknown;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsInt()
@@ -96,6 +118,28 @@ export class UpdateFieldDto {
   @IsOptional()
   @IsBoolean()
   isUnique?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Hidden fields are readable but not writable through the content API.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  isHidden?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'Per-type validation rules enforced on every content write. Replaces the stored config wholesale.',
+    example: { minLength: 3, maxLength: 120 },
+  })
+  @IsOptional()
+  @IsObject()
+  config?: Record<string, unknown>;
+
+  @ApiPropertyOptional({
+    description: 'Applied when an entry or locale is created without a value for this field.',
+  })
+  @IsOptional()
+  defaultValue?: unknown;
 
   @ApiPropertyOptional()
   @IsOptional()

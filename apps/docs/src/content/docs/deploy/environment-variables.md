@@ -20,6 +20,39 @@ sidebar:
 | `PORT`         | `3000`        | HTTP port the API listens on                              |
 | `CORS_ORIGINS` | `*`           | Comma-separated allowed origins. Lock down in production. |
 
+## Security
+
+| Variable                     | Default                    | Notes                                                                                   |
+| ---------------------------- | -------------------------- | --------------------------------------------------------------------------------------- |
+| `KAST_SECRET_ENCRYPTION_KEY` | falls back to `JWT_SECRET` | ≥ 32 chars. Encrypts secret settings (e.g. `smtp.password`) at rest.                    |
+| `WEBHOOK_ALLOWED_HOSTS`      | _(empty)_                  | Hosts webhooks may target despite resolving to a private address. Empty = default-deny. |
+
+:::caution
+If `KAST_SECRET_ENCRYPTION_KEY` is unset, secrets are encrypted with
+`JWT_SECRET` — rotating `JWT_SECRET` then makes every stored secret setting
+unreadable. Set it explicitly in production.
+:::
+
+### Webhook egress policy
+
+Webhook targets are validated at create/update time **and** again before every
+delivery, including after each redirect hop. Rejected by default:
+
+- any scheme other than `http`/`https`
+- loopback, private, link-local, unique-local, multicast and other reserved
+  addresses (IPv4 and IPv6, including IPv4-mapped forms)
+- hostnames that resolve to any of the above
+
+List hosts in `WEBHOOK_ALLOWED_HOSTS` (comma or space separated, `*.suffix`
+wildcards supported) to allow them anyway.
+
+## Plugins
+
+| Variable         | Default                            | Notes                                                                                              |
+| ---------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `KAST_API_URL`   | `http://127.0.0.1:${PORT ?? 3000}` | API origin plugins call back on. **Not** the admin panel.                                          |
+| `KAST_API_TOKEN` | —                                  | Required by the Meilisearch and Stripe plugins to read entries. A `READ_ONLY` token is sufficient. |
+
 ## Redis
 
 | Variable         | Default     | Notes                                                                 |

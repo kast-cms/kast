@@ -13,7 +13,6 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import type { AuthUser, PaginatedResult } from '../../common/types/auth.types';
 import type { EntryWithLocale, VersionWithAuthor } from './content.repository';
@@ -33,7 +32,8 @@ export class ContentController {
   constructor(private readonly service: ContentService) {}
 
   @Get()
-  @Public()
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.VIEWER, SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'List entries for a content type' })
   findAll(
     @Param('typeSlug') typeSlug: string,
@@ -55,7 +55,8 @@ export class ContentController {
   }
 
   @Get(':id')
-  @Public()
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.VIEWER, SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get a content entry by ID' })
   findOne(
     @Param('typeSlug') typeSlug: string,

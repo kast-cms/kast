@@ -7,9 +7,18 @@ Sync Kast product content types to [Stripe](https://stripe.com) and receive paym
 ```env
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
-STRIPE_PRODUCT_TYPE_SLUG=product   # The content-type slug to sync (default: product)
-STRIPE_MODE=test                   # test | live
+STRIPE_PRODUCT_TYPE_SLUG=product      # The content-type slug to sync (default: product)
+
+KAST_API_URL=http://127.0.0.1:3000    # optional, the Kast API origin (not the admin app on 3001)
+KAST_API_TOKEN=kast_...               # required — a Kast API token whose owner can read content
 ```
+
+`KAST_API_TOKEN` is not optional in practice. Lifecycle hooks carry only an entry
+id, so the plugin reads the product fields back from the management content API,
+which requires authentication. Create the token under **Settings → API Tokens**
+in the admin; the plugin only issues GET requests, so a **read-only** token is
+enough. Without it the plugin logs a warning once at startup and syncs
+nothing.
 
 ## How it works
 

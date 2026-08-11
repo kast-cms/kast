@@ -220,18 +220,18 @@ export function FieldTypeConfig({
     );
   }
 
-  if (type === 'ENUM') {
-    const enumVal = Array.isArray(config['values'])
+  if (type === 'SELECT' || type === 'MULTI_SELECT') {
+    const choices = Array.isArray(config['values'])
       ? (config['values'] as string[]).join(', ')
       : '';
     return (
       <div className="space-y-2">
-        <Label htmlFor="cfg-values">Enum values</Label>
+        <Label htmlFor="cfg-values">Choices</Label>
         <Input
           id="cfg-values"
           className="font-mono"
           placeholder="draft, published, archived"
-          value={enumVal}
+          value={choices}
           onChange={(e: ChangeEvent<HTMLInputElement>) => {
             set(
               'values',
@@ -242,25 +242,9 @@ export function FieldTypeConfig({
             );
           }}
         />
-        <FieldHint>Comma-separated list of allowed values.</FieldHint>
-      </div>
-    );
-  }
-
-  if (type === 'UID') {
-    return (
-      <div className="space-y-2">
-        <Label htmlFor="cfg-targetField">Target field</Label>
-        <Input
-          id="cfg-targetField"
-          className="font-mono"
-          placeholder="title"
-          value={typeof config['targetField'] === 'string' ? config['targetField'] : ''}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => {
-            set('targetField', e.target.value !== '' ? e.target.value : undefined);
-          }}
-        />
-        <FieldHint>The field the UID is generated from.</FieldHint>
+        <FieldHint>
+          Comma-separated list of allowed values. The API rejects any value outside this list.
+        </FieldHint>
       </div>
     );
   }

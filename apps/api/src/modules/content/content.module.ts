@@ -6,11 +6,20 @@ import { SeoModule } from '../seo/seo.module';
 import { ContentController } from './content.controller';
 import { ContentRepository } from './content.repository';
 import { ContentService } from './content.service';
+import { ContentSchemaValidator } from './validation/content-schema.validator';
+import { ContentValidationRepository } from './validation/content-validation.repository';
+import { ContentWriteGate } from './validation/content-write.gate';
 
 @Module({
   imports: [ContentTypesModule, SeoModule, BullModule.registerQueue({ name: QUEUE_NAMES.PUBLISH })],
   controllers: [ContentController],
-  providers: [ContentService, ContentRepository],
-  exports: [ContentService],
+  providers: [
+    ContentService,
+    ContentRepository,
+    ContentSchemaValidator,
+    ContentValidationRepository,
+    ContentWriteGate,
+  ],
+  exports: [ContentService, ContentSchemaValidator, ContentWriteGate],
 })
 export class ContentModule {}

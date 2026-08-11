@@ -9,9 +9,24 @@ export interface LogActionParams {
   resource: string;
   resourceId?: string;
   userId?: string;
+  agentTokenId?: string;
+  agentName?: string;
   changes?: Prisma.InputJsonValue;
+  before?: Prisma.InputJsonValue;
+  after?: Prisma.InputJsonValue;
   ipAddress?: string;
   userAgent?: string;
+  isDryRun?: boolean;
+}
+
+function orNull<T>(value: T | undefined): T | null {
+  return value ?? null;
+}
+
+function orJsonNull(
+  value: Prisma.InputJsonValue | undefined,
+): Prisma.InputJsonValue | typeof Prisma.JsonNull {
+  return value ?? Prisma.JsonNull;
 }
 
 @Injectable()
@@ -25,11 +40,16 @@ export class AuditService {
       .create({
         action: params.action,
         resource: params.resource,
-        resourceId: params.resourceId ?? null,
-        userId: params.userId ?? null,
-        metadata: params.changes ?? Prisma.JsonNull,
-        ipAddress: params.ipAddress ?? null,
-        userAgent: params.userAgent ?? null,
+        resourceId: orNull(params.resourceId),
+        userId: orNull(params.userId),
+        agentTokenId: orNull(params.agentTokenId),
+        agentName: orNull(params.agentName),
+        before: orJsonNull(params.before),
+        after: orJsonNull(params.after),
+        metadata: orJsonNull(params.changes),
+        ipAddress: orNull(params.ipAddress),
+        userAgent: orNull(params.userAgent),
+        isDryRun: params.isDryRun ?? false,
       })
       .catch((err: unknown) => {
         this.logger.error('Failed to write audit log', err);

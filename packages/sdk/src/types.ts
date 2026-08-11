@@ -21,19 +21,24 @@ export interface ApiListResponse<T> {
   };
 }
 
+/** Mirrors the Prisma `ContentFieldType` enum exactly. */
 export type ContentFieldType =
   | 'TEXT'
   | 'RICH_TEXT'
   | 'NUMBER'
   | 'BOOLEAN'
   | 'DATE'
+  | 'DATETIME'
   | 'MEDIA'
   | 'RELATION'
   | 'JSON'
-  | 'EMAIL'
+  | 'COMPONENT'
+  | 'BLOCK'
+  | 'SELECT'
+  | 'MULTI_SELECT'
+  | 'COLOR'
   | 'URL'
-  | 'ENUM'
-  | 'UID';
+  | 'EMAIL';
 
 export interface ContentField {
   id: string;

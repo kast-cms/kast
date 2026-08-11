@@ -32,7 +32,7 @@ export default function SetupPage(): JSX.Element {
     setError(null);
 
     if (form.password !== form.confirmPassword) {
-      setError(t('errorPasswordMismatch'));
+      setError(t('passwordMismatch'));
       return;
     }
 

@@ -31,8 +31,17 @@ const PLUGIN_ENV_VARS: Record<string, string[]> = {
     'MEILISEARCH_HOST',
     'MEILISEARCH_MASTER_KEY',
     'MEILISEARCH_INDEX_PREFIX',
+    'MEILISEARCH_AGGREGATE_INDEX',
+    'KAST_API_URL',
+    'KAST_API_TOKEN',
   ],
-  'kast-plugin-stripe': ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'STRIPE_PRODUCT_TYPE_SLUG'],
+  'kast-plugin-stripe': [
+    'STRIPE_SECRET_KEY',
+    'STRIPE_WEBHOOK_SECRET',
+    'STRIPE_PRODUCT_TYPE_SLUG',
+    'KAST_API_URL',
+    'KAST_API_TOKEN',
+  ],
   'kast-plugin-resend': ['RESEND_API_KEY', 'RESEND_FROM_EMAIL', 'RESEND_FROM_NAME'],
   'kast-plugin-r2': [
     'R2_ACCOUNT_ID',

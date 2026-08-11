@@ -6,6 +6,7 @@ import type { AuditQueryDto } from '../../audit/dto/audit-query.dto';
 import { MediaService } from '../../media/media.service';
 import { SeoService } from '../../seo/seo.service';
 import { McpTool } from '../mcp-tool.decorator';
+import type { ToolContext } from '../types/mcp.types';
 
 @Injectable()
 export class McpMediaSeoAuditTools {
@@ -28,7 +29,11 @@ export class McpMediaSeoAuditTools {
     },
     dryRunable: false,
   })
-  async listMedia(args: Record<string, unknown>, _user: AuthUser): Promise<unknown> {
+  async listMedia(
+    args: Record<string, unknown>,
+    _user: AuthUser,
+    _ctx: ToolContext,
+  ): Promise<unknown> {
     return this.mediaService.findAll(args as PaginationDto);
   }
 
@@ -43,7 +48,11 @@ export class McpMediaSeoAuditTools {
     },
     dryRunable: false,
   })
-  async getMediaFile(args: Record<string, unknown>, _user: AuthUser): Promise<unknown> {
+  async getMediaFile(
+    args: Record<string, unknown>,
+    _user: AuthUser,
+    _ctx: ToolContext,
+  ): Promise<unknown> {
     return this.mediaService.findById(args['id'] as string);
   }
 
@@ -58,7 +67,11 @@ export class McpMediaSeoAuditTools {
     },
     dryRunable: false,
   })
-  async getSeoScore(args: Record<string, unknown>, _user: AuthUser): Promise<unknown> {
+  async getSeoScore(
+    args: Record<string, unknown>,
+    _user: AuthUser,
+    _ctx: ToolContext,
+  ): Promise<unknown> {
     return this.seoService.getScore(args['entryId'] as string);
   }
 
@@ -68,12 +81,19 @@ export class McpMediaSeoAuditTools {
     role: 'editor',
     inputSchema: {
       type: 'object',
-      properties: { entryId: { type: 'string' } },
+      properties: { entryId: { type: 'string' }, dryRun: { type: 'boolean' } },
       required: ['entryId'],
     },
-    dryRunable: false,
+    dryRunable: true,
   })
-  async validateSeo(args: Record<string, unknown>, _user: AuthUser): Promise<unknown> {
+  async validateSeo(
+    args: Record<string, unknown>,
+    _user: AuthUser,
+    ctx: ToolContext,
+  ): Promise<unknown> {
+    if (ctx.dryRun) {
+      return { action: 'validate_seo', entryId: args['entryId'], wouldQueue: true };
+    }
     return this.seoService.enqueueValidation(args['entryId'] as string);
   }
 
@@ -95,7 +115,11 @@ export class McpMediaSeoAuditTools {
     },
     dryRunable: false,
   })
-  async getAuditLog(args: Record<string, unknown>, _user: AuthUser): Promise<unknown> {
+  async getAuditLog(
+    args: Record<string, unknown>,
+    _user: AuthUser,
+    _ctx: ToolContext,
+  ): Promise<unknown> {
     return this.auditService.findAll(args as AuditQueryDto);
   }
 }

@@ -12,5 +12,11 @@
       "icon": "CreditCard"
     }
   ],
-  "env": ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_PRODUCT_TYPE_SLUG", "KAST_API_URL"]
+  "env": [
+    "STRIPE_SECRET_KEY",
+    "STRIPE_WEBHOOK_SECRET",
+    "STRIPE_PRODUCT_TYPE_SLUG",
+    "KAST_API_URL",
+    "KAST_API_TOKEN"
+  ]
 }

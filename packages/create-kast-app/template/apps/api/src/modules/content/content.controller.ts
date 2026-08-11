@@ -13,13 +13,14 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import type { AuthUser, PaginatedResult } from '../../common/types/auth.types';
 import type { EntryWithLocale, VersionWithAuthor } from './content.repository';
 import { ContentService } from './content.service';
 import {
+  AddLocaleDto,
   CreateContentEntryDto,
+  PublishContentDto,
   SchedulePublishDto,
   UpdateContentEntryDto,
 } from './dto/content-entry.dto';
@@ -31,7 +32,8 @@ export class ContentController {
   constructor(private readonly service: ContentService) {}
 
   @Get()
-  @Public()
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.VIEWER, SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'List entries for a content type' })
   findAll(
     @Param('typeSlug') typeSlug: string,
@@ -53,7 +55,8 @@ export class ContentController {
   }
 
   @Get(':id')
-  @Public()
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.VIEWER, SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get a content entry by ID' })
   findOne(
     @Param('typeSlug') typeSlug: string,
@@ -79,12 +82,26 @@ export class ContentController {
   @Post(':id/publish')
   @ApiBearerAuth()
   @Roles(SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Publish a content entry' })
+  @ApiOperation({ summary: 'Publish a content entry (runs SEO gate)' })
   publish(
     @Param('typeSlug') typeSlug: string,
     @Param('id') id: string,
+    @Body() dto: PublishContentDto,
   ): Promise<{ data: EntryWithLocale }> {
-    return this.service.publish(typeSlug, id);
+    return this.service.publish(typeSlug, id, dto);
+  }
+
+  @Post(':id/locale')
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Add a locale to an existing entry' })
+  addLocale(
+    @Param('typeSlug') typeSlug: string,
+    @Param('id') id: string,
+    @Body() dto: AddLocaleDto,
+    @CurrentUser() user: AuthUser,
+  ): Promise<{ data: EntryWithLocale }> {
+    return this.service.addLocale(typeSlug, id, dto, user.id);
   }
 
   @Post(':id/unpublish')

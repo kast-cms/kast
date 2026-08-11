@@ -1,5 +1,5 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import type { ContentField } from '@prisma/client';
+import { Prisma, type ContentField } from '@prisma/client';
 import { ContentTypesRepository, ContentTypeWithFields } from './content-types.repository';
 import type {
   CreateContentTypeDto,
@@ -7,6 +7,20 @@ import type {
   UpdateContentTypeDto,
   UpdateFieldDto,
 } from './dto/content-type.dto';
+
+/** Narrows a validated DTO value to what Prisma accepts for a non-null `Json` column. */
+function toJsonInput(value: unknown): Prisma.InputJsonValue | undefined {
+  if (value === undefined || value === null) return undefined;
+  return value as Prisma.InputJsonValue;
+}
+
+/**
+ * Same for a nullable `Json` column. Prisma needs the `DbNull` sentinel to store
+ * a SQL NULL — a bare `null` would be read as "leave unchanged" on update.
+ */
+function toNullableJsonInput(value: unknown): Prisma.InputJsonValue | Prisma.NullTypes.DbNull {
+  return value === null ? Prisma.DbNull : (value as Prisma.InputJsonValue);
+}
 
 @Injectable()
 export class ContentTypesService {
@@ -55,7 +69,15 @@ export class ContentTypesService {
       isRequired: dto.isRequired ?? false,
       isLocalized: dto.isLocalized ?? false,
       isUnique: dto.isUnique ?? false,
+      isHidden: dto.isHidden ?? false,
       position: dto.position ?? 0,
+      // `config` drives the per-field validation rules the content write gate
+      // enforces (minLength, regex, choices, allowedMimeTypes, ...). Dropping it
+      // here left every API-created field with an empty rule set.
+      config: toJsonInput(dto.config) ?? {},
+      ...(dto.defaultValue !== undefined
+        ? { defaultValue: toNullableJsonInput(dto.defaultValue) }
+        : {}),
       contentType: { connect: { id: ct.id } },
     });
   }
@@ -68,7 +90,13 @@ export class ContentTypesService {
     const ct = await this.findByName(typeName);
     const field = await this.repo.findFieldByNameAndType(ct.id, fieldName);
     if (!field) throw new NotFoundException(`Field '${fieldName}' not found on '${typeName}'`);
-    return this.repo.updateField(field.id, dto);
+    const { config, defaultValue, ...rest } = dto;
+    return this.repo.updateField(field.id, {
+      ...rest,
+      // An omitted key leaves the stored value alone; an explicit one replaces it.
+      ...(config !== undefined ? { config: toJsonInput(config) ?? {} } : {}),
+      ...(defaultValue !== undefined ? { defaultValue: toNullableJsonInput(defaultValue) } : {}),
+    });
   }
 
   async deleteField(typeName: string, fieldName: string): Promise<void> {

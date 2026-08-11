@@ -57,6 +57,30 @@ export class PluginRepository {
     return toRecord(row);
   }
 
+  findByName(name: string): Promise<{ id: string; name: string; isSystemPlugin: boolean } | null> {
+    return this.prisma.plugin.findUnique({
+      where: { name },
+      select: { id: true, name: true, isSystemPlugin: true },
+    });
+  }
+
+  async install(name: string, version: string): Promise<PluginRecord> {
+    const row = await this.prisma.plugin.create({
+      data: {
+        name,
+        displayName: name,
+        version,
+        isActive: false,
+        isSystemPlugin: false,
+      },
+    });
+    return toRecord(row);
+  }
+
+  async remove(name: string): Promise<void> {
+    await this.prisma.plugin.delete({ where: { name } });
+  }
+
   async setActive(name: string, isActive: boolean): Promise<PluginRecord> {
     const existing = await this.prisma.plugin.findUnique({ where: { name } });
     if (!existing) throw new NotFoundException(`Plugin "${name}" not found`);

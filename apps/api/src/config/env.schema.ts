@@ -1,5 +1,13 @@
 import { z } from 'zod';
 
+/**
+ * Every variable the API — or a plugin the API loads in-process — reads from
+ * `process.env` has to be declared here, even when nothing in this package uses
+ * it. @nestjs/config parses `.env` into a plain object, validates it, and assigns
+ * the *validated* result back onto `process.env`; zod strips keys this schema
+ * does not declare, so an undeclared name set in `.env` is silently discarded and
+ * can never reach its reader.
+ */
 const envSchema = z.object({
   // Server
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -17,6 +25,28 @@ const envSchema = z.object({
   // JWT
   JWT_SECRET: z.string().min(32),
   JWT_EXPIRES_IN: z.string().default('15m'),
+
+  // Encrypts secret settings (e.g. smtp.password) at rest. Falls back to
+  // JWT_SECRET when unset, which means rotating JWT_SECRET would make existing
+  // ciphertext unreadable — set this explicitly in production. The blank form is
+  // accepted because .env.example ships the key with no value.
+  KAST_SECRET_ENCRYPTION_KEY: z.union([z.string().min(32), z.literal('')]).optional(),
+
+  // Authorises the publicly documented admin@kast.local / writer@kast.local
+  // logins, both for `db:seed` and for this API's startup credential check. Only
+  // the opt-in phrase in weak-credential.util.ts counts; see it for why.
+  SEED_DEV_ACCOUNTS: z.string().optional(),
+
+  // Loopback callback into this same API, used by the in-process first-party
+  // plugins (Meilisearch indexing, Stripe product sync) to read entries. Blank
+  // means "not configured"; those plugins then stay idle.
+  KAST_API_URL: z.union([z.string().url(), z.literal('')]).optional(),
+  KAST_API_TOKEN: z.string().optional(),
+  KAST_API_KEY: z.string().optional(),
+
+  // Comma/space separated hosts webhooks may target despite resolving to a
+  // private address. Empty (the default) means default-deny.
+  WEBHOOK_ALLOWED_HOSTS: z.string().optional(),
 
   // CORS
   CORS_ORIGINS: z.string().default('*'),
@@ -72,6 +102,8 @@ const envSchema = z.object({
   MEILISEARCH_HOST: z.string().optional(),
   MEILISEARCH_MASTER_KEY: z.string().optional(),
   MEILISEARCH_INDEX_PREFIX: z.string().default('kast_'),
+  // 'false' disables the cross-type aggregate index the search endpoint reads.
+  MEILISEARCH_AGGREGATE_INDEX: z.string().optional(),
 
   // Cloudflare R2 (used by kast-plugin-r2)
   R2_ACCOUNT_ID: z.string().optional(),

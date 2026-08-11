@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   Logger,
   NotFoundException,
@@ -8,18 +9,20 @@ import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { MediaFile } from '@prisma/client';
 import { randomUUID } from 'crypto';
+import { lookup } from 'dns/promises';
+import { isIP } from 'net';
 import { extname } from 'path';
-import type { PaginationDto } from '../../common/dto/pagination.dto';
+import sharp from 'sharp';
 import type { PaginatedResult } from '../../common/types/auth.types';
 import { validateMagicBytes } from '../../common/utils/mime-magic.util';
+import { isPrivateAddress } from '../../common/utils/ssrf-guard.util';
 import type { Env } from '../../config/env.schema';
 import { QueueAdapter } from '../queue/queue.adapter';
 import { QUEUE_NAMES } from '../queue/queue.constants';
+import { ListMediaDto } from './dto/list-media.dto';
 import type { MediaJobData } from './media.processor';
 import { MediaRepository } from './media.repository';
 import type { StorageAdapter } from './storage/storage.adapter';
-
-const sizeOf = require('image-size') as (buf: Buffer) => { width?: number; height?: number } | null;
 
 const IMAGE_MIME_TYPES = new Set([
   'image/jpeg',
@@ -37,6 +40,9 @@ const OPTIMIZE_RASTER_TYPES = new Set([
   'image/bmp',
   'image/tiff',
 ]);
+
+const MAX_REDIRECTS = 5;
+const FETCH_TIMEOUT_MS = 15_000;
 
 @Injectable()
 export class MediaService {
@@ -85,7 +91,7 @@ export class MediaService {
     const ext = extname(file.originalname);
     const key = `${randomUUID()}${ext}`;
     const { url, storageKey } = await this.storage.upload(key, file.buffer, file.mimetype);
-    const { width, height } = this.getImageDimensions(file);
+    const { width, height } = await this.getImageDimensions(file);
 
     const media = await this.repo.create({
       filename: key,
@@ -109,17 +115,21 @@ export class MediaService {
     return { data: media };
   }
 
-  private getImageDimensions(file: Express.Multer.File): {
-    width?: number;
-    height?: number;
-  } {
+  /**
+   * Reads dimensions with sharp, which this module already uses for
+   * optimisation. It replaced `image-size`, whose DoS advisories
+   * (GHSA-w3rx-r6r6-pgpr, GHSA-5p2g-fcmc-qvqq) have no patched release — and
+   * this path parses attacker-supplied uploads.
+   */
+  private async getImageDimensions(file: {
+    mimetype: string;
+    buffer: Buffer;
+    originalname: string;
+  }): Promise<{ width?: number; height?: number }> {
     if (!IMAGE_MIME_TYPES.has(file.mimetype)) return {};
     try {
-      const dim = sizeOf(file.buffer);
-      const result: { width?: number; height?: number } = {};
-      if (dim?.width !== undefined) result.width = dim.width;
-      if (dim?.height !== undefined) result.height = dim.height;
-      return result;
+      const meta = await sharp(file.buffer).metadata();
+      return { width: meta.width, height: meta.height };
     } catch {
       this.logger.warn(`Could not get dimensions for ${file.originalname}`);
       return {};
@@ -139,7 +149,7 @@ export class MediaService {
     ]);
   }
 
-  async findAll(query: PaginationDto): Promise<PaginatedResult<MediaFile>> {
+  async findAll(query: ListMediaDto): Promise<PaginatedResult<MediaFile>> {
     const limit = query.limit ?? 20;
     const { items, total } = await this.repo.findAll(query);
     const hasNextPage = items.length > limit;
@@ -167,5 +177,149 @@ export class MediaService {
     const { data: media } = await this.findById(id);
     await this.storage.delete(media.storageKey);
     await this.repo.softDelete(id);
+  }
+
+  /**
+   * Downloads a remote file by URL and stores it. Size and MIME type are
+   * validated against the same limits as direct uploads.
+   */
+  async uploadFromUrl(
+    url: string,
+    uploaderId: string,
+    opts: { folderId?: string; altText?: string } = {},
+  ): Promise<{ data: MediaFile }> {
+    const { buffer, mimeType, originalName } = await this.fetchRemoteFile(url);
+
+    const ext = extname(originalName);
+    const key = `${randomUUID()}${ext}`;
+    const { url: storedUrl, storageKey } = await this.storage.upload(key, buffer, mimeType);
+    const { width, height } = await this.getImageDimensions({
+      mimetype: mimeType,
+      buffer,
+      originalname: originalName,
+    } as Express.Multer.File);
+
+    const media = await this.repo.create({
+      filename: key,
+      originalName,
+      mimeType,
+      size: buffer.length,
+      url: storedUrl,
+      storageKey,
+      provider: 'local',
+      width: width ?? null,
+      height: height ?? null,
+      ...(opts.altText !== undefined ? { altText: opts.altText } : {}),
+      ...(opts.folderId ? { folder: { connect: { id: opts.folderId } } } : {}),
+      uploadedBy: { connect: { id: uploaderId } },
+    });
+
+    await this.enqueueOptimizationJobs(media.id, storageKey, mimeType);
+    this.eventEmitter.emit('media.uploaded', {
+      mediaId: media.id,
+      mimeType: media.mimeType,
+      url: media.url,
+    });
+    return { data: media };
+  }
+
+  /** Downloads and validates a remote file (URL, size, MIME, magic bytes). */
+  private async fetchRemoteFile(
+    url: string,
+  ): Promise<{ buffer: Buffer; mimeType: string; originalName: string }> {
+    const parsed = this.parseHttpUrl(url);
+
+    const res = await this.fetchGuarded(url);
+    if (!res.ok) {
+      throw new UnprocessableEntityException(`Remote returned ${res.status} for the URL`);
+    }
+
+    const mimeType = (res.headers.get('content-type') ?? '').split(';')[0]?.trim() ?? '';
+    if (!this.allowedMimes.has(mimeType)) {
+      throw new UnprocessableEntityException(`MIME type ${mimeType || 'unknown'} is not allowed`);
+    }
+
+    const buffer = Buffer.from(await res.arrayBuffer());
+    if (buffer.length > this.maxBytes) {
+      throw new UnprocessableEntityException(
+        `File exceeds max size of ${this.maxBytes / 1024 / 1024}MB`,
+      );
+    }
+    if (!validateMagicBytes(buffer, mimeType)) {
+      throw new UnprocessableEntityException(
+        'File type mismatch: magic bytes do not match content-type',
+      );
+    }
+    return { buffer, mimeType, originalName: this.fileNameFromUrl(parsed, mimeType) };
+  }
+
+  /** Fetches a URL, blocking SSRF to private/internal hosts and re-validating each redirect hop. */
+  private async fetchGuarded(initialUrl: string): Promise<Response> {
+    let target = this.parseHttpUrl(initialUrl);
+    for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+      await this.assertPublicUrl(target);
+      let res: Response;
+      try {
+        res = await fetch(target, {
+          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+          redirect: 'manual',
+        });
+      } catch (err: unknown) {
+        throw new UnprocessableEntityException(`Failed to fetch URL: ${String(err)}`);
+      }
+      if (res.status < 300 || res.status >= 400) return res;
+      const location = res.headers.get('location');
+      if (location === null) return res;
+      target = this.parseHttpUrl(new URL(location, target).toString());
+    }
+    throw new UnprocessableEntityException('Too many redirects while fetching the URL');
+  }
+
+  /** Rejects hosts that resolve to loopback/private/link-local addresses (SSRF guard). */
+  private async assertPublicUrl(parsed: URL): Promise<void> {
+    const host = parsed.hostname
+      .toLowerCase()
+      .replace(/\.$/, '')
+      .replace(/^\[|\]$/g, '');
+    let addresses: string[];
+    if (isIP(host) !== 0) {
+      addresses = [host];
+    } else {
+      try {
+        addresses = (await lookup(host, { all: true })).map((record) => record.address);
+      } catch {
+        throw new BadRequestException('Could not resolve URL host');
+      }
+    }
+    if (addresses.length === 0 || addresses.some((address) => isPrivateAddress(address))) {
+      throw new BadRequestException('URL host is not allowed');
+    }
+  }
+
+  private parseHttpUrl(url: string): URL {
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      throw new BadRequestException('Invalid URL');
+    }
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      throw new BadRequestException('Only http(s) URLs are supported');
+    }
+    return parsed;
+  }
+
+  private fileNameFromUrl(parsed: URL, mimeType: string): string {
+    const base = parsed.pathname.split('/').filter(Boolean).pop() ?? 'download';
+    if (extname(base)) return base;
+    const extByMime: Record<string, string> = {
+      'image/jpeg': '.jpg',
+      'image/png': '.png',
+      'image/gif': '.gif',
+      'image/webp': '.webp',
+      'image/svg+xml': '.svg',
+      'application/pdf': '.pdf',
+    };
+    return `${base}${extByMime[mimeType] ?? ''}`;
   }
 }

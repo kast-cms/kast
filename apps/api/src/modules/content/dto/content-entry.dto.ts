@@ -16,6 +16,14 @@ export class CreateContentEntryDto {
 }
 
 export class UpdateContentEntryDto {
+  @ApiPropertyOptional({
+    example: 'en',
+    description: 'Locale to write; defaults to the first locale on the entry',
+  })
+  @IsOptional()
+  @IsString()
+  locale?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsObject()

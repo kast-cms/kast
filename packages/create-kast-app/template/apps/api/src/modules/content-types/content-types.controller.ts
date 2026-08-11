@@ -12,7 +12,6 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { ContentField } from '@prisma/client';
 import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
-import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import type { ContentTypeWithFields } from './content-types.repository';
 import { ContentTypesService } from './content-types.service';
@@ -29,7 +28,8 @@ export class ContentTypesController {
   constructor(private readonly service: ContentTypesService) {}
 
   @Get()
-  @Public()
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.VIEWER, SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'List all content types' })
   findAll(): Promise<{ data: ContentTypeWithFields[] }> {
     return this.service.findAll().then((data) => ({ data }));
@@ -44,7 +44,8 @@ export class ContentTypesController {
   }
 
   @Get(':name')
-  @Public()
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.VIEWER, SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get a content type by name' })
   findOne(@Param('name') name: string): Promise<{ data: ContentTypeWithFields }> {
     return this.service.findByName(name).then((data) => ({ data }));

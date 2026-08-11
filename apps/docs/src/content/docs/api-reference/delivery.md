@@ -129,6 +129,38 @@ Returns the public subset of global settings (site name, description, logo, etc.
 }
 ```
 
+## Content schema
+
+```http
+GET /api/v1/delivery/schema
+GET /api/v1/delivery/schema/:type
+```
+
+Returns the public field schema for every content type, or for one type.
+Cached for 60 seconds (`Cache-Control: public, max-age=60`). An unknown type
+returns `404`.
+
+Only safe metadata is exposed — fields marked hidden are omitted entirely, as
+are internal properties such as `id`, `config` and `defaultValue` (which can
+carry internal URLs or credentials).
+
+```json
+{
+  "data": {
+    "name": "blog-post",
+    "displayName": "Blog Post",
+    "localized": true,
+    "fields": [{ "name": "title", "type": "TEXT", "required": true, "localized": true }]
+  }
+}
+```
+
+:::note
+This endpoint discloses the shape of every content type to anonymous callers.
+That is intentional for typed frontends, but it is a deliberate disclosure —
+there is no per-type opt-out today.
+:::
+
 ## Sitemap
 
 ```http

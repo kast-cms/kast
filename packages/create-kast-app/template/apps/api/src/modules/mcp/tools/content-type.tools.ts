@@ -6,6 +6,7 @@ import type {
   UpdateContentTypeDto,
 } from '../../content-types/dto/content-type.dto';
 import { McpTool } from '../mcp-tool.decorator';
+import type { ToolContext } from '../types/mcp.types';
 
 @Injectable()
 export class McpContentTypeTools {
@@ -18,7 +19,11 @@ export class McpContentTypeTools {
     inputSchema: { type: 'object', properties: {} },
     dryRunable: false,
   })
-  async listContentTypes(_args: Record<string, unknown>, _user: AuthUser): Promise<unknown> {
+  async listContentTypes(
+    _args: Record<string, unknown>,
+    _user: AuthUser,
+    _ctx: ToolContext,
+  ): Promise<unknown> {
     return this.contentTypesService.findAll();
   }
 
@@ -33,7 +38,11 @@ export class McpContentTypeTools {
     },
     dryRunable: false,
   })
-  async getContentType(args: Record<string, unknown>, _user: AuthUser): Promise<unknown> {
+  async getContentType(
+    args: Record<string, unknown>,
+    _user: AuthUser,
+    _ctx: ToolContext,
+  ): Promise<unknown> {
     return this.contentTypesService.findByName(args['name'] as string);
   }
 
@@ -48,12 +57,20 @@ export class McpContentTypeTools {
         displayName: { type: 'string' },
         description: { type: 'string' },
         icon: { type: 'string' },
+        dryRun: { type: 'boolean' },
       },
       required: ['name', 'displayName'],
     },
     dryRunable: true,
   })
-  async createContentType(args: Record<string, unknown>, _user: AuthUser): Promise<unknown> {
+  async createContentType(
+    args: Record<string, unknown>,
+    _user: AuthUser,
+    ctx: ToolContext,
+  ): Promise<unknown> {
+    if (ctx.dryRun) {
+      return { action: 'create_content_type', wouldCreate: args };
+    }
     return this.contentTypesService.create(args as unknown as CreateContentTypeDto);
   }
 
@@ -67,13 +84,21 @@ export class McpContentTypeTools {
         name: { type: 'string', description: 'Current content type name' },
         displayName: { type: 'string' },
         description: { type: 'string' },
+        dryRun: { type: 'boolean' },
       },
       required: ['name'],
     },
     dryRunable: true,
   })
-  async updateContentType(args: Record<string, unknown>, _user: AuthUser): Promise<unknown> {
+  async updateContentType(
+    args: Record<string, unknown>,
+    _user: AuthUser,
+    ctx: ToolContext,
+  ): Promise<unknown> {
     const { name, ...dto } = args;
+    if (ctx.dryRun) {
+      return { action: 'update_content_type', name, wouldUpdate: dto };
+    }
     return this.contentTypesService.update(name as string, dto as unknown as UpdateContentTypeDto);
   }
 }

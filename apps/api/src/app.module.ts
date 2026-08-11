@@ -4,8 +4,10 @@ import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { AuthorizationModule } from './common/authorization/authorization.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { TokenPolicyGuard } from './common/guards/token-policy.guard';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 import { validateEnv } from './config/env.schema';
 import { AgentTokenModule } from './modules/agent-tokens/agent-token.module';
@@ -55,6 +57,7 @@ import { PrismaModule } from './prisma/prisma.module';
     // handler, as described in docs/architecture/KAST_SECURITY_MODEL.md §14.
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60000, limit: 100 }]),
     PrismaModule,
+    AuthorizationModule,
     QueueModule,
     HealthModule,
     AuthModule,
@@ -84,9 +87,10 @@ import { PrismaModule } from './prisma/prisma.module';
     DeliveryModule,
   ],
   providers: [
-    // Global guard order matters: throttle → jwt auth → roles
+    // Global guard order matters: throttle → jwt auth → token policy → roles
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: TokenPolicyGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     // Audit logging: records every successful mutating request (CR-02).
     { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },

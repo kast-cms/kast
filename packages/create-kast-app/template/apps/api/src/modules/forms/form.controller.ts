@@ -75,7 +75,7 @@ export class FormController {
 
   @Post(':id/submit')
   @Public()
-  @Throttle({ public: { limit: 10, ttl: 60000 } })
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Submit a form (public, rate limited 10/min per IP)' })
   async submit(

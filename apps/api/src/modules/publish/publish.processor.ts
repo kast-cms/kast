@@ -21,10 +21,21 @@ export class PublishProcessor extends WorkerHost {
     const { entryId } = job.data;
     this.logger.log(`Scheduled publish triggered for entry ${entryId}`);
     try {
-      await this.prisma.contentEntry.update({
-        where: { id: entryId },
+      // Only a still-scheduled, untrashed entry may go live. The job was
+      // queued in the past: since then the entry may have been trashed, or its
+      // schedule cancelled, and an unconditional update would publish it
+      // anyway. Payload validity was enforced when the schedule was created.
+      const { count } = await this.prisma.contentEntry.updateMany({
+        where: { id: entryId, status: 'SCHEDULED', trashedAt: null },
         data: { status: 'PUBLISHED', publishedAt: new Date(), scheduledAt: null },
       });
+
+      if (count === 0) {
+        this.logger.warn(
+          `Entry ${entryId} was not published: it is no longer scheduled or has been trashed`,
+        );
+        return;
+      }
       this.logger.log(`Entry ${entryId} published via schedule`);
     } catch (err: unknown) {
       this.logger.error(`Failed to publish scheduled entry ${entryId}`, err);

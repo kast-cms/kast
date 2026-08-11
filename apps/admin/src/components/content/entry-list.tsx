@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
+import { useApiResource } from '@/lib/use-api-resource';
 import { FileText, Plus } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
@@ -18,7 +19,12 @@ import { useEntryList } from './use-entry-list';
 
 interface EntryListClientProps {
   typeId: string;
-  displayName: string;
+  /**
+   * Resolved from the API when omitted. The route used to fetch this on the
+   * server, but the content-type route now requires a credential that only
+   * exists in the browser session.
+   */
+  displayName?: string;
 }
 
 /** Placeholder rows that mirror the real table's column rhythm. */
@@ -43,6 +49,11 @@ export function EntryListClient({ typeId, displayName }: EntryListClientProps): 
   const t = useTranslations('content');
   const { session } = useSession();
   const client = createApiClient(session?.accessToken);
+  const { data: contentType } = useApiResource(
+    async (c) => (await c.contentTypes.get(typeId)).data,
+    `content-type:${typeId}`,
+  );
+  const heading = displayName ?? contentType?.displayName ?? typeId;
   const {
     entries,
     search,
@@ -95,7 +106,7 @@ export function EntryListClient({ typeId, displayName }: EntryListClientProps): 
 
   return (
     <div className="space-y-6">
-      <PageHeader title={displayName} description={t('description')} actions={newEntryButton} />
+      <PageHeader title={heading} description={t('description')} actions={newEntryButton} />
       <div className="space-y-4">
         <EntryFilters
           search={search}

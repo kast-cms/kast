@@ -16,7 +16,32 @@ import { Lock } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
-const RESOURCES = ['content', 'media', 'seo', 'content-types', 'users', 'roles', 'tokens'] as const;
+/**
+ * Must stay aligned with the resource names the API derives from routes
+ * (apps/api/src/common/authorization/route-permission.util.ts): the first
+ * meaningful path segment of each controller. A resource missing here cannot
+ * be granted from the UI at all — only via POST /api/v1/roles/:id/permissions.
+ */
+const RESOURCES = [
+  'content',
+  'content-types',
+  'media',
+  'seo',
+  'menus',
+  'forms',
+  'search',
+  'trash',
+  'users',
+  'roles',
+  'tokens',
+  'agent-tokens',
+  'webhooks',
+  'plugins',
+  'locales',
+  'settings',
+  'audit',
+  'dashboard',
+] as const;
 
 const ACTIONS = ['read', 'create', 'update', 'delete', 'publish'] as const;
 
@@ -46,9 +71,13 @@ function matrixToBody(matrix: Matrix): AssignPermissionsBody {
 /** Shared chrome for both header rows and the sticky resource column. */
 const HEAD_CELL = 'bg-muted text-2xs font-semibold tracking-wider text-muted-foreground uppercase';
 
-/** i18n keys use underscores where resource slugs use hyphens. */
+/**
+ * i18n keys mirror the resource slug verbatim, hyphens included. (This used to
+ * rewrite hyphens to underscores, which never matched the message catalogue,
+ * so `content-types` rendered as a raw key.)
+ */
 function resourceKey(resource: string): string {
-  return resource.replace('-', '_');
+  return resource;
 }
 
 function countGranted(actions: Record<string, boolean> | undefined): number {

@@ -24,7 +24,6 @@ import type { MediaFile } from '@prisma/client';
 import { IsOptional, IsString } from 'class-validator';
 import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import type { AuthUser, PaginatedResult } from '../../common/types/auth.types';
 import { ListMediaDto } from './dto/list-media.dto';
@@ -58,7 +57,8 @@ export class MediaController {
   ) {}
 
   @Get()
-  @Public()
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.VIEWER, SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'List media files' })
   findAll(@Query() query: ListMediaDto): Promise<PaginatedResult<MediaFile>> {
     return this.service.findAll(query);
@@ -133,7 +133,8 @@ export class MediaController {
   }
 
   @Get(':id')
-  @Public()
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.VIEWER, SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get media file by ID' })
   findOne(@Param('id') id: string): Promise<{ data: MediaFile }> {
     return this.service.findById(id);

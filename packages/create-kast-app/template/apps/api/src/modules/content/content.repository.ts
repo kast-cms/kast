@@ -8,7 +8,11 @@ import type {
   User,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { resolveLocaleFallbackChain } from './content-locale.ops';
+import { buildRevertLocaleOps } from './content-revert.ops';
 import type { ContentQueryDto } from './dto/content-query.dto';
+import type { UniqueCheck } from './validation/content-validation.types';
+import { assertUniqueFields } from './validation/unique-field.guard';
 
 export type VersionWithAuthor = ContentEntryVersion & {
   savedBy: Pick<User, 'id' | 'firstName' | 'lastName'>;
@@ -45,9 +49,17 @@ export class ContentRepository {
     return { items: items as EntryWithLocale[], total };
   }
 
-  findById(id: string, locale?: string): Promise<EntryWithLocale | null> {
-    return this.prisma.contentEntry.findUnique({
-      where: { id },
+  /**
+   * Entry lookups are always bound to the content type from the route so an ID
+   * belonging to another type cannot be read or mutated through it.
+   */
+  findByIdForType(
+    id: string,
+    contentTypeId: string,
+    locale?: string,
+  ): Promise<EntryWithLocale | null> {
+    return this.prisma.contentEntry.findFirst({
+      where: { id, contentTypeId },
       include: { locales: locale ? { where: { localeCode: locale } } : true },
     }) as Promise<EntryWithLocale | null>;
   }
@@ -60,26 +72,18 @@ export class ContentRepository {
     return locales.map((l) => l.code);
   }
 
-  async getLocaleFallbackChain(localeCode: string): Promise<string[]> {
-    const chain: string[] = [localeCode];
-    let current = localeCode;
-    for (let depth = 0; depth < 5; depth++) {
-      const row = await this.prisma.locale.findUnique({
-        where: { code: current },
-        select: { fallbackCode: true },
-      });
-      const fallbackCode = row?.fallbackCode;
-      if (!fallbackCode) break;
-      chain.push(fallbackCode);
-      current = fallbackCode;
-    }
-    return chain;
+  getLocaleFallbackChain(localeCode: string): Promise<string[]> {
+    return resolveLocaleFallbackChain(this.prisma, localeCode);
   }
 
-  async findByIdWithFallback(id: string, locale: string): Promise<EntryWithLocale | null> {
+  async findByIdWithFallbackForType(
+    id: string,
+    contentTypeId: string,
+    locale: string,
+  ): Promise<EntryWithLocale | null> {
     const chain = await this.getLocaleFallbackChain(locale);
-    const entry = await this.prisma.contentEntry.findUnique({
-      where: { id },
+    const entry = await this.prisma.contentEntry.findFirst({
+      where: { id, contentTypeId },
       include: { locales: { where: { localeCode: { in: chain } } } },
     });
     if (!entry) return null;
@@ -97,6 +101,7 @@ export class ContentRepository {
     authorId: string,
     slug: string,
     extraLocaleCodes: string[] = [],
+    uniqueChecks: UniqueCheck[] = [],
   ): Promise<EntryWithLocale> {
     const extraLocales = extraLocaleCodes
       .filter((code) => code !== locale)
@@ -106,69 +111,117 @@ export class ContentRepository {
         data: {} as Prisma.InputJsonValue,
       }));
 
-    return this.prisma.contentEntry.create({
-      data: {
-        contentTypeId,
-        createdById: authorId,
-        locales: {
-          create: [
-            { localeCode: locale, slug, data: data as Prisma.InputJsonValue },
-            ...extraLocales,
-          ],
+    return this.prisma.$transaction(async (tx) => {
+      await assertUniqueFields(tx, contentTypeId, uniqueChecks, null);
+      return tx.contentEntry.create({
+        data: {
+          contentTypeId,
+          createdById: authorId,
+          locales: {
+            create: [
+              { localeCode: locale, slug, data: data as Prisma.InputJsonValue },
+              ...extraLocales,
+            ],
+          },
         },
-      },
-      include: { locales: true },
-    }) as Promise<EntryWithLocale>;
+        include: { locales: true },
+      }) as Promise<EntryWithLocale>;
+    });
   }
 
   update(
     id: string,
+    contentTypeId: string,
     locale: string,
     data: Record<string, unknown>,
+    uniqueChecks: UniqueCheck[] = [],
     slug?: string,
   ): Promise<EntryWithLocale> {
-    return this.prisma.contentEntry.update({
-      where: { id },
-      data: {
-        locales: {
-          upsert: {
-            where: { entryId_localeCode: { entryId: id, localeCode: locale } },
-            create: {
-              localeCode: locale,
-              slug: slug ?? locale,
-              data: data as Prisma.InputJsonValue,
+    return this.prisma.$transaction(async (tx) => {
+      await tx.contentEntry.findFirstOrThrow({
+        where: { id, contentTypeId },
+        select: { id: true },
+      });
+      await assertUniqueFields(tx, contentTypeId, uniqueChecks, id);
+      return tx.contentEntry.update({
+        where: { id },
+        data: {
+          locales: {
+            upsert: {
+              where: { entryId_localeCode: { entryId: id, localeCode: locale } },
+              create: {
+                localeCode: locale,
+                slug: slug ?? locale,
+                data: data as Prisma.InputJsonValue,
+              },
+              update: { data: data as Prisma.InputJsonValue },
             },
-            update: { data: data as Prisma.InputJsonValue },
           },
         },
-      },
-      include: { locales: true },
-    }) as Promise<EntryWithLocale>;
+        include: { locales: true },
+      }) as Promise<EntryWithLocale>;
+    });
   }
 
-  updateStatus(id: string, status: ContentStatus, publishedAt?: Date): Promise<ContentEntry> {
-    return this.prisma.contentEntry.update({
-      where: { id },
+  addLocale(
+    id: string,
+    contentTypeId: string,
+    locale: string,
+    slug: string,
+    data: Record<string, unknown>,
+    uniqueChecks: UniqueCheck[] = [],
+  ): Promise<EntryWithLocale> {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.contentEntry.findFirstOrThrow({
+        where: { id, contentTypeId },
+        select: { id: true },
+      });
+      await assertUniqueFields(tx, contentTypeId, uniqueChecks, id);
+      return tx.contentEntry.update({
+        where: { id },
+        data: {
+          locales: {
+            create: { localeCode: locale, slug, data: data as Prisma.InputJsonValue },
+          },
+        },
+        include: { locales: true },
+      }) as Promise<EntryWithLocale>;
+    });
+  }
+
+  /** Returns false when the ID does not belong to the given content type. */
+  async updateStatus(
+    id: string,
+    contentTypeId: string,
+    status: ContentStatus,
+    publishedAt?: Date,
+  ): Promise<boolean> {
+    const result = await this.prisma.contentEntry.updateMany({
+      where: { id, contentTypeId },
       data: { status, publishedAt: publishedAt ?? null },
     });
+    return result.count > 0;
   }
 
-  updateSchedule(
+  async updateSchedule(
     id: string,
+    contentTypeId: string,
     scheduledAt: Date | null,
     status: ContentStatus,
-  ): Promise<ContentEntry> {
-    return this.prisma.contentEntry.update({
-      where: { id },
+  ): Promise<boolean> {
+    const result = await this.prisma.contentEntry.updateMany({
+      where: { id, contentTypeId },
       data: { scheduledAt, status },
     });
+    return result.count > 0;
   }
 
-  trash(id: string): Promise<ContentEntry> {
-    return this.prisma.contentEntry.update({
-      where: { id },
+  async trash(id: string, contentTypeId: string): Promise<boolean> {
+    const result = await this.prisma.contentEntry.updateMany({
+      where: { id, contentTypeId },
       data: { status: 'TRASHED', trashedAt: new Date() },
     });
+    return result.count > 0;
   }
 
   async createVersion(
@@ -213,54 +266,55 @@ export class ContentRepository {
     return { items: items as VersionWithAuthor[], total };
   }
 
-  findVersionById(entryId: string, versionId: string): Promise<VersionWithAuthor | null> {
+  findVersionByIdForType(
+    entryId: string,
+    contentTypeId: string,
+    versionId: string,
+  ): Promise<VersionWithAuthor | null> {
     return this.prisma.contentEntryVersion.findFirst({
-      where: { id: versionId, entryId },
+      where: { id: versionId, entryId, entry: { contentTypeId } },
       include: { savedBy: { select: { id: true, firstName: true, lastName: true } } },
     }) as Promise<VersionWithAuthor | null>;
   }
 
   async revertToVersion(
     entryId: string,
+    contentTypeId: string,
     version: VersionWithAuthor,
     userId: string,
+    uniqueChecks: UniqueCheck[] = [],
   ): Promise<EntryWithLocale> {
-    const entry = await this.prisma.contentEntry.findUniqueOrThrow({
-      where: { id: entryId },
-      include: { locales: true },
-    });
-    const locale = entry.locales[0]?.localeCode ?? 'en';
-    const revertedData = version.data as Record<string, unknown>;
-    await this.prisma.$transaction([
-      this.prisma.contentEntryLocale.upsert({
-        where: { entryId_localeCode: { entryId, localeCode: locale } },
-        create: {
+    return this.prisma.$transaction(async (tx) => {
+      const entry = await tx.contentEntry.findFirstOrThrow({
+        where: { id: entryId, contentTypeId },
+        include: { locales: true },
+      });
+      await assertUniqueFields(tx, contentTypeId, uniqueChecks, entryId);
+      const primaryLocale = entry.locales[0]?.localeCode ?? 'en';
+
+      for (const op of buildRevertLocaleOps(tx, entryId, version, primaryLocale)) {
+        await op;
+      }
+      await tx.contentEntry.update({ where: { id: entryId }, data: { status: 'DRAFT' } });
+
+      const latest = await tx.contentEntryVersion.findFirst({
+        where: { entryId },
+        orderBy: { versionNumber: 'desc' },
+      });
+      await tx.contentEntryVersion.create({
+        data: {
           entryId,
-          localeCode: locale,
-          slug: locale,
+          versionNumber: (latest?.versionNumber ?? 0) + 1,
+          status: 'DRAFT',
           data: version.data as Prisma.InputJsonValue,
+          localesData: (version.localesData ?? {}) as Prisma.InputJsonValue,
+          savedById: userId,
         },
-        update: { data: version.data as Prisma.InputJsonValue },
-      }),
-      this.prisma.contentEntry.update({ where: { id: entryId }, data: { status: 'DRAFT' } }),
-    ]);
-    const latest = await this.prisma.contentEntryVersion.findFirst({
-      where: { entryId },
-      orderBy: { versionNumber: 'desc' },
+      });
+      return tx.contentEntry.findUniqueOrThrow({
+        where: { id: entryId },
+        include: { locales: true },
+      }) as Promise<EntryWithLocale>;
     });
-    await this.prisma.contentEntryVersion.create({
-      data: {
-        entryId,
-        versionNumber: (latest?.versionNumber ?? 0) + 1,
-        status: 'DRAFT',
-        data: revertedData as Prisma.InputJsonValue,
-        localesData: {} as Prisma.InputJsonValue,
-        savedById: userId,
-      },
-    });
-    return this.prisma.contentEntry.findUniqueOrThrow({
-      where: { id: entryId },
-      include: { locales: true },
-    }) as Promise<EntryWithLocale>;
   }
 }

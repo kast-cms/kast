@@ -1,8 +1,14 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { WebhookDelivery } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { encryptSecret } from '../../common/utils/secret-crypto.util';
+import {
+  assertPublicUrl,
+  BlockedUrlError,
+  parseHostAllowList,
+  parseOutboundUrl,
+} from '../../common/utils/ssrf-guard.util';
 import type { Env } from '../../config/env.schema';
 import { QueueAdapter } from '../queue/queue.adapter';
 import { QUEUE_NAMES } from '../queue/queue.constants';
@@ -32,7 +38,22 @@ export class WebhookService {
     return this.repo.findAll();
   }
 
+  // The DTO can only judge the URL literally; a hostname has to be resolved, and
+  // the answer can change between here and delivery, so both ends check.
+  private async assertUrlAllowed(url: string): Promise<void> {
+    const allowList = parseHostAllowList(process.env.WEBHOOK_ALLOWED_HOSTS);
+    try {
+      await assertPublicUrl(parseOutboundUrl(url), { allowList });
+    } catch (err) {
+      if (err instanceof BlockedUrlError) {
+        throw new BadRequestException(`Webhook URL is not allowed: ${err.reason}`);
+      }
+      throw err;
+    }
+  }
+
   async create(dto: CreateWebhookDto): Promise<WebhookCreatedResult> {
+    await this.assertUrlAllowed(dto.url);
     // Use the caller-supplied secret or generate one; store it encrypted at rest
     // and expose the plaintext exactly once so receivers can verify the HMAC.
     const secret = dto.secret ?? randomBytes(32).toString('hex');
@@ -54,6 +75,7 @@ export class WebhookService {
 
   async update(id: string, dto: UpdateWebhookDto): Promise<EndpointRow> {
     await this.findOne(id);
+    if (dto.url !== undefined) await this.assertUrlAllowed(dto.url);
     const { secret, ...rest } = dto;
     return this.repo.update(id, {
       ...rest,

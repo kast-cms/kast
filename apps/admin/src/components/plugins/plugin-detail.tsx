@@ -37,13 +37,26 @@ const PLUGIN_ICONS: Record<string, JSX.Element> = {
   'kast-plugin-sentry': <ShieldAlert className="size-5" />,
 };
 
+/**
+ * Mirrors the `env` array in each plugin's kast-plugin.json. Kept in sync by
+ * hand — the plugin API does not surface the manifest's env list yet.
+ */
 const PLUGIN_ENV_VARS: Record<string, string[]> = {
   'kast-plugin-meilisearch': [
     'MEILISEARCH_HOST',
     'MEILISEARCH_MASTER_KEY',
     'MEILISEARCH_INDEX_PREFIX',
+    'MEILISEARCH_AGGREGATE_INDEX',
+    'KAST_API_URL',
+    'KAST_API_TOKEN',
   ],
-  'kast-plugin-stripe': ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'STRIPE_PRODUCT_TYPE_SLUG'],
+  'kast-plugin-stripe': [
+    'STRIPE_SECRET_KEY',
+    'STRIPE_WEBHOOK_SECRET',
+    'STRIPE_PRODUCT_TYPE_SLUG',
+    'KAST_API_URL',
+    'KAST_API_TOKEN',
+  ],
   'kast-plugin-resend': ['RESEND_API_KEY', 'RESEND_FROM_EMAIL', 'RESEND_FROM_NAME'],
   'kast-plugin-r2': [
     'R2_ACCOUNT_ID',

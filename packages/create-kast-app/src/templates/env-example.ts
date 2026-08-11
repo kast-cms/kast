@@ -36,6 +36,25 @@ JWT_SECRET=replace_me_with_a_32_character_secret_at_minimum_length
 JWT_EXPIRES_IN=15m
 
 # ---------------------------------------------------------------------------
+# Secret settings encryption
+# ---------------------------------------------------------------------------
+# Encrypts secret settings (e.g. smtp.password) at rest. Minimum 32 chars.
+# Falls back to JWT_SECRET when unset — rotating JWT_SECRET would then make
+# every stored secret unreadable. Set this explicitly in production.
+# The API validates this with min(32), so leave the whole line out rather than
+# assigning an empty value: \`KAST_SECRET_ENCRYPTION_KEY=\` fails validation and
+# the API refuses to boot.
+KAST_SECRET_ENCRYPTION_KEY=replace_me_with_a_32_character_secret_at_minimum_length
+
+# ---------------------------------------------------------------------------
+# Webhook egress policy
+# ---------------------------------------------------------------------------
+# Webhook targets resolving to private/loopback/link-local addresses and any
+# non-http(s) scheme are rejected by default. List hosts to allow anyway
+# (comma or space separated, "*.suffix" wildcards supported).
+WEBHOOK_ALLOWED_HOSTS=
+
+# ---------------------------------------------------------------------------
 # CORS
 # ---------------------------------------------------------------------------
 # Comma-separated list of allowed origins. Do not use * in production.

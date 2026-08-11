@@ -221,6 +221,28 @@ Displayed: prefix (first 8 chars) in UI: "kast_x8j2..."
 }
 ```
 
+**Enforcement** happens in `TokenPolicyGuard`, which runs between
+`JwtAuthGuard` and `RolesGuard`. `resource` and `action` are derived from the
+route itself (`common/authorization/route-permission.util.ts`), so no
+controller needs a decorator.
+
+The policy is **fail-closed**, with consequences worth stating explicitly:
+
+- A missing or unrecognised scope is denied (`403 TOKEN_SCOPE_UNKNOWN`), not
+  allowed.
+- A route whose resource/action cannot be derived is denied
+  (`403 TOKEN_SCOPE_UNRESOLVED`).
+- **Sub-action verbs override the method-derived action.** `POST
+/content-types/:slug/entries/:id/publish` is `content:publish`, not
+  `content:create` — a token granted `content: ["create"]` cannot publish.
+- The MCP transport is itself a resource: a `SCOPED` token needs
+  `mcp: ["create"]` to `POST /api/v1/mcp`.
+- **Expired tokens are rejected with 401.** Expiry is enforced both in the
+  query and in the strategy.
+
+`*` is honoured as a wildcard on either side (`"*": ["read"]`, or
+`"content": ["*"]`).
+
 ---
 
 ### Agent Tokens (`kastagent_...`)
@@ -235,21 +257,21 @@ Displayed: prefix (first 8 chars) in UI
            Full token shown ONCE at creation
 ```
 
-Agent tokens have a **JSON scope object** (not enum-based):
+Agent token scope is a **flat array of MCP tool names** — not a
+resource→actions object. A tool call is permitted only when its exact name
+appears in the array (`McpService.isAgentTokenScopeAllowed`):
 
 ```json
-{
-  "content": ["read", "create", "update", "publish"],
-  "media": ["read", "upload"],
-  "seo": ["read", "validate"],
-  "plugins": ["read"],
-  "users": [],
-  "settings": []
-}
+["list_content_entries", "get_content_entry", "create_content_entry", "publish_content_entry"]
 ```
 
-Empty array `[]` = **no access** to that resource.
-Omitted resource = **no access**.
+An empty array = **no tools**. An omitted tool name = **no access** to that
+tool.
+
+Agent tokens are additionally confined to the MCP transport: `TokenPolicyGuard`
+rejects any request carrying an agent token whose route is not under
+`/api/v1/mcp` with `403 AGENT_TOKEN_NOT_ALLOWED`. An agent token therefore
+cannot read settings, list content, or manage its own credential over REST.
 
 Every agent request also writes an `AgentSession` record — which tools were called and when.
 

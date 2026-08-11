@@ -15,6 +15,15 @@ export function createApiClient(accessToken?: string): KastClient {
 /**
  * Server-side KastClient (uses INTERNAL_API_URL when available).
  * Import INTERNAL_API_URL from env only in server components.
+ *
+ * WARNING: management routes require authentication, and a server component
+ * has no access token — the access token lives in client memory, and the only
+ * server-readable credential is the httpOnly refresh cookie, which ROTATES on
+ * use and would race the browser into a logout. Calling this without a token
+ * yields 401 on every management route.
+ *
+ * Fetch from a client component with `createApiClient(session?.accessToken)`
+ * (see `useApiResource`) unless you genuinely have a token to pass here.
  */
 export function createServerApiClient(accessToken?: string): KastClient {
   const base =

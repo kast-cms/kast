@@ -102,10 +102,17 @@ test('.env.example contains required variables', async (t) => {
   }
 });
 
-const jwtSecretOf = (env) => /^JWT_SECRET=(.*)$/m.exec(env)?.[1];
-const withoutJwtSecret = (env) => env.replace(/^JWT_SECRET=.*$/m, 'JWT_SECRET=');
+/** Every variable the scaffolder replaces with a per-project random value. */
+const GENERATED_SECRETS = ['JWT_SECRET', 'KAST_SECRET_ENCRYPTION_KEY'];
 
-test('.env is created from .env.example with a generated JWT_SECRET', async (t) => {
+const secretOf = (env, name) => new RegExp(`^${name}=(.*)$`, 'm').exec(env)?.[1];
+const withoutSecrets = (env) =>
+  GENERATED_SECRETS.reduce(
+    (acc, name) => acc.replace(new RegExp(`^${name}=.*$`, 'm'), `${name}=`),
+    env,
+  );
+
+test('.env is created from .env.example with generated secrets', async (t) => {
   const tmp = await mkdtemp(join(tmpdir(), 'kast-e2e-'));
   t.after(async () => rm(tmp, { recursive: true, force: true }));
 
@@ -115,31 +122,36 @@ test('.env is created from .env.example with a generated JWT_SECRET', async (t) 
   const dotenv = await readFile(join(tmp, 'dot-env-test', '.env'), 'utf-8');
 
   assert.equal(
-    withoutJwtSecret(dotenv),
-    withoutJwtSecret(example),
-    '.env should match .env.example apart from JWT_SECRET',
+    withoutSecrets(dotenv),
+    withoutSecrets(example),
+    `.env should match .env.example apart from ${GENERATED_SECRETS.join(', ')}`,
   );
 
-  const secret = jwtSecretOf(dotenv);
-  assert.ok(secret, '.env should define JWT_SECRET');
-  assert.notEqual(
-    secret,
-    jwtSecretOf(example),
-    'JWT_SECRET must not keep the placeholder from .env.example',
-  );
-  assert.ok(secret.length >= 32, `JWT_SECRET must be at least 32 characters, got ${secret.length}`);
+  for (const name of GENERATED_SECRETS) {
+    const secret = secretOf(dotenv, name);
+    assert.ok(secret, `.env should define ${name}`);
+    assert.notEqual(
+      secret,
+      secretOf(example, name),
+      `${name} must not keep the placeholder from .env.example`,
+    );
+    // The API validates both with min(32) and refuses to boot below it.
+    assert.ok(secret.length >= 32, `${name} must be at least 32 characters, got ${secret.length}`);
+  }
 });
 
-test('each scaffolded project gets its own JWT_SECRET', async (t) => {
+test('each scaffolded project gets its own secrets', async (t) => {
   const tmp = await mkdtemp(join(tmpdir(), 'kast-e2e-'));
   t.after(async () => rm(tmp, { recursive: true, force: true }));
 
   await execFileAsync('node', [CLI_BIN, 'secret-a', ...SKIP_FLAGS], { cwd: tmp });
   await execFileAsync('node', [CLI_BIN, 'secret-b', ...SKIP_FLAGS], { cwd: tmp });
 
-  const a = jwtSecretOf(await readFile(join(tmp, 'secret-a', '.env'), 'utf-8'));
-  const b = jwtSecretOf(await readFile(join(tmp, 'secret-b', '.env'), 'utf-8'));
-  assert.notEqual(a, b, 'two projects must not share a JWT signing key');
+  const a = await readFile(join(tmp, 'secret-a', '.env'), 'utf-8');
+  const b = await readFile(join(tmp, 'secret-b', '.env'), 'utf-8');
+  for (const name of GENERATED_SECRETS) {
+    assert.notEqual(secretOf(a, name), secretOf(b, name), `two projects must not share ${name}`);
+  }
 });
 
 test('package.json is valid JSON with correct project name and turbo dev script', async (t) => {

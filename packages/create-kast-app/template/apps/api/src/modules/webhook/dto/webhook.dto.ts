@@ -1,17 +1,26 @@
-import { IsArray, IsBoolean, IsIn, IsOptional, IsString, IsUrl, MinLength } from 'class-validator';
+import { IsArray, IsBoolean, IsIn, IsOptional, IsString, MinLength } from 'class-validator';
 import { ALL_WEBHOOK_EVENT_NAMES } from '../webhook.events';
+import { IsWebhookUrl } from './is-webhook-url.validator';
 
 export class CreateWebhookDto {
   @IsString()
   @MinLength(1)
   name!: string;
 
-  @IsUrl({ require_tld: false })
+  @IsString()
+  @IsWebhookUrl()
   url!: string;
 
   @IsArray()
   @IsIn(ALL_WEBHOOK_EVENT_NAMES, { each: true })
   events!: string[];
+
+  // Optional caller-supplied HMAC secret. When omitted, one is generated and
+  // returned once on creation.
+  @IsOptional()
+  @IsString()
+  @MinLength(8)
+  secret?: string;
 }
 
 export class UpdateWebhookDto {
@@ -21,13 +30,19 @@ export class UpdateWebhookDto {
   name?: string;
 
   @IsOptional()
-  @IsUrl({ require_tld: false })
+  @IsString()
+  @IsWebhookUrl()
   url?: string;
 
   @IsOptional()
   @IsArray()
   @IsIn(ALL_WEBHOOK_EVENT_NAMES, { each: true })
   events?: string[];
+
+  @IsOptional()
+  @IsString()
+  @MinLength(8)
+  secret?: string;
 
   @IsOptional()
   @IsBoolean()

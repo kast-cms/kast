@@ -17,6 +17,7 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
+    "test": "node --test test/template-parity.test.mjs",
     "test:e2e": "node --test test/cli.e2e.mjs"
   },
   "dependencies": {

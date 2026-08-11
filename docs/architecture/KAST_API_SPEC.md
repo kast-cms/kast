@@ -635,7 +635,7 @@ Remove a field from a content type.
 
 ## 4. Content Entries API
 
-### GET /api/v1/content/:type ✏️
+### GET /api/v1/content/:type 👁
 
 List entries of a content type. Includes drafts and trashed items for admin.
 
@@ -723,7 +723,7 @@ Create a new content entry as a draft.
 
 ---
 
-### GET /api/v1/content/:type/:id ✏️
+### GET /api/v1/content/:type/:id 👁
 
 Get a single content entry with all locales and full field data.
 

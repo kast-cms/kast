@@ -32,13 +32,15 @@ const FIELD_TYPES: { value: ContentFieldType; label: string }[] = [
   { value: 'NUMBER', label: 'Number' },
   { value: 'BOOLEAN', label: 'Boolean' },
   { value: 'DATE', label: 'Date' },
+  { value: 'DATETIME', label: 'Date & Time' },
   { value: 'MEDIA', label: 'Media' },
   { value: 'RELATION', label: 'Relation' },
   { value: 'JSON', label: 'JSON' },
   { value: 'EMAIL', label: 'Email' },
   { value: 'URL', label: 'URL' },
-  { value: 'ENUM', label: 'Enum' },
-  { value: 'UID', label: 'UID' },
+  { value: 'SELECT', label: 'Select' },
+  { value: 'MULTI_SELECT', label: 'Multi-select' },
+  { value: 'COLOR', label: 'Color' },
 ];
 
 export interface FieldDrawerProps {
