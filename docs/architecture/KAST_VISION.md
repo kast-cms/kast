@@ -31,7 +31,7 @@
 
 **Kast** is a modern, open-source, AI-native Content Management System built for developers who need full control — and for editors who need simplicity.
 
-It is **headless-first**, meaning it serves content via REST and GraphQL APIs to any frontend. But it also ships an official Next.js frontend for teams who want a full-stack, out-of-the-box experience.
+It is **headless-first**, meaning it serves content via a REST API to any frontend (a GraphQL layer is planned for v2). But it also ships an official Next.js frontend for teams who want a full-stack, out-of-the-box experience.
 
 Kast is:
 
@@ -105,9 +105,15 @@ Every operation available to a human developer must be available to an AI agent 
 
 Secure HTTP headers, CORS, CSRF, rate limiting, RBAC, field-level permissions, and plugin sandboxing — all enabled by default, with zero configuration.
 
-### 4. Code is the source of truth
+### 4. Schemas belong under review
 
-Schemas live in TypeScript files, not only in a database. This means version control, code review, and full type safety across the stack.
+Content models should be reviewable, diffable and type-safe rather than mutable production state nobody can trace.
+
+v1 does not deliver that yet: `ContentType` and `ContentField` live in PostgreSQL and are edited through the admin
+builder, so a model change is an untracked production write. Whether Kast becomes code-defined, stays
+database-defined, or synchronises the two is an open decision — see
+[ADR-002](../decisions/ADR_002_content_schema_source_of_truth.md). It is recorded as open rather than settled here
+because the answer shapes migrations, environment promotion and the SDK's type generation.
 
 ### 5. Developer experience is a product
 
@@ -125,11 +131,11 @@ A small, high-quality plugin system is better than trying to build everything. K
 | --------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | **Backend**                 | NestJS (Node.js + TypeScript)          | Modules = natural plugin system. Guards = RBAC. Interceptors = logging/audit                                                    |
 | **Admin Panel**             | Next.js 16.2.4 (App Router)            | Server Components = fastest admin UI. TypeScript-native                                                                         |
-| **Frontend Starter**        | Next.js 16.2.4                         | Same tech, shared components, first-class integration                                                                           |
+| **Frontend Starter**        | Next.js 16                             | Same tech, shared components, first-class integration                                                                           |
 | **Database**                | PostgreSQL (v1)                        | Production-grade. JSONB for flexible content. Full-text search built-in                                                         |
 | **ORM**                     | Prisma                                 | Type-safe schema, auto-migrations, great DX                                                                                     |
 | **Auth**                    | Custom NestJS AuthModule + JWT + OAuth | Full control, no magic                                                                                                          |
-| **API**                     | REST + GraphQL (NestJS built-in)       | Covers 100% of use cases                                                                                                        |
+| **API**                     | REST (NestJS built-in); GraphQL in v2  | REST covers v1; a GraphQL layer is planned, not shipped                                                                         |
 | **Media Storage**           | Local FS + S3-compatible abstraction   | Works anywhere                                                                                                                  |
 | **Job Queue**               | BullMQ (`@nestjs/bullmq`)              | Redis-backed background jobs: webhooks, media processing, SEO validation, scheduled publishing — all built-in, no extra service |
 | **Internal Events**         | NestJS EventEmitter                    | Zero-dependency pub/sub between modules                                                                                         |
@@ -169,7 +175,7 @@ A small, high-quality plugin system is better than trying to build everything. K
 │            │              │              │                      │
 │     ┌──────▼──────┐ ┌────▼────┐ ┌──────▼──────┐              │
 │     │  REST API   │ │GraphQL  │ │  MCP Server │              │
-│     │  /api/v1    │ │/graphql │ │  /mcp       │              │
+│     │  /api/v1    │ │(v2)     │ │ /api/v1/mcp │              │
 │     └─────────────┘ └─────────┘ └─────────────┘              │
 └─────────────────────────────────────────────────────────────────┘
          │                              │
@@ -352,7 +358,7 @@ The SEO MCP endpoint is configurable — point it at any compatible server.
 | --------------------------------------------- | ------- |
 | Content types + custom fields                 | ✅ Core |
 | REST API (auto-generated)                     | ✅ Core |
-| GraphQL API                                   | ✅ Core |
+| GraphQL API                                   | 🔜 v2   |
 | Next.js Admin Panel                           | ✅ Core |
 | Auth + RBAC (admin users)                     | ✅ Core |
 | **SEO Module (built-in, not plugin)**         | ✅ Core |

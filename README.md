@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./Kast-Logo-with-text.png" alt="Kast CMS" width="120" />
+<img src="./Kast-Logo-Only.png" alt="Kast CMS" width="120" />
 
 # Kast CMS
 
@@ -183,7 +183,7 @@ Most headless CMSes were built for an era before AI agents, before Arabic-first 
 │                  Kast CMS v1.0.2                    │
 ├──────────────┬──────────────┬───────────────────────┤
 │   API        │   Admin      │   Frontend            │
-│   NestJS     │   Next.js 15 │   Next.js / Any       │
+│   NestJS     │   Next.js 16 │   Next.js / Any       │
 │   Prisma     │   App Router │   @kast-cms/sdk       │
 │   PostgreSQL │   TypeScript │                       │
 ├──────────────┴──────────────┴───────────────────────┤
@@ -240,7 +240,7 @@ Build your own with [`@kast-cms/plugin-sdk`](https://www.npmjs.com/package/@kast
 kast/
 ├── apps/
 │   ├── api/             # NestJS backend
-│   ├── admin/           # Next.js 15 admin panel
+│   ├── admin/           # Next.js 16 admin panel
 │   ├── web-blog/        # Next.js blog frontend starter
 │   └── web-docs/        # Astro documentation site
 ├── packages/
