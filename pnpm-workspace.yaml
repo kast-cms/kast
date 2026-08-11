@@ -4,7 +4,7 @@ packages:
   - 'plugins/*'
 
 catalog:
-  typescript: ^5.5.0
+  typescript: ^7.0.2
 
 # Mirrored from package.json "pnpm". Newer pnpm reads settings only from here;
 # pnpm 9 still reads package.json, so both must carry the same values until the
