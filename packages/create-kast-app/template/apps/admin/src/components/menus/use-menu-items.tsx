@@ -1,7 +1,6 @@
 'use client';
 
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { useApiClient, useSession } from '@/lib/session';
 import type { CreateMenuItemBody, MenuItemSummary, UpdateMenuItemBody } from '@kast-cms/sdk';
 import { useCallback, useState } from 'react';
 
@@ -15,6 +14,7 @@ interface UseMenuItemsResult {
 }
 
 export function useMenuItems(initial: MenuItemSummary[] = []): UseMenuItemsResult {
+  const client = useApiClient();
   const { session } = useSession();
   const [items, setItems] = useState<MenuItemSummary[]>(initial);
   const [itemSaving, setItemSaving] = useState(false);
@@ -22,11 +22,10 @@ export function useMenuItems(initial: MenuItemSummary[] = []): UseMenuItemsResul
   const refreshItems = useCallback(
     async (id: string): Promise<void> => {
       if (!session) return;
-      const client = createApiClient(session.accessToken);
       const fresh = await client.menus.findOne(id);
       setItems(fresh.items);
     },
-    [session],
+    [session, client],
   );
 
   const handleAddItem = useCallback(
@@ -34,24 +33,22 @@ export function useMenuItems(initial: MenuItemSummary[] = []): UseMenuItemsResul
       if (!session) return;
       setItemSaving(true);
       try {
-        const client = createApiClient(session.accessToken);
         await client.menus.addItem(menuId, { ...body, ...(parentId ? { parentId } : {}) });
         await refreshItems(menuId);
       } finally {
         setItemSaving(false);
       }
     },
-    [session, refreshItems],
+    [session, refreshItems, client],
   );
 
   const handleDeleteItem = useCallback(
     async (menuId: string, itemId: string): Promise<void> => {
       if (!session) return;
-      const client = createApiClient(session.accessToken);
       await client.menus.deleteItem(menuId, itemId);
       await refreshItems(menuId);
     },
-    [session, refreshItems],
+    [session, refreshItems, client],
   );
 
   const handleEditItem = useCallback(
@@ -59,14 +56,13 @@ export function useMenuItems(initial: MenuItemSummary[] = []): UseMenuItemsResul
       if (!session) return;
       setItemSaving(true);
       try {
-        const client = createApiClient(session.accessToken);
         await client.menus.updateItem(menuId, itemId, body);
         await refreshItems(menuId);
       } finally {
         setItemSaving(false);
       }
     },
-    [session, refreshItems],
+    [session, refreshItems, client],
   );
 
   return { items, itemSaving, refreshItems, handleAddItem, handleDeleteItem, handleEditItem };

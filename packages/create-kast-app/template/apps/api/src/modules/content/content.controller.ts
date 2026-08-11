@@ -13,13 +13,23 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import type { AuthUser, PaginatedResult } from '../../common/types/auth.types';
+import { ContentTypesService } from '../content-types/content-types.service';
+import type { BulkEntryOutcome } from './content-bulk.ops';
+import {
+  toEntryDetail,
+  toEntrySummary,
+  type ContentEntryDetailResponse,
+  type ContentEntrySummaryResponse,
+} from './content.presenter';
 import type { EntryWithLocale, VersionWithAuthor } from './content.repository';
 import { ContentService } from './content.service';
 import {
+  AddLocaleDto,
+  BulkEntryActionDto,
   CreateContentEntryDto,
+  PublishContentDto,
   SchedulePublishDto,
   UpdateContentEntryDto,
 } from './dto/content-entry.dto';
@@ -28,39 +38,99 @@ import { ContentQueryDto } from './dto/content-query.dto';
 @ApiTags('content')
 @Controller({ path: 'content-types/:typeSlug/entries', version: '1' })
 export class ContentController {
-  constructor(private readonly service: ContentService) {}
+  constructor(
+    private readonly service: ContentService,
+    private readonly contentTypes: ContentTypesService,
+  ) {}
 
   @Get()
-  @Public()
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.VIEWER, SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'List entries for a content type' })
-  findAll(
+  async findAll(
     @Param('typeSlug') typeSlug: string,
     @Query() query: ContentQueryDto,
-  ): Promise<PaginatedResult<EntryWithLocale>> {
-    return this.service.findAll(typeSlug, query);
+  ): Promise<PaginatedResult<ContentEntrySummaryResponse>> {
+    const [ct, page] = await Promise.all([
+      this.contentTypes.findByName(typeSlug),
+      this.service.findAll(typeSlug, query),
+    ]);
+    return { ...page, data: page.data.map((e) => toEntrySummary(e, ct.fields, query.locale)) };
   }
 
   @Post()
   @ApiBearerAuth()
   @Roles(SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Create a content entry' })
-  create(
+  async create(
     @Param('typeSlug') typeSlug: string,
     @Body() dto: CreateContentEntryDto,
     @CurrentUser() user: AuthUser,
-  ): Promise<{ data: EntryWithLocale }> {
-    return this.service.create(typeSlug, dto, user.id);
+  ): Promise<{ data: ContentEntryDetailResponse }> {
+    const { data } = await this.service.create(typeSlug, dto, user.id);
+    return { data: toEntryDetail(data, dto.locale) };
+  }
+
+  @Post('bulk/trash')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
+  @ApiOperation({
+    summary: 'Trash several entries',
+    description:
+      'Per-item and not atomic: every id is reported on its own and failures do not roll back the entries that succeeded.',
+  })
+  bulkTrash(
+    @Param('typeSlug') typeSlug: string,
+    @Body() dto: BulkEntryActionDto,
+    @CurrentUser() user: AuthUser,
+  ): Promise<{ data: BulkEntryOutcome }> {
+    return this.service.bulkTrash(typeSlug, dto.ids, user.id);
+  }
+
+  @Post('bulk/publish')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
+  @ApiOperation({
+    summary: 'Publish several entries (each runs the schema and SEO gates)',
+    description:
+      'Per-item and not atomic: every id is reported on its own and failures do not roll back the entries that succeeded.',
+  })
+  bulkPublish(
+    @Param('typeSlug') typeSlug: string,
+    @Body() dto: BulkEntryActionDto,
+  ): Promise<{ data: BulkEntryOutcome }> {
+    return this.service.bulkPublish(typeSlug, dto.ids);
+  }
+
+  @Post('bulk/unpublish')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
+  @ApiOperation({
+    summary: 'Unpublish several entries',
+    description:
+      'Per-item and not atomic: every id is reported on its own and failures do not roll back the entries that succeeded.',
+  })
+  bulkUnpublish(
+    @Param('typeSlug') typeSlug: string,
+    @Body() dto: BulkEntryActionDto,
+  ): Promise<{ data: BulkEntryOutcome }> {
+    return this.service.bulkUnpublish(typeSlug, dto.ids);
   }
 
   @Get(':id')
-  @Public()
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.VIEWER, SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get a content entry by ID' })
-  findOne(
+  async findOne(
     @Param('typeSlug') typeSlug: string,
     @Param('id') id: string,
     @Query('locale') locale?: string,
-  ): Promise<{ data: EntryWithLocale }> {
-    return this.service.findOne(typeSlug, id, locale);
+  ): Promise<{ data: ContentEntryDetailResponse }> {
+    const { data } = await this.service.findOne(typeSlug, id, locale);
+    return { data: toEntryDetail(data, locale) };
   }
 
   @Patch(':id')
@@ -72,19 +142,33 @@ export class ContentController {
     @Param('id') id: string,
     @Body() dto: UpdateContentEntryDto,
     @CurrentUser() user: AuthUser,
-  ): Promise<{ data: EntryWithLocale }> {
-    return this.service.update(typeSlug, id, dto, user.id);
+  ): Promise<{ data: ContentEntryDetailResponse }> {
+    return this.present(this.service.update(typeSlug, id, dto, user.id), dto.locale);
   }
 
   @Post(':id/publish')
   @ApiBearerAuth()
   @Roles(SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Publish a content entry' })
+  @ApiOperation({ summary: 'Publish a content entry (runs SEO gate)' })
   publish(
     @Param('typeSlug') typeSlug: string,
     @Param('id') id: string,
-  ): Promise<{ data: EntryWithLocale }> {
-    return this.service.publish(typeSlug, id);
+    @Body() dto: PublishContentDto,
+  ): Promise<{ data: ContentEntryDetailResponse }> {
+    return this.present(this.service.publish(typeSlug, id, dto));
+  }
+
+  @Post(':id/locale')
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Add a locale to an existing entry' })
+  addLocale(
+    @Param('typeSlug') typeSlug: string,
+    @Param('id') id: string,
+    @Body() dto: AddLocaleDto,
+    @CurrentUser() user: AuthUser,
+  ): Promise<{ data: ContentEntryDetailResponse }> {
+    return this.present(this.service.addLocale(typeSlug, id, dto, user.id), dto.locale);
   }
 
   @Post(':id/unpublish')
@@ -94,8 +178,8 @@ export class ContentController {
   unpublish(
     @Param('typeSlug') typeSlug: string,
     @Param('id') id: string,
-  ): Promise<{ data: EntryWithLocale }> {
-    return this.service.unpublish(typeSlug, id);
+  ): Promise<{ data: ContentEntryDetailResponse }> {
+    return this.present(this.service.unpublish(typeSlug, id));
   }
 
   @Post(':id/archive')
@@ -105,19 +189,38 @@ export class ContentController {
   archive(
     @Param('typeSlug') typeSlug: string,
     @Param('id') id: string,
-  ): Promise<{ data: EntryWithLocale }> {
-    return this.service.archive(typeSlug, id);
+  ): Promise<{ data: ContentEntryDetailResponse }> {
+    return this.present(this.service.archive(typeSlug, id));
+  }
+
+  @Post(':id/unarchive')
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
+  @ApiOperation({
+    summary: 'Move an archived entry back to draft',
+    description:
+      'Not trash restoration: a trashed entry is brought back with POST /api/v1/trash/content/:id/restore.',
+  })
+  unarchive(
+    @Param('typeSlug') typeSlug: string,
+    @Param('id') id: string,
+  ): Promise<{ data: ContentEntryDetailResponse }> {
+    return this.present(this.service.unarchive(typeSlug, id));
   }
 
   @Post(':id/restore')
   @ApiBearerAuth()
   @Roles(SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Restore an archived entry to draft' })
+  @ApiOperation({
+    deprecated: true,
+    summary: 'Deprecated alias for :id/unarchive',
+    description: 'Kept for existing clients. Trash restoration lives under /api/v1/trash.',
+  })
   restore(
     @Param('typeSlug') typeSlug: string,
     @Param('id') id: string,
-  ): Promise<{ data: EntryWithLocale }> {
-    return this.service.restore(typeSlug, id);
+  ): Promise<{ data: ContentEntryDetailResponse }> {
+    return this.present(this.service.unarchive(typeSlug, id));
   }
 
   @Post(':id/schedule')
@@ -128,8 +231,8 @@ export class ContentController {
     @Param('typeSlug') typeSlug: string,
     @Param('id') id: string,
     @Body() dto: SchedulePublishDto,
-  ): Promise<{ data: EntryWithLocale }> {
-    return this.service.schedulePublish(typeSlug, id, dto);
+  ): Promise<{ data: ContentEntryDetailResponse }> {
+    return this.present(this.service.schedulePublish(typeSlug, id, dto));
   }
 
   @Delete(':id/schedule')
@@ -139,8 +242,8 @@ export class ContentController {
   cancelSchedule(
     @Param('typeSlug') typeSlug: string,
     @Param('id') id: string,
-  ): Promise<{ data: EntryWithLocale }> {
-    return this.service.cancelSchedule(typeSlug, id);
+  ): Promise<{ data: ContentEntryDetailResponse }> {
+    return this.present(this.service.cancelSchedule(typeSlug, id));
   }
 
   @Delete(':id')
@@ -148,8 +251,12 @@ export class ContentController {
   @ApiBearerAuth()
   @Roles(SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Trash a content entry' })
-  remove(@Param('typeSlug') typeSlug: string, @Param('id') id: string): Promise<void> {
-    return this.service.trash(typeSlug, id);
+  remove(
+    @Param('typeSlug') typeSlug: string,
+    @Param('id') id: string,
+    @CurrentUser() user: AuthUser,
+  ): Promise<void> {
+    return this.service.trash(typeSlug, id, user.id);
   }
 
   @Get(':id/versions')
@@ -186,7 +293,15 @@ export class ContentController {
     @Param('id') id: string,
     @Param('versionId') versionId: string,
     @CurrentUser() user: AuthUser,
-  ): Promise<{ data: EntryWithLocale }> {
-    return this.service.revertToVersion(typeSlug, id, versionId, user.id);
+  ): Promise<{ data: ContentEntryDetailResponse }> {
+    return this.present(this.service.revertToVersion(typeSlug, id, versionId, user.id));
+  }
+
+  private async present(
+    write: Promise<{ data: EntryWithLocale }>,
+    locale?: string,
+  ): Promise<{ data: ContentEntryDetailResponse }> {
+    const { data } = await write;
+    return { data: toEntryDetail(data, locale) };
   }
 }

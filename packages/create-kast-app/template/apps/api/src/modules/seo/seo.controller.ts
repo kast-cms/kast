@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -11,9 +12,14 @@ import {
   Post,
   Put,
   Query,
+  Res,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Redirect, SeoMeta } from '@prisma/client';
+import type { Response } from 'express';
 import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
@@ -25,6 +31,12 @@ import { UpsertSeoMetaDto } from './dto/seo-meta.dto';
 import type { SeoMetaFull, SeoScoreWithIssues } from './seo.repository';
 import { SeoService } from './seo.service';
 import { buildSitemapXml } from './sitemap.builder';
+
+interface RedirectImportResult {
+  imported: number;
+  skipped: number;
+  errors: { row: number; reason: string }[];
+}
 
 @ApiTags('seo')
 @Controller({ path: 'seo', version: '1' })
@@ -58,6 +70,17 @@ export class SeoController {
     return this.service.getScore(entryId).then((data) => ({ data }));
   }
 
+  @Get('scores/:entryId')
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.VIEWER, SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get historical SEO scores for an entry' })
+  getScores(
+    @Param('entryId') entryId: string,
+    @Query() query: PaginationDto,
+  ): Promise<PaginatedResult<SeoScoreWithIssues>> {
+    return this.service.getScoreHistory(entryId, query.limit ?? 20, query.cursor);
+  }
+
   @Post('validate/:entryId')
   @ApiBearerAuth()
   @Roles(SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
@@ -72,8 +95,24 @@ export class SeoController {
   @Header('Content-Type', 'application/xml')
   @ApiOperation({ summary: 'Generate and serve sitemap.xml' })
   async getSitemap(): Promise<string> {
-    const entries = await this.service.getSitemapEntries();
+    const entries = await this.service.buildSitemapEntries();
     return buildSitemapXml(entries);
+  }
+
+  /**
+   * JSON view of the same entries. The admin sitemap screen lists the URLs in a
+   * table, and parsing the XML document in the browser just to render rows is
+   * needless work — the SDK is a JSON client.
+   */
+  @Get('sitemap')
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.VIEWER, SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
+  @ApiOperation({ summary: 'List sitemap entries as JSON' })
+  async listSitemapEntries(): Promise<{ data: { canonicalUrl: string; updatedAt: string }[] }> {
+    const entries = await this.service.buildSitemapEntries();
+    return {
+      data: entries.map((e) => ({ canonicalUrl: e.loc, updatedAt: e.lastmod.toISOString() })),
+    };
   }
 
   @Get('redirects')
@@ -113,5 +152,34 @@ export class SeoController {
   @ApiOperation({ summary: 'Delete a redirect rule' })
   deleteRedirect(@Param('id') id: string): Promise<void> {
     return this.service.deleteRedirect(id);
+  }
+
+  @Post('redirects/import')
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
+  @HttpCode(HttpStatus.OK)
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Bulk import redirects from a CSV file' })
+  async importRedirects(
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @CurrentUser() user: AuthUser,
+  ): Promise<{ data: RedirectImportResult }> {
+    if (!file?.buffer) {
+      throw new BadRequestException('A CSV file is required in the "file" field');
+    }
+    const data = await this.service.importRedirects(file.buffer.toString('utf8'), user.id);
+    return { data };
+  }
+
+  @Get('redirects/export')
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
+  @Header('Content-Type', 'text/csv')
+  @ApiOperation({ summary: 'Export all redirects as CSV' })
+  async exportRedirects(@Res() res: Response): Promise<void> {
+    const csv = await this.service.exportRedirectsCsv();
+    res.setHeader('Content-Disposition', 'attachment; filename="redirects.csv"');
+    res.send(csv);
   }
 }

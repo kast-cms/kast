@@ -12,6 +12,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { InviteUserBody, RoleSummary } from '@kast-cms/sdk';
+import { Mail } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 
@@ -67,10 +68,13 @@ export function InviteUserDialog({ open, roles, onOpenChange, onInvite }: Props)
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="invite-email">{t('email')}</Label>
+            <Label htmlFor="invite-email" required>
+              {t('email')}
+            </Label>
             <Input
               id="invite-email"
               type="email"
+              startAdornment={<Mail />}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
@@ -95,14 +99,18 @@ export function InviteUserDialog({ open, roles, onOpenChange, onInvite }: Props)
           </div>
           <div className="space-y-2">
             <Label>{t('roles')}</Label>
-            <div className="space-y-2 rounded-md border border-[--color-border] p-3">
+            <div className="divide-y divide-border overflow-hidden rounded-lg border border-border">
               {roles.map((r) => (
-                <label key={r.id} className="flex cursor-pointer items-center gap-2">
+                <label
+                  key={r.id}
+                  className="flex cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors duration-150 ease-out-quad hover:bg-muted"
+                >
                   <Checkbox
                     checked={selectedRoles.includes(r.name)}
                     onCheckedChange={() => toggleRole(r.name)}
                   />
-                  <span className="text-sm">{r.displayName}</span>
+                  <span className="text-sm font-medium text-foreground">{r.displayName}</span>
+                  <span className="ms-auto font-mono text-2xs text-muted-foreground">{r.name}</span>
                 </label>
               ))}
             </div>
@@ -113,7 +121,7 @@ export function InviteUserDialog({ open, roles, onOpenChange, onInvite }: Props)
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             {t('cancel')}
           </Button>
-          <Button onClick={handleSubmit} disabled={!email || submitting}>
+          <Button onClick={handleSubmit} disabled={!email} loading={submitting}>
             {submitting ? t('submitting') : t('submit')}
           </Button>
         </DialogFooter>

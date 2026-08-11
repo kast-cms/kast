@@ -15,9 +15,10 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { FieldHint, Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { clearable } from '@/lib/nullable-field';
+import { useApiClient, useSession } from '@/lib/session';
 import type { ContentTypeDetail } from '@kast-cms/sdk';
 import { Lock, Trash2 } from 'lucide-react';
 import { useCallback, useState, type ChangeEvent, type FormEvent, type JSX } from 'react';
@@ -33,9 +34,11 @@ interface SettingsCardProps {
 
 /** Name, API ID, description and icon — everything editable about the type itself. */
 function SettingsCard({ contentType, onUpdated }: SettingsCardProps): JSX.Element {
+  const client = useApiClient();
   const { session } = useSession();
   const [displayName, setDisplayName] = useState(contentType.displayName);
   const [description, setDescription] = useState(contentType.description ?? '');
+  const [isLocalized, setIsLocalized] = useState(contentType.isLocalized);
   const [icon, setIcon] = useState(contentType.icon ?? '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -49,12 +52,19 @@ function SettingsCard({ contentType, onUpdated }: SettingsCardProps): JSX.Elemen
       setSaveSuccess(false);
 
       try {
-        const client = createApiClient(session?.accessToken);
-        const body: { displayName: string; description?: string; icon?: string } = {
+        const body: {
+          displayName: string;
+          description?: string | null;
+          icon?: string | null;
+          isLocalized: boolean;
+        } = {
           displayName: displayName.trim(),
+          isLocalized,
+          // Emptied means emptied: a dropped key leaves the old description or
+          // icon on the type, so the screen and the stored row disagree.
+          description: clearable(description),
+          icon: clearable(icon),
         };
-        if (description.trim() !== '') body.description = description.trim();
-        if (icon.trim() !== '') body.icon = icon.trim();
         const result = await client.contentTypes.update(contentType.name, body);
         onUpdated(result.data);
         setSaveSuccess(true);
@@ -67,7 +77,7 @@ function SettingsCard({ contentType, onUpdated }: SettingsCardProps): JSX.Elemen
         setIsSubmitting(false);
       }
     },
-    [session, contentType.name, displayName, description, icon, onUpdated],
+    [session, contentType.name, displayName, description, icon, isLocalized, onUpdated, client],
   );
 
   return (
@@ -152,6 +162,22 @@ function SettingsCard({ contentType, onUpdated }: SettingsCardProps): JSX.Elemen
               }}
               placeholder="📝"
               maxLength={4}
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-4">
+            <div className="space-y-1">
+              <Label htmlFor="edit-isLocalized">Localized</Label>
+              <FieldHint>
+                Creates a row per active locale for every entry, so the same entry can be
+                translated. Turning this off does not delete translations already stored.
+              </FieldHint>
+            </div>
+            <Switch
+              id="edit-isLocalized"
+              checked={isLocalized}
+              onCheckedChange={setIsLocalized}
               disabled={isSubmitting}
             />
           </div>

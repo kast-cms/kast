@@ -2,10 +2,21 @@
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 import type { MediaFolder } from '@kast-cms/sdk';
 import { ChevronDown, ChevronRight, Folder, FolderOpen, Plus } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
+
+/** One row treatment shared by "All files" and every folder node. */
+const ROW_BASE = [
+  'flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-sm',
+  'transition-colors duration-150 ease-out-quad',
+  'outline-none focus-visible:ring-2 focus-visible:ring-ring/70',
+].join(' ');
+const ROW_SELECTED = 'bg-primary-subtle font-medium text-primary-subtle-foreground';
+const ROW_IDLE = 'text-foreground hover:bg-muted';
 
 interface FolderNodeProps {
   folder: MediaFolder;
@@ -22,13 +33,13 @@ function FolderNode({ folder, selectedId, onSelect }: FolderNodeProps): JSX.Elem
     <div>
       <button
         type="button"
-        className={`flex w-full items-center gap-1 rounded px-2 py-1 text-sm hover:bg-[--color-muted] ${isSelected ? 'bg-[--color-muted] font-medium' : ''}`}
+        className={cn(ROW_BASE, isSelected ? ROW_SELECTED : ROW_IDLE)}
         onClick={() => {
           onSelect(isSelected ? null : folder.id);
         }}
       >
         <span
-          className="flex w-4 shrink-0 items-center justify-center"
+          className="flex size-4 shrink-0 items-center justify-center text-muted-foreground"
           onClick={(e) => {
             e.stopPropagation();
             setOpen(!open);
@@ -36,22 +47,34 @@ function FolderNode({ folder, selectedId, onSelect }: FolderNodeProps): JSX.Elem
         >
           {hasChildren ? (
             open ? (
-              <ChevronDown className="h-3 w-3" />
+              <ChevronDown className="size-3.5" />
             ) : (
-              <ChevronRight className="h-3 w-3" />
+              <ChevronRight className="size-3.5 rtl:rotate-180" />
             )
           ) : null}
         </span>
         {open ? (
-          <FolderOpen className="h-4 w-4 shrink-0" />
+          <FolderOpen
+            className={cn('size-4 shrink-0', isSelected ? 'text-primary' : 'text-muted-foreground')}
+          />
         ) : (
-          <Folder className="h-4 w-4 shrink-0" />
+          <Folder
+            className={cn('size-4 shrink-0', isSelected ? 'text-primary' : 'text-muted-foreground')}
+          />
         )}
         <span className="truncate">{folder.name}</span>
-        <span className="ms-auto text-xs text-[--color-muted-foreground]">{folder.filesCount}</span>
+        <span
+          className={cn(
+            'ms-auto shrink-0 ps-1 text-2xs tabular-nums',
+            isSelected ? 'text-primary-subtle-foreground/80' : 'text-muted-foreground',
+          )}
+        >
+          {folder.filesCount}
+        </span>
       </button>
       {open && folder.children.length > 0 && (
-        <div className="ps-4">
+        // The guide line makes depth readable without extra indentation.
+        <div className="ms-4 space-y-0.5 border-s border-border ps-2">
           {folder.children.map((child) => (
             <FolderNode key={child.id} folder={child} selectedId={selectedId} onSelect={onSelect} />
           ))}
@@ -86,37 +109,45 @@ export function FolderTree({
   }
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-0.5">
       <button
         type="button"
-        className={`flex w-full items-center gap-2 rounded px-2 py-1 text-sm hover:bg-[--color-muted] ${selectedId === null ? 'bg-[--color-muted] font-medium' : ''}`}
+        className={cn(ROW_BASE, selectedId === null ? ROW_SELECTED : ROW_IDLE)}
         onClick={() => {
           onSelect(null);
         }}
       >
-        <Folder className="h-4 w-4 shrink-0" />
-        <span>{t('folder.allFiles')}</span>
+        <span aria-hidden="true" className="size-4 shrink-0" />
+        <Folder
+          className={cn(
+            'size-4 shrink-0',
+            selectedId === null ? 'text-primary' : 'text-muted-foreground',
+          )}
+        />
+        <span className="truncate">{t('folder.allFiles')}</span>
       </button>
 
       {folders.map((f) => (
         <FolderNode key={f.id} folder={f} selectedId={selectedId} onSelect={onSelect} />
       ))}
 
+      <Separator className="my-1.5" />
+
       {creating ? (
-        <div className="flex gap-1 px-2 pt-2">
+        <div className="space-y-1.5">
           <Input
             value={name}
             onChange={(e) => {
               setName(e.target.value);
             }}
             placeholder={t('folder.namePlaceholder')}
-            className="h-7 text-sm"
+            className="h-8 text-xs"
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleCreate();
             }}
             autoFocus
           />
-          <Button size="sm" className="h-7" onClick={handleCreate}>
+          <Button size="sm" className="w-full" onClick={handleCreate}>
             {t('folder.create')}
           </Button>
         </div>
@@ -124,12 +155,12 @@ export function FolderTree({
         <Button
           variant="ghost"
           size="sm"
-          className="mt-2 justify-start gap-1"
+          className="w-full justify-start gap-1.5 text-muted-foreground hover:text-foreground"
           onClick={() => {
             setCreating(true);
           }}
         >
-          <Plus className="h-4 w-4" />
+          <Plus />
           {t('folder.new')}
         </Button>
       )}

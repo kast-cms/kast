@@ -438,6 +438,7 @@ List all content types.
       "description": "Standard blog article",
       "icon": "📝",
       "isSystem": false,
+      "isLocalized": true,
       "fieldsCount": 8,
       "entriesCount": 42,
       "createdAt": "2026-01-01T00:00:00.000Z",
@@ -505,6 +506,9 @@ Get a content type with all its field definitions.
     "name": "blog-post",
     "displayName": "Blog Post",
     "isSystem": false,
+    "isLocalized": true,
+    "fieldsCount": 2,
+    "entriesCount": 42,
     "fields": [
       {
         "id": "clfld001",
@@ -635,7 +639,7 @@ Remove a field from a content type.
 
 ## 4. Content Entries API
 
-### GET /api/v1/content/:type ✏️
+### GET /api/v1/content/:type 👁
 
 List entries of a content type. Includes drafts and trashed items for admin.
 
@@ -723,7 +727,7 @@ Create a new content entry as a draft.
 
 ---
 
-### GET /api/v1/content/:type/:id ✏️
+### GET /api/v1/content/:type/:id 👁
 
 Get a single content entry with all locales and full field data.
 

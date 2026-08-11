@@ -12,8 +12,7 @@ import {
 } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Hint } from '@/components/ui/tooltip';
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { useApiClient, useSession } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import {
   closestCenter,
@@ -35,6 +34,7 @@ import type { AddFieldBody, ContentField, ContentTypeDetail, UpdateFieldBody } f
 import { GripVertical, Pencil, Plus, Rows3, Trash2 } from 'lucide-react';
 import { useCallback, useState, type JSX } from 'react';
 import { FieldDrawer } from './field-drawer';
+import { reorderFieldsForDrag, sortFieldsByPosition } from './field-order';
 
 /**
  * Field type is a categorical dimension, not a status — a URL field is not
@@ -45,16 +45,20 @@ import { FieldDrawer } from './field-drawer';
 const FIELD_TYPE_DOT: Record<string, string> = {
   TEXT: 'bg-chart-1',
   RICH_TEXT: 'bg-chart-1',
-  UID: 'bg-chart-1',
   NUMBER: 'bg-chart-4',
   DATE: 'bg-chart-4',
+  DATETIME: 'bg-chart-4',
   BOOLEAN: 'bg-chart-3',
-  ENUM: 'bg-chart-3',
+  SELECT: 'bg-chart-3',
+  MULTI_SELECT: 'bg-chart-3',
   EMAIL: 'bg-chart-2',
   URL: 'bg-chart-2',
   RELATION: 'bg-chart-2',
   MEDIA: 'bg-chart-6',
+  COLOR: 'bg-chart-6',
   JSON: 'bg-chart-5',
+  COMPONENT: 'bg-chart-5',
+  BLOCK: 'bg-chart-5',
 };
 
 interface SortableFieldRowProps {
@@ -175,6 +179,7 @@ interface FieldBuilderProps {
 }
 
 export function FieldBuilder({ contentType, onUpdate }: FieldBuilderProps): JSX.Element {
+  const client = useApiClient();
   const { session } = useSession();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingField, setEditingField] = useState<ContentField | null>(null);
@@ -196,7 +201,6 @@ export function FieldBuilder({ contentType, onUpdate }: FieldBuilderProps): JSX.
 
   const handleDrawerSave = useCallback(
     async (data: AddFieldBody | UpdateFieldBody, fieldName?: string) => {
-      const client = createApiClient(session?.accessToken);
       if (fieldName !== undefined) {
         await client.contentTypes.updateField(contentType.name, fieldName, data as UpdateFieldBody);
       } else {
@@ -205,53 +209,51 @@ export function FieldBuilder({ contentType, onUpdate }: FieldBuilderProps): JSX.
       const updated = await client.contentTypes.get(contentType.name);
       onUpdate(updated.data);
     },
-    [session, contentType.name, onUpdate],
+    [session, contentType.name, onUpdate, client],
   );
 
   const handleDeleteField = useCallback(
     async (fieldName: string) => {
-      const client = createApiClient(session?.accessToken);
       await client.contentTypes.deleteField(contentType.name, fieldName);
       onUpdate({
         ...contentType,
         fields: contentType.fields.filter((f) => f.name !== fieldName),
       });
     },
-    [session, contentType, onUpdate],
+    [session, contentType, onUpdate, client],
   );
 
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
       const { active, over } = event;
-      if (over === null || active.id === over.id) return;
+      if (over === null) return;
 
-      const fields = contentType.fields;
-      const oldIndex = fields.findIndex((f) => f.name === active.id);
-      const newIndex = fields.findIndex((f) => f.name === over.id);
-      if (oldIndex === -1 || newIndex === -1) return;
-
-      const reordered = [...fields];
-      const [moved] = reordered.splice(oldIndex, 1);
-      if (moved === undefined) return;
-      reordered.splice(newIndex, 0, moved);
+      const reordered = reorderFieldsForDrag(
+        contentType.fields,
+        String(active.id),
+        String(over.id),
+      );
+      if (reordered === null) return;
 
       // Optimistic update
       onUpdate({ ...contentType, fields: reordered });
 
       try {
-        const client = createApiClient(session?.accessToken);
-        await client.contentTypes.reorderFields(contentType.name, {
+        const saved = await client.contentTypes.reorderFields(contentType.name, {
           order: reordered.map((f) => f.name),
         });
+        // The route answers with the refreshed type, so the positions on screen
+        // are the ones the database now holds rather than a local guess.
+        onUpdate(saved.data);
       } catch {
         // Revert on error
         onUpdate(contentType);
       }
     },
-    [session, contentType, onUpdate],
+    [session, contentType, onUpdate, client],
   );
 
-  const sortedFields = [...contentType.fields].sort((a, b) => a.position - b.position);
+  const sortedFields = sortFieldsByPosition(contentType.fields);
 
   return (
     <>

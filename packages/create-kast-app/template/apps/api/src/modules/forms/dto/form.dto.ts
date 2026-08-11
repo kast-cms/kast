@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { FormFieldType } from '@prisma/client';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
@@ -13,6 +13,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
+import { toBoolean } from '../../../common/dto/to-boolean.transform';
 
 export class FormFieldDto {
   @ApiProperty()
@@ -30,6 +31,7 @@ export class FormFieldDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
+  @Transform(toBoolean)
   isRequired?: boolean;
 
   @ApiPropertyOptional()
@@ -61,6 +63,7 @@ export class CreateFormDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
+  @Transform(toBoolean)
   isActive?: boolean;
 
   @ApiPropertyOptional()
@@ -94,6 +97,7 @@ export class UpdateFormDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
+  @Transform(toBoolean)
   isActive?: boolean;
 
   @ApiPropertyOptional()
@@ -118,6 +122,14 @@ export class SubmitFormDto {
   @IsOptional()
   @IsString()
   _hp?: string;
+}
+
+export class MarkSubmissionReadDto {
+  @ApiPropertyOptional({ default: true, description: 'Defaults to true' })
+  @IsOptional()
+  @IsBoolean()
+  @Transform(toBoolean)
+  isRead?: boolean;
 }
 
 export class ListSubmissionsQueryDto {

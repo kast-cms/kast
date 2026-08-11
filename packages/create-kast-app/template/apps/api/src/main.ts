@@ -1,13 +1,18 @@
-import { ValidationPipe, VersioningType, type INestApplication } from '@nestjs/common';
+import { Logger, ValidationPipe, VersioningType, type INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
+import { assertNoKnownWeakCredentials } from './common/utils/weak-credential.util';
+import { originOf, parseTrustProxy } from './config/bootstrap.util';
+import { CORS_METHODS } from './config/cors-methods';
 import type { Env } from './config/env.schema';
+import { PrismaService } from './prisma/prisma.service';
 
-function applyHelmet(app: INestApplication, siteUrl: string): void {
+function applyHelmet(app: INestApplication, siteUrl: string, adminUrl: string): void {
   app.use(
     helmet({
       contentSecurityPolicy: {
@@ -20,14 +25,19 @@ function applyHelmet(app: INestApplication, siteUrl: string): void {
           fontSrc: ["'self'", 'data:'],
           objectSrc: ["'none'"],
           frameSrc: ["'none'"],
-          frameAncestors: [siteUrl],
+          // The admin panel embeds the Bull board from this origin, so its
+          // origin must be allowed to frame us; everything else stays blocked.
+          frameAncestors: ["'self'", originOf(adminUrl), originOf(siteUrl)],
           upgradeInsecureRequests: [],
         },
       },
       hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
       referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
       xContentTypeOptions: true,
-      xFrameOptions: { action: 'deny' },
+      // frame-ancestors above is the modern, per-origin control. X-Frame-Options
+      // cannot express an allow-list, and 'deny' would override it in browsers
+      // that honour both, blocking the admin's queue monitor outright.
+      xFrameOptions: false,
       xXssProtection: false,
       crossOriginEmbedderPolicy: false,
     }),
@@ -46,16 +56,57 @@ function applySwagger(app: INestApplication): void {
   SwaggerModule.setup('api/docs', app, document);
 }
 
+type SentryReporter = (err: unknown, ctx: Record<string, string>) => void;
+
+interface SentryModule {
+  init(opts: { dsn: string; environment: string; tracesSampleRate: number }): void;
+  captureException(err: unknown, ctx?: { extra?: Record<string, string> }): void;
+}
+
+/** Wires up Sentry when a DSN is configured; @sentry/node is optional. */
+async function buildSentryReporter(
+  configService: ConfigService<Env>,
+): Promise<SentryReporter | undefined> {
+  const dsn = configService.get<string>('SENTRY_DSN', { infer: true });
+  if (!dsn) return undefined;
+  try {
+    // @ts-ignore -- @sentry/node is an optional peer dependency
+    const Sentry = (await import('@sentry/node')) as unknown as SentryModule;
+    Sentry.init({
+      dsn,
+      environment: configService.get<string>('SENTRY_ENVIRONMENT', { infer: true }) ?? 'production',
+      tracesSampleRate: Number(
+        configService.get('SENTRY_TRACES_SAMPLE_RATE', { infer: true }) ?? 0.1,
+      ),
+    });
+    return (err, ctx) => Sentry.captureException(err, { extra: ctx });
+  } catch {
+    return undefined;
+  }
+}
+
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true, rawBody: true });
+  // Typed as the Express app so `trust proxy` can be set below.
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bufferLogs: true,
+    rawBody: true,
+  });
   const configService = app.get<ConfigService<Env>>(ConfigService);
 
-  applyHelmet(app, configService.get('SITE_URL', { infer: true }) ?? 'http://localhost:3001');
+  applyHelmet(
+    app,
+    configService.get('SITE_URL', { infer: true }) ?? 'http://localhost:3000',
+    configService.get('ADMIN_URL', { infer: true }) ?? 'http://localhost:3001/admin',
+  );
+
+  // Decides what `req.ip` means: the address recorded against a public form
+  // submission and the key the throttler counts on both read it.
+  app.set('trust proxy', parseTrustProxy(configService.get('TRUST_PROXY', { infer: true }) ?? ''));
 
   const corsOrigins = configService.get<string>('CORS_ORIGINS', { infer: true }) ?? '*';
   app.enableCors({
     origin: corsOrigins === '*' ? '*' : corsOrigins.split(','),
-    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    methods: [...CORS_METHODS],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Kast-Key'],
     credentials: true,
   });
@@ -73,28 +124,7 @@ async function bootstrap(): Promise<void> {
 
   const httpAdapterHost = app.get<HttpAdapterHost>(HttpAdapterHost);
 
-  // Wire up Sentry error reporting if DSN is configured
-  const sentryDsn = configService.get<string>('SENTRY_DSN', { infer: true });
-  let sentryReporter: ((err: unknown, ctx: Record<string, string>) => void) | undefined;
-  if (sentryDsn) {
-    interface SentryModule {
-      init(opts: { dsn: string; environment: string; tracesSampleRate: number }): void;
-      captureException(err: unknown, ctx?: { extra?: Record<string, string> }): void;
-    }
-    try {
-      // @ts-ignore -- @sentry/node is an optional peer dependency
-      const Sentry = (await import('@sentry/node')) as unknown as SentryModule;
-      const sentryEnv =
-        configService.get<string>('SENTRY_ENVIRONMENT', { infer: true }) ?? 'production';
-      const sentrySampleRate = Number(
-        configService.get('SENTRY_TRACES_SAMPLE_RATE', { infer: true }) ?? 0.1,
-      );
-      Sentry.init({ dsn: sentryDsn, environment: sentryEnv, tracesSampleRate: sentrySampleRate });
-      sentryReporter = (err, ctx) => Sentry.captureException(err, { extra: ctx });
-    } catch {
-      // @sentry/node is optional — skip silently
-    }
-  }
+  const sentryReporter = await buildSentryReporter(configService);
 
   app.useGlobalFilters(new GlobalExceptionFilter(httpAdapterHost, sentryReporter));
 
@@ -102,6 +132,20 @@ async function bootstrap(): Promise<void> {
   if (nodeEnv !== 'production') {
     applySwagger(app);
   }
+
+  // P0-05: a database seeded before the seed-script guard (or restored from an
+  // old dump) can still hold a publicly documented super-admin password. Fatal
+  // unless this install explicitly opted into those logins — NODE_ENV is not
+  // trusted on its own, since deployments routinely inherit `development` from a
+  // copied .env.
+  await assertNoKnownWeakCredentials(
+    app.get(PrismaService).user,
+    {
+      NODE_ENV: nodeEnv,
+      SEED_DEV_ACCOUNTS: configService.get<string>('SEED_DEV_ACCOUNTS', { infer: true }),
+    },
+    new Logger('CredentialCheck'),
+  );
 
   const port: number =
     (configService.get<number>('PORT', { infer: true }) as number | undefined) ?? 3000;

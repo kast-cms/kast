@@ -1,4 +1,6 @@
+import { Transform } from 'class-transformer';
 import { IsBoolean, IsIn, IsOptional, IsString, Length, Matches } from 'class-validator';
+import { toBoolean } from '../../../common/dto/to-boolean.transform';
 
 export class CreateLocaleDto {
   @IsString()
@@ -41,6 +43,7 @@ export class UpdateLocaleDto {
 
   @IsOptional()
   @IsBoolean()
+  @Transform(toBoolean)
   isActive?: boolean;
 
   @IsOptional()

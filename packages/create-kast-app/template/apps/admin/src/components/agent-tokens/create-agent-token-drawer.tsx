@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { FieldHint, Label } from '@/components/ui/label';
 import type { CreateAgentTokenBody } from '@kast-cms/sdk';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
@@ -69,14 +69,16 @@ export function CreateAgentTokenDrawer({ open, onOpenChange, onCreate }: Props):
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>{t('title')}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="agent-token-name">{t('name')}</Label>
+            <Label htmlFor="agent-token-name" required>
+              {t('name')}
+            </Label>
             <Input
               id="agent-token-name"
               placeholder={t('namePlaceholder')}
@@ -85,23 +87,33 @@ export function CreateAgentTokenDrawer({ open, onOpenChange, onCreate }: Props):
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label>{t('scopes')}</Label>
-            <p className="text-xs text-[--color-muted-foreground]">{t('scopesHint')}</p>
-            {TOOL_GROUPS.map((group) => (
-              <div key={group.key} className="space-y-1.5">
-                <p className="text-xs font-medium text-[--color-foreground]">{t(group.key)}</p>
-                {group.tools.map((tool) => (
-                  <label key={tool} className="flex cursor-pointer items-center gap-2 text-sm">
-                    <Checkbox
-                      checked={scopes.includes(tool)}
-                      onCheckedChange={() => toggleScope(tool)}
-                    />
-                    <span className="font-mono">{tool}</span>
-                  </label>
-                ))}
-              </div>
-            ))}
+            <FieldHint>{t('scopesHint')}</FieldHint>
+
+            {/* The tool list is long, so it scrolls inside its own panel rather
+                than pushing the dialog past the viewport. */}
+            <div className="max-h-72 space-y-4 overflow-y-auto rounded-lg border border-border bg-muted/40 p-3">
+              {TOOL_GROUPS.map((group) => (
+                <fieldset key={group.key} className="space-y-0.5">
+                  <legend className="mb-1 text-2xs font-semibold tracking-wider text-muted-foreground uppercase">
+                    {t(group.key)}
+                  </legend>
+                  {group.tools.map((tool) => (
+                    <label
+                      key={tool}
+                      className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors duration-150 ease-out-quad hover:bg-accent"
+                    >
+                      <Checkbox
+                        checked={scopes.includes(tool)}
+                        onCheckedChange={() => toggleScope(tool)}
+                      />
+                      <span className="font-mono text-xs text-foreground">{tool}</span>
+                    </label>
+                  ))}
+                </fieldset>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -109,7 +121,11 @@ export function CreateAgentTokenDrawer({ open, onOpenChange, onCreate }: Props):
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             {t('cancel')}
           </Button>
-          <Button onClick={handleSubmit} disabled={!name || scopes.length === 0 || submitting}>
+          <Button
+            onClick={handleSubmit}
+            disabled={!name || scopes.length === 0}
+            loading={submitting}
+          >
             {submitting ? t('submitting') : t('submit')}
           </Button>
         </DialogFooter>

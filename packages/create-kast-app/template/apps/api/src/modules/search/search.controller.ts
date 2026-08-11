@@ -1,6 +1,8 @@
 import { Controller, Get, HttpException, HttpStatus, Query } from '@nestjs/common';
-import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
-import { Public } from '../../common/decorators/public.decorator';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { SearchQueryDto } from './dto/search-query.dto';
 
 interface MeilisearchSearchResult {
   hits: unknown[];
@@ -25,24 +27,15 @@ interface SearchResponse {
 @ApiTags('search')
 @Controller({ path: 'search', version: '1' })
 export class SearchController {
+  // Authenticated: the Meilisearch index carries `status`, so drafts,
+  // scheduled and archived entries are reachable through search. The public
+  // read surface is /api/v1/delivery only.
   @Get()
-  @Public()
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.VIEWER, SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Full-text search via Meilisearch (requires kast-plugin-meilisearch)' })
-  @ApiQuery({ name: 'q', required: true, description: 'Search query' })
-  @ApiQuery({ name: 'type', required: false, description: 'Content type slug' })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    type: Number,
-    description: 'Results per page (max 100)',
-  })
-  @ApiQuery({ name: 'offset', required: false, type: Number })
-  async search(
-    @Query('q') q: string,
-    @Query('type') type?: string,
-    @Query('limit') limit = 20,
-    @Query('offset') offset = 0,
-  ): Promise<SearchResponse> {
+  async search(@Query() query: SearchQueryDto): Promise<SearchResponse> {
+    const { q, type } = query;
     const host = process.env['MEILISEARCH_HOST'];
     const masterKey = process.env['MEILISEARCH_MASTER_KEY'];
 
@@ -55,8 +48,8 @@ export class SearchController {
 
     const prefix = process.env['MEILISEARCH_INDEX_PREFIX'] ?? 'kast_';
     const indexName = type ? `${prefix}${type}` : `${prefix}content`;
-    const safeLimit = Math.min(Number(limit), 100);
-    const safeOffset = Math.max(Number(offset), 0);
+    const safeLimit = query.limit ?? 20;
+    const safeOffset = query.offset ?? 0;
     const result = await this.fetchFromMeilisearch(
       host,
       masterKey,

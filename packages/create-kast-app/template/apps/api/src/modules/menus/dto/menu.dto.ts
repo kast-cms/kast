@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
@@ -10,6 +10,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
+import { toBoolean } from '../../../common/dto/to-boolean.transform';
 
 // ── Menu DTOs ──────────────────────────────────────────────
 
@@ -88,6 +89,7 @@ export class CreateMenuItemDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
+  @Transform(toBoolean)
   isActive?: boolean;
 }
 
@@ -131,6 +133,7 @@ export class UpdateMenuItemDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
+  @Transform(toBoolean)
   isActive?: boolean;
 }
 

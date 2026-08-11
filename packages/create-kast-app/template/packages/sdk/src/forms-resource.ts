@@ -2,13 +2,13 @@ import type { KastClient } from './client.js';
 import type {
   CreateFormBody,
   FormDetail,
+  FormSubmissionSummary,
   FormSummary,
   ListSubmissionsParams,
   PaginatedSubmissions,
   SubmitFormBody,
   UpdateFormBody,
 } from './form-types.js';
-import type { ApiResponse } from './types.js';
 
 export class FormsResource {
   constructor(private readonly client: KastClient) {}
@@ -36,7 +36,16 @@ export class FormsResource {
     return this.client.request(`/api/v1/forms/${encodeURIComponent(id)}`, { method: 'DELETE' });
   }
 
-  submit(id: string, body: SubmitFormBody): Promise<ApiResponse<{ ok: boolean }>> {
+  /**
+   * Submits a public form. The response is the bare `{ ok: true }` the route
+   * returns, NOT an `{ data }` envelope.
+   *
+   * `ok` is not proof the submission was stored: an unknown, trashed or inactive
+   * form answers identically so the endpoint cannot be used to enumerate forms.
+   * A submission that fails validation is a 400 with code `FORM_SUBMISSION_INVALID`
+   * and an `errors: [{ field, rule, message }]` array.
+   */
+  submit(id: string, body: SubmitFormBody): Promise<{ ok: boolean }> {
     return this.client.request(`/api/v1/forms/${encodeURIComponent(id)}/submit`, {
       method: 'POST',
       body,
@@ -52,6 +61,17 @@ export class FormsResource {
     const query = qs.toString();
     return this.client.request(
       `/api/v1/forms/${encodeURIComponent(id)}/submissions${query ? `?${query}` : ''}`,
+    );
+  }
+
+  /**
+   * Marks a submission read (default) or unread. `readAt` is set on read and
+   * cleared on unread. 404s when the submission does not belong to `formId`.
+   */
+  markSubmissionRead(formId: string, subId: string, isRead = true): Promise<FormSubmissionSummary> {
+    return this.client.request(
+      `/api/v1/forms/${encodeURIComponent(formId)}/submissions/${encodeURIComponent(subId)}/read`,
+      { method: 'PATCH', body: { isRead } },
     );
   }
 
@@ -76,8 +96,11 @@ export class FormsResource {
     return this.listSubmissions(id, params);
   }
 
-  /** Fetch CSV export as a Blob */
+  /**
+   * Fetches the CSV export as a Blob. Uses `requestBlob`: the route replies with
+   * `text/csv`, which `request` would try to parse as JSON and throw on.
+   */
   exportCsv(id: string): Promise<Blob> {
-    return this.client.request(this.exportCsvUrl(id));
+    return this.client.requestBlob(this.exportCsvUrl(id));
   }
 }

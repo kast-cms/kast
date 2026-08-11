@@ -62,6 +62,10 @@ pnpm run db:migrate
 pnpm run dev
 ```
 
+Then open **http://localhost:3001/admin/setup** and create the owner account. Kast ships
+**no default credentials** — the setup page is only reachable while the install has no users,
+and it closes permanently once the first owner exists.
+
 > **Production with Docker?** A `docker-compose.yml` is included in the generated project. Run `docker-compose up` after filling in `.env`.
 
 | Service            | URL                            |
@@ -267,17 +271,52 @@ pnpm install
 
 # 3. Configure environment
 cp .env.example .env  # set JWT_SECRET (min 32 chars) at minimum
+# Also set KAST_SECRET_ENCRYPTION_KEY (min 32 chars) — it encrypts secret settings
+# such as smtp.password at rest. Without it Kast falls back to JWT_SECRET, which
+# means rotating JWT_SECRET makes stored secrets unreadable.
 
 # 4. Start PostgreSQL + Redis
 docker compose up -d postgres redis
 
-# 5. Run migrations + seed
+# 5. Run migrations + seed reference data (locales, roles, settings — no user accounts)
 pnpm run db:migrate
 pnpm run db:seed
 
 # 6. Start all dev servers
 pnpm dev
 ```
+
+Then create the owner account at http://localhost:3001/admin/setup. The seed never creates a
+login, so nothing privileged exists until you do.
+
+**Throwaway local test accounts.** For local work only, the seed can recreate the two fixed
+accounts the manual test flows use. These credentials are public knowledge, so creating them
+takes a phrase no deployment picks up by accident:
+
+```bash
+SEED_DEV_ACCOUNTS=i-know-these-credentials-are-public pnpm run db:seed
+#   admin@kast.local  / Admin1234!   (super_admin)
+#   writer@kast.local / Writer1234!  (editor)
+```
+
+Keep that variable in your local `.env` (`.env.example` has it commented out) — the API also
+reads it, and **refuses to start** while either account still has its published password and
+the opt-in is absent. `NODE_ENV=production` overrides the opt-in entirely: the seed refuses to
+create the accounts and the API refuses to serve with them. `NODE_ENV` alone never _grants_
+anything, because a `.env` copied onto a server carries whatever value it was given on day one.
+
+To run the full `docker compose` stack this way, set `KAST_DOCKER_NODE_ENV=development`
+alongside it; the compose file otherwise pins `NODE_ENV=production` for the API container.
+
+**A real, non-throwaway owner from the CLI.** Supply the address, and either supply the
+password or let the seed generate one and print it once:
+
+```bash
+SEED_ADMIN_EMAIL=you@example.com SEED_ADMIN_PASSWORD='<min 12 chars>' pnpm run db:seed
+SEED_ADMIN_EMAIL=you@example.com pnpm run db:seed   # password generated and printed once
+```
+
+An account that already exists is never re-passworded and never granted a role by the seed.
 
 ---
 

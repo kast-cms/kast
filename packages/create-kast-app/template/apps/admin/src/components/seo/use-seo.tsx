@@ -1,9 +1,38 @@
 'use client';
 
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
-import type { CreateRedirectBody, Redirect, SeoScore, UpdateRedirectBody } from '@kast-cms/sdk';
+import { useApiClient } from '@/lib/session';
+import type {
+  CreateRedirectBody,
+  KastClient,
+  Redirect,
+  SeoScore,
+  UpdateRedirectBody,
+} from '@kast-cms/sdk';
 import { useCallback, useEffect, useState } from 'react';
+
+/**
+ * Result returned by the redirects CSV import endpoint
+ * (`POST /api/v1/seo/redirects/import`).
+ */
+export interface RedirectImportResult {
+  created: number;
+  skipped: number;
+  errors: number;
+}
+
+/**
+ * Subset of the SEO resource for the CSV import/export endpoints that are
+ * being added to the API/SDK in parallel. Once the SDK exposes
+ * `importRedirects` / `exportRedirects` natively this assertion becomes a no-op.
+ */
+interface RedirectCsvResource {
+  importRedirects: (file: File) => Promise<RedirectImportResult>;
+  exportRedirects: () => Promise<Blob>;
+}
+
+function redirectCsv(client: KastClient): RedirectCsvResource {
+  return client.seo as unknown as RedirectCsvResource;
+}
 
 export interface UseSeoReturn {
   redirects: Redirect[];
@@ -15,6 +44,8 @@ export interface UseSeoReturn {
   createRedirect: (body: CreateRedirectBody) => Promise<void>;
   updateRedirect: (id: string, body: UpdateRedirectBody) => Promise<void>;
   deleteRedirect: (id: string) => Promise<void>;
+  importRedirects: (file: File) => Promise<RedirectImportResult>;
+  exportRedirects: () => Promise<Blob>;
   loadRedirects: () => Promise<void>;
   loadSitemap: () => Promise<void>;
   loadScore: (entryId: string) => Promise<void>;
@@ -31,8 +62,7 @@ interface SitemapListResponse {
 }
 
 export function useSeo(): UseSeoReturn {
-  const { session } = useSession();
-  const client = createApiClient(session?.accessToken);
+  const client = useApiClient();
 
   const [redirects, setRedirects] = useState<Redirect[]>([]);
   const [redirectsLoading, setRedirectsLoading] = useState(false);
@@ -49,7 +79,7 @@ export function useSeo(): UseSeoReturn {
     } finally {
       setRedirectsLoading(false);
     }
-  }, []);
+  }, [client]);
 
   const loadSitemap = useCallback(async (): Promise<void> => {
     setSitemapLoading(true);
@@ -59,30 +89,36 @@ export function useSeo(): UseSeoReturn {
     } finally {
       setSitemapLoading(false);
     }
-  }, []);
+  }, [client]);
 
-  const loadScore = useCallback(async (entryId: string): Promise<void> => {
-    setScoreLoading(true);
-    try {
-      const res = await client.seo.getScore(entryId);
-      setScore(res.data);
-    } catch {
-      setScore(null);
-    } finally {
-      setScoreLoading(false);
-    }
-  }, []);
+  const loadScore = useCallback(
+    async (entryId: string): Promise<void> => {
+      setScoreLoading(true);
+      try {
+        const res = await client.seo.getScore(entryId);
+        setScore(res.data);
+      } catch {
+        setScore(null);
+      } finally {
+        setScoreLoading(false);
+      }
+    },
+    [client],
+  );
 
-  const validateSeo = useCallback(async (entryId: string): Promise<void> => {
-    await client.seo.validate(entryId);
-  }, []);
+  const validateSeo = useCallback(
+    async (entryId: string): Promise<void> => {
+      await client.seo.validate(entryId);
+    },
+    [client],
+  );
 
   const createRedirect = useCallback(
     async (body: CreateRedirectBody): Promise<void> => {
       await client.seo.createRedirect(body);
       await loadRedirects();
     },
-    [loadRedirects],
+    [loadRedirects, client],
   );
 
   const updateRedirect = useCallback(
@@ -90,7 +126,7 @@ export function useSeo(): UseSeoReturn {
       await client.seo.updateRedirect(id, body);
       await loadRedirects();
     },
-    [loadRedirects],
+    [loadRedirects, client],
   );
 
   const deleteRedirect = useCallback(
@@ -98,8 +134,21 @@ export function useSeo(): UseSeoReturn {
       await client.seo.deleteRedirect(id);
       await loadRedirects();
     },
-    [loadRedirects],
+    [loadRedirects, client],
   );
+
+  const importRedirects = useCallback(
+    async (file: File): Promise<RedirectImportResult> => {
+      const result = await redirectCsv(client).importRedirects(file);
+      await loadRedirects();
+      return result;
+    },
+    [loadRedirects, client],
+  );
+
+  const exportRedirects = useCallback(async (): Promise<Blob> => {
+    return redirectCsv(client).exportRedirects();
+  }, [client]);
 
   useEffect(() => {
     void loadRedirects();
@@ -115,6 +164,8 @@ export function useSeo(): UseSeoReturn {
     createRedirect,
     updateRedirect,
     deleteRedirect,
+    importRedirects,
+    exportRedirects,
     loadRedirects,
     loadSitemap,
     loadScore,

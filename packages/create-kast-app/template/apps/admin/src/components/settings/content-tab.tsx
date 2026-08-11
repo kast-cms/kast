@@ -1,105 +1,91 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Save } from 'lucide-react';
-import { useState, type JSX } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { FieldHint } from '@/components/ui/label';
+import { SeparatorWithLabel } from '@/components/ui/separator';
+import type { JSX } from 'react';
+import { EnvManagedField } from './settings-field';
 import type { UseSettingsReturn } from './use-settings';
-
-type ContentStatus = 'DRAFT' | 'PUBLISHED';
 
 interface Props {
   s: UseSettingsReturn;
 }
 
-export function ContentTab({ s }: Props): JSX.Element {
-  const [defaultStatus, setDefaultStatus] = useState<ContentStatus>(
-    () => (s.getValue('content.defaultStatus') as ContentStatus | undefined) ?? 'DRAFT',
-  );
-  const [versionRetention, setVersionRetention] = useState<string>(() =>
-    String(s.getValue('content.versionRetention') ?? '10'),
-  );
-  const [imageQuality, setImageQuality] = useState<string>(() =>
-    String(s.getValue('media.imageQuality') ?? '80'),
-  );
-  const [generateThumbnails, setGenerateThumbnails] = useState<boolean>(() =>
-    Boolean(s.getValue('media.generateThumbnails') ?? true),
-  );
-
-  const save = async (): Promise<void> => {
-    await s.patchSettings([
-      { key: 'content.defaultStatus', value: defaultStatus },
-      { key: 'content.versionRetention', value: parseInt(versionRetention, 10) },
-      { key: 'media.imageQuality', value: parseInt(imageQuality, 10) },
-      { key: 'media.generateThumbnails', value: generateThumbnails },
-    ]);
-  };
-
+/**
+ * Read-only by design.
+ *
+ * These four keys were writable but inert: nothing in the API ever read
+ * `content.defaultStatus`, `content.versionRetention`, `media.imageQuality` or
+ * `media.generateThumbnails`, so the form reported a successful save and changed
+ * nothing. The API now withholds and rejects them rather than pretending, and
+ * this tab states what the real behaviour is instead of offering a control that
+ * would 400.
+ */
+export function ContentTab(_props: Props): JSX.Element {
   return (
-    <div className="space-y-6 max-w-lg">
-      <div className="space-y-2">
-        <Label>Default Content Status</Label>
-        <Select value={defaultStatus} onValueChange={(v) => setDefaultStatus(v as ContentStatus)}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="DRAFT">Draft</SelectItem>
-            <SelectItem value="PUBLISHED">Published</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="version-retention">Version Retention Count</Label>
-        <Input
-          id="version-retention"
-          value={versionRetention}
-          onChange={(e) => setVersionRetention(e.target.value)}
-          placeholder="10"
-        />
-        <p className="text-xs text-muted-foreground">
-          Number of historical versions to keep per entry
-        </p>
-      </div>
-      <div className="border-t pt-4 space-y-4">
-        <p className="text-sm font-medium">Media</p>
-        <div className="space-y-2">
-          <Label htmlFor="img-quality">Image Quality (1–100)</Label>
-          <Input
-            id="img-quality"
-            value={imageQuality}
-            onChange={(e) => setImageQuality(e.target.value)}
-            placeholder="80"
+    <div className="max-w-3xl space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Content</CardTitle>
+          <CardDescription>
+            How new entries and versions behave. None of this is configurable yet — it is shown so
+            the behaviour is not a mystery.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5 pt-4">
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-foreground">Default content status</p>
+            <div className="rounded-lg border border-border bg-muted/50 px-3 py-2">
+              <p className="font-mono text-sm text-foreground">DRAFT</p>
+              <p className="text-xs text-muted-foreground">Fixed by the content write gate.</p>
+            </div>
+            <FieldHint>
+              A new entry always starts as a draft. Publishing is an explicit action that runs the
+              schema and SEO gates.
+            </FieldHint>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-foreground">Version retention</p>
+            <div className="rounded-lg border border-border bg-muted/50 px-3 py-2">
+              <p className="font-mono text-sm text-foreground">Unlimited</p>
+              <p className="text-xs text-muted-foreground">No pruning job exists.</p>
+            </div>
+            <FieldHint>
+              Every save writes a numbered version and none are removed. Trash retention is separate
+              and is fixed at 30 days.
+            </FieldHint>
+          </div>
+
+          <SeparatorWithLabel>Media</SeparatorWithLabel>
+
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-foreground">Image quality</p>
+            <div className="rounded-lg border border-border bg-muted/50 px-3 py-2">
+              <p className="font-mono text-sm text-foreground">85 (WebP), 80 (thumbnails)</p>
+              <p className="text-xs text-muted-foreground">
+                Fixed in the media optimisation worker.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-foreground">Thumbnails</p>
+            <div className="rounded-lg border border-border bg-muted/50 px-3 py-2">
+              <p className="font-mono text-sm text-foreground">Always on — 400px and 800px</p>
+              <p className="text-xs text-muted-foreground">
+                Generated for raster uploads only; vectors and documents are skipped.
+              </p>
+            </div>
+          </div>
+
+          <EnvManagedField
+            label="Upload size limit"
+            envVar="UPLOAD_MAX_FILE_SIZE_MB"
+            hint="Shown here because it governs media too; change it on the Storage tab’s source."
           />
-        </div>
-        <div className="flex items-center gap-3">
-          <Switch
-            id="thumbnails"
-            checked={generateThumbnails}
-            onCheckedChange={setGenerateThumbnails}
-          />
-          <Label htmlFor="thumbnails">Generate Thumbnails</Label>
-        </div>
-      </div>
-      <Button
-        onClick={() => {
-          void save();
-        }}
-        disabled={s.saving}
-        className="flex items-center gap-2"
-      >
-        <Save className="size-4" />
-        {s.saving ? 'Saving…' : 'Save Content'}
-      </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }

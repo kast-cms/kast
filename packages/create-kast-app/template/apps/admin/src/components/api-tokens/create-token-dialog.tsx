@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { FieldHint, Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -66,7 +66,9 @@ export function CreateTokenDialog({ open, onOpenChange, onCreate }: Props): JSX.
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="token-name">{t('name')}</Label>
+            <Label htmlFor="token-name" required>
+              {t('name')}
+            </Label>
             <Input
               id="token-name"
               placeholder={t('namePlaceholder')}
@@ -74,6 +76,7 @@ export function CreateTokenDialog({ open, onOpenChange, onCreate }: Props): JSX.
               onChange={(e) => setName(e.target.value)}
             />
           </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="token-scope">{t('scope')}</Label>
             <Select value={scope} onValueChange={(v) => setScope(v as TokenScope)}>
@@ -89,6 +92,7 @@ export function CreateTokenDialog({ open, onOpenChange, onCreate }: Props): JSX.
               </SelectContent>
             </Select>
           </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="token-expiry">{t('expiry')}</Label>
             <Input
@@ -97,7 +101,7 @@ export function CreateTokenDialog({ open, onOpenChange, onCreate }: Props): JSX.
               value={expiresAt}
               onChange={(e) => setExpiresAt(e.target.value)}
             />
-            <p className="text-xs text-[--color-muted-foreground]">{t('expiryHint')}</p>
+            <FieldHint>{t('expiryHint')}</FieldHint>
           </div>
         </div>
 
@@ -105,7 +109,7 @@ export function CreateTokenDialog({ open, onOpenChange, onCreate }: Props): JSX.
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             {t('cancel')}
           </Button>
-          <Button onClick={handleSubmit} disabled={!name || submitting}>
+          <Button onClick={handleSubmit} disabled={!name} loading={submitting}>
             {submitting ? t('submitting') : t('submit')}
           </Button>
         </DialogFooter>

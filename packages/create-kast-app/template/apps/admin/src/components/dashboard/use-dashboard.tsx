@@ -1,7 +1,6 @@
 'use client';
 
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { useApiClient, useSession } from '@/lib/session';
 import type { DashboardActivityEntry, DashboardQueueHealth, DashboardStats } from '@kast-cms/sdk';
 import { useEffect, useRef, useState } from 'react';
 
@@ -17,6 +16,7 @@ export interface UseDashboardReturn {
 const POLL_INTERVAL_MS = 10_000;
 
 export function useDashboard(): UseDashboardReturn {
+  const client = useApiClient();
   const { session } = useSession();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [activity, setActivity] = useState<DashboardActivityEntry[]>([]);
@@ -38,7 +38,6 @@ export function useDashboard(): UseDashboardReturn {
 
   useEffect(() => {
     if (!session?.accessToken) return;
-    const client = createApiClient(session.accessToken);
     const requests: Array<Promise<void>> = [
       client.dashboard
         .getStats()
@@ -59,7 +58,7 @@ export function useDashboard(): UseDashboardReturn {
     }
     setLoading(true);
     void Promise.all(requests).finally(() => setLoading(false));
-  }, [session?.accessToken, isAdmin, tick]);
+  }, [session?.accessToken, isAdmin, tick, client]);
 
   const refetch = (): void => setTick((t) => t + 1);
 

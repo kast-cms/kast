@@ -43,7 +43,9 @@ The default `render.yaml` uses `STORAGE_PROVIDER=local` with `/tmp/kast-uploads`
 
 1. Add a [Render Disk](https://docs.render.com/disks) to `kast-api`.
 2. Mount it at `/data/uploads`.
-3. Set `STORAGE_LOCAL_DIR=/data/uploads` and `STORAGE_LOCAL_URL=https://kast-api.onrender.com/uploads`.
+3. Set `STORAGE_LOCAL_DIR=/data/uploads` and `STORAGE_LOCAL_URL=https://<your-api-host>/api/v1/media/files`.
+
+   `STORAGE_LOCAL_URL` is the public prefix media URLs are built from, and the API serves local files from `/api/v1/media/files`. Pointing it at `/uploads` — as this guide previously did — mints URLs that 404, because nothing serves that path. Set it only if a CDN or proxy fronts the directory; otherwise leave it unset and the built-in route is used.
 
 Or switch to S3/R2 storage by setting `STORAGE_PROVIDER=s3` or `STORAGE_PROVIDER=r2` with the appropriate credentials.
 

@@ -32,12 +32,18 @@ services:
         generateValue: true
       - key: CORS_ORIGINS
         value: '*'
+      # Every password-reset and invitation link is built from this. Left unset
+      # it defaults to localhost, and those emails become unusable.
+      - key: ADMIN_URL
+        value: https://kast-admin.onrender.com/admin
       - key: STORAGE_PROVIDER
         value: local
       - key: STORAGE_LOCAL_DIR
         value: /tmp/kast-uploads
+      # Nothing serves /uploads; the API serves local media from
+      # /api/v1/media/files. Leaving this unset uses that route.
       - key: STORAGE_LOCAL_URL
-        value: https://kast-api.onrender.com/uploads
+        value: https://kast-api.onrender.com/api/v1/media/files
 
   # ── Admin ─────────────────────────────────────────────────────────────────
   - type: web

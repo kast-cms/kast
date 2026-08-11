@@ -37,6 +37,7 @@ export type {
   UpdateFormBody,
 } from './form-types.js';
 export { FormsResource } from './forms-resource.js';
+export type { KastApiError } from './http-client.js';
 export type {
   CreateLocaleBody,
   LocaleSummary,
@@ -81,7 +82,10 @@ export type {
   ApiTokenSummary,
   AssignPermissionsBody,
   BulkActionBody,
+  BulkActionItemResult,
+  BulkActionResult,
   ContentEntryDetail,
+  ContentEntryLocale,
   ContentEntrySummary,
   ContentEntryVersion,
   ContentField,
@@ -106,6 +110,7 @@ export type {
   MediaListParams,
   MediaUsage,
   Permission,
+  PublishEntryBody,
   Redirect,
   RedirectType,
   ReorderFieldsBody,

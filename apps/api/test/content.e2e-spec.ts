@@ -35,15 +35,19 @@ describe('Content types & entries (e2e)', () => {
       expect(res.body.error.code).toBe('CONFLICT');
     });
 
-    it('lists content types publicly (200)', async () => {
-      const res = await request(httpServer(app)).get('/api/v1/content-types').expect(200);
+    it('lists content types for an authenticated caller (200)', async () => {
+      const res = await request(httpServer(app))
+        .get('/api/v1/content-types')
+        .set(...bearer(token))
+        .expect(200);
       const list = (res.body.data ?? res.body) as { name: string }[];
       expect(list.some((t) => t.name === typeName)).toBe(true);
     });
 
-    it('gets a content type by name publicly (200)', async () => {
+    it('gets a content type by name for an authenticated caller (200)', async () => {
       const res = await request(httpServer(app))
         .get(`/api/v1/content-types/${typeName}`)
+        .set(...bearer(token))
         .expect(200);
       expect(res.body.name ?? res.body.data?.name).toBe(typeName);
     });
@@ -51,6 +55,7 @@ describe('Content types & entries (e2e)', () => {
     it('returns 404 for an unknown content type', async () => {
       const res = await request(httpServer(app))
         .get('/api/v1/content-types/does-not-exist')
+        .set(...bearer(token))
         .expect(404);
       expect(res.body.error.code).toBe('NOT_FOUND');
     });
@@ -75,6 +80,14 @@ describe('Content types & entries (e2e)', () => {
         .post(`/api/v1/content-types/${typeName}/fields`)
         .set(...bearer(token))
         .send({ name: 'body', displayName: 'Body', type: 'RICH_TEXT' })
+        .expect(201);
+    });
+
+    it('adds a title field to the content type (201)', async () => {
+      await request(httpServer(app))
+        .post(`/api/v1/content-types/${typeName}/fields`)
+        .set(...bearer(token))
+        .send({ name: 'title', displayName: 'Title', type: 'TEXT' })
         .expect(201);
     });
   });
@@ -110,20 +123,27 @@ describe('Content types & entries (e2e)', () => {
         .expect(400);
     });
 
-    it('lists entries publicly (200)', async () => {
-      const res = await request(httpServer(app)).get(base).expect(200);
+    it('lists entries for an authenticated caller (200)', async () => {
+      const res = await request(httpServer(app))
+        .get(base)
+        .set(...bearer(token))
+        .expect(200);
       expect(Array.isArray(res.body.data)).toBe(true);
       expect(res.body.meta).toBeDefined();
     });
 
-    it('gets an entry by id publicly (200)', async () => {
-      const res = await request(httpServer(app)).get(`${base}/${entryId}`).expect(200);
+    it('gets an entry by id for an authenticated caller (200)', async () => {
+      const res = await request(httpServer(app))
+        .get(`${base}/${entryId}`)
+        .set(...bearer(token))
+        .expect(200);
       expect(res.body.data.id).toBe(entryId);
     });
 
     it('returns 404 for an unknown entry id', async () => {
       const res = await request(httpServer(app))
         .get(`${base}/00000000-0000-0000-0000-000000000000`)
+        .set(...bearer(token))
         .expect(404);
       expect(res.body.error.code).toBe('NOT_FOUND');
     });
@@ -143,7 +163,10 @@ describe('Content types & entries (e2e)', () => {
         .set(...bearer(token))
         .send({})
         .expect(422);
-      expect(res.body.error.code).toBe('UNPROCESSABLE');
+      // The gate names its own code; the filter used to discard it and emit the
+      // status-derived 'UNPROCESSABLE', so a client could not tell an SEO refusal
+      // apart from any other 422.
+      expect(res.body.error.code).toBe('SEO_VALIDATION_FAILED');
     });
 
     it('rejects entry creation by an unauthenticated caller (401)', async () => {

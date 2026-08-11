@@ -26,7 +26,7 @@ import {
 import { Hint } from '@/components/ui/tooltip';
 import { getInitials } from '@/lib/utils';
 import type { UserSummary } from '@kast-cms/sdk';
-import { Pencil, Search, Trash2, UserPlus, Users } from 'lucide-react';
+import { MailX, Pencil, Search, Send, Trash2, UserPlus, Users } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useState, type JSX } from 'react';
@@ -96,9 +96,11 @@ function UsersTableSkeleton(): JSX.Element {
 interface UserRowProps {
   user: UserSummary;
   onTrash: (id: string) => void;
+  onResendInvite: (id: string) => void;
+  onRevokeInvite: (id: string) => void;
 }
 
-function UserRow({ user, onTrash }: UserRowProps): JSX.Element {
+function UserRow({ user, onTrash, onResendInvite, onRevokeInvite }: UserRowProps): JSX.Element {
   const t = useTranslations('users');
   const tCommon = useTranslations('common');
   const name = fullName(user);
@@ -132,6 +134,32 @@ function UserRow({ user, onTrash }: UserRowProps): JSX.Element {
       </TableCell>
       <TableCell>
         <div className="flex items-center justify-end gap-1">
+          {/* Only meaningful while the invitation is unredeemed: the API
+              refuses a resend once the account has a password. */}
+          {user.hasPendingInvite && (
+            <>
+              <Hint label={t('resendInvite')}>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={t('resendInvite')}
+                  onClick={() => onResendInvite(user.id)}
+                >
+                  <Send />
+                </Button>
+              </Hint>
+              <Hint label={t('revokeInvite')}>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={t('revokeInvite')}
+                  onClick={() => onRevokeInvite(user.id)}
+                >
+                  <MailX />
+                </Button>
+              </Hint>
+            </>
+          )}
           <Hint label={tCommon('edit')}>
             <Button variant="ghost" size="icon-sm" aria-label={tCommon('edit')} asChild>
               <Link href={`/users/${user.id}`}>
@@ -166,6 +194,15 @@ export function UsersPageClient(): JSX.Element {
   const handleTrash = (id: string): void => {
     if (!window.confirm('Move this user to trash?')) return;
     void lib.trash(id);
+  };
+
+  const handleResendInvite = (id: string): void => {
+    void lib.resendInvite(id);
+  };
+
+  const handleRevokeInvite = (id: string): void => {
+    if (!window.confirm(t('revokeInviteConfirm'))) return;
+    void lib.revokeInvite(id);
   };
 
   const isEmpty = lib.filteredUsers.length === 0;
@@ -248,7 +285,13 @@ export function UsersPageClient(): JSX.Element {
               </TableRow>
             )}
             {lib.filteredUsers.map((u) => (
-              <UserRow key={u.id} user={u} onTrash={handleTrash} />
+              <UserRow
+                key={u.id}
+                user={u}
+                onTrash={handleTrash}
+                onResendInvite={handleResendInvite}
+                onRevokeInvite={handleRevokeInvite}
+              />
             ))}
           </TableBody>
         </Table>

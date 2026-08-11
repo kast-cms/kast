@@ -8,16 +8,16 @@ import {
   Param,
   Post,
   Query,
-  Req,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import type { Request } from 'express';
 import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
+import type { AuthUser } from '../../common/types/auth.types';
 import {
   TRASH_MODELS,
   TrashQueryDto,
-  type TrashedItemDto,
+  type TrashListResult,
   type TrashModel,
 } from './dto/trash-query.dto';
 import { TrashService } from './trash.service';
@@ -31,22 +31,25 @@ export class TrashController {
   @Get()
   @Roles(SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'List trashed items' })
-  list(@Query() query: TrashQueryDto): Promise<{ items: TrashedItemDto[]; total: number }> {
+  list(@Query() query: TrashQueryDto): Promise<TrashListResult> {
     return this.service.list(query);
   }
 
   @Post(':model/:id/restore')
   @Roles(SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Restore a trashed item' })
+  @ApiOperation({
+    summary: 'Restore a trashed item',
+    description:
+      'Restoring a user reactivates the account, so it is refused for a target ranked at or above the caller.',
+  })
   restore(
     @Param('model') model: string,
     @Param('id') id: string,
-    @Req() req: Request,
+    @CurrentUser() user: AuthUser,
   ): Promise<void> {
     this.assertValidModel(model);
-    const userId = (req.user as { id: string }).id;
-    return this.service.restore(model as TrashModel, id, userId);
+    return this.service.restore(model as TrashModel, id, user);
   }
 
   @Delete(':model/:id')
@@ -56,11 +59,10 @@ export class TrashController {
   async permanentDelete(
     @Param('model') model: string,
     @Param('id') id: string,
-    @Req() req: Request,
+    @CurrentUser() user: AuthUser,
   ): Promise<void> {
     this.assertValidModel(model);
-    const userId = (req.user as { id: string }).id;
-    await this.service.permanentDelete(model as TrashModel, id, userId);
+    await this.service.permanentDelete(model as TrashModel, id, user);
   }
 
   private assertValidModel(model: string): void {

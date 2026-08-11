@@ -6,6 +6,7 @@ import type { Env } from '../../config/env.schema';
 import { AuthController } from './auth.controller';
 import { AuthRepository } from './auth.repository';
 import { AuthService } from './auth.service';
+import { OAuthPolicy } from './oauth-policy';
 import { ApiTokenStrategy } from './strategies/api-token.strategy';
 import { GitHubStrategy } from './strategies/github.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
@@ -28,6 +29,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
   providers: [
     AuthService,
     AuthRepository,
+    OAuthPolicy,
     JwtStrategy,
     ApiTokenStrategy,
     GoogleStrategy,

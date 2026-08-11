@@ -48,6 +48,9 @@ function TrashTableSkeleton(): JSX.Element {
             <Skeleton className="h-3.5 w-24" />
           </TableCell>
           <TableCell>
+            <Skeleton className="h-3.5 w-28" />
+          </TableCell>
+          <TableCell>
             <Skeleton className="h-4.5 w-20 rounded-md" />
           </TableCell>
           <TableCell>
@@ -74,6 +77,7 @@ export function TrashTable({ items, loading, actionId, onRestore, onDelete }: Pr
           <TableRow>
             <TableHead>{t('columns.name')}</TableHead>
             <TableHead>{t('columns.trashedAt')}</TableHead>
+            <TableHead>{t('columns.trashedBy')}</TableHead>
             <TableHead>{t('columns.daysUntilDeletion')}</TableHead>
             <TableHead className="text-end">
               <span className="sr-only">{t('columns.actions')}</span>
@@ -84,7 +88,7 @@ export function TrashTable({ items, loading, actionId, onRestore, onDelete }: Pr
           {isEmpty && loading && <TrashTableSkeleton />}
           {isEmpty && !loading && (
             <TableRow className="hover:bg-transparent">
-              <TableCell colSpan={4} className="p-0">
+              <TableCell colSpan={5} className="p-0">
                 <EmptyState
                   Icon={Trash2}
                   size="sm"
@@ -103,6 +107,9 @@ export function TrashTable({ items, loading, actionId, onRestore, onDelete }: Pr
                 <TableCell className="font-medium text-foreground">{item.name}</TableCell>
                 <TableCell className="whitespace-nowrap text-muted-foreground">
                   {formatDate(item.trashedAt)}
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {item.trashedByName ?? t('unknownActor')}
                 </TableCell>
                 <TableCell>
                   <Badge variant={expiringSoon ? 'warning' : 'muted'} dot={expiringSoon}>

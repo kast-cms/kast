@@ -1,5 +1,6 @@
 'use client';
 
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -39,6 +40,7 @@ export function CreateWebhookDrawer({ open, onOpenChange, onCreate }: Props): JS
   const [url, setUrl] = useState('');
   const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const toggleEvent = (event: string): void => {
     setSelectedEvents((prev) =>
@@ -49,12 +51,20 @@ export function CreateWebhookDrawer({ open, onOpenChange, onCreate }: Props): JS
   const handleSubmit = (): void => {
     void (async (): Promise<void> => {
       setSubmitting(true);
+      setCreateError(null);
       try {
         await onCreate({ name, url, events: selectedEvents });
         setName('');
         setUrl('');
         setSelectedEvents([]);
         onOpenChange(false);
+      } catch (err) {
+        // The API rejects endpoints that resolve to private/internal addresses
+        // and non-http(s) schemes. Without this the rejection was an unhandled
+        // promise rejection: no message, and a drawer that never closed.
+        setCreateError(
+          err instanceof Error ? err.message : 'Could not create the webhook. Please try again.',
+        );
       } finally {
         setSubmitting(false);
       }
@@ -72,6 +82,12 @@ export function CreateWebhookDrawer({ open, onOpenChange, onCreate }: Props): JS
 
         {/* Only the middle scrolls, so the title and the submit button stay put. */}
         <SheetBody className="space-y-5">
+          {createError !== null && (
+            <Alert variant="destructive">
+              <AlertDescription>{createError}</AlertDescription>
+            </Alert>
+          )}
+
           <div className="space-y-1.5">
             <Label htmlFor="webhook-name" required>
               {t('nameLabel')}

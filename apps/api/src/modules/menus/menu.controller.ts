@@ -12,7 +12,6 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Menu, MenuItem } from '@prisma/client';
 import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
-import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import {
   CreateMenuDto,
@@ -45,9 +44,12 @@ export class MenuController {
     return this.service.create(dto);
   }
 
+  // The public equivalent is GET /api/v1/delivery/menus/:slug. Management
+  // reads stay authenticated so the public surface has exactly one door.
   @Get(':handle')
-  @Public()
-  @ApiOperation({ summary: 'Get full menu tree by slug handle (public)' })
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.VIEWER, SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get full menu tree by slug handle' })
   findByHandle(@Param('handle') handle: string): Promise<MenuDetail> {
     return this.service.findBySlug(handle);
   }

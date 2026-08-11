@@ -13,8 +13,7 @@ import {
 } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { useApiClient, useSession } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import type { PluginRecord } from '@kast-cms/sdk';
 import {
@@ -37,13 +36,26 @@ const PLUGIN_ICONS: Record<string, JSX.Element> = {
   'kast-plugin-sentry': <ShieldAlert className="size-5" />,
 };
 
+/**
+ * Mirrors the `env` array in each plugin's kast-plugin.json. Kept in sync by
+ * hand — the plugin API does not surface the manifest's env list yet.
+ */
 const PLUGIN_ENV_VARS: Record<string, string[]> = {
   'kast-plugin-meilisearch': [
     'MEILISEARCH_HOST',
     'MEILISEARCH_MASTER_KEY',
     'MEILISEARCH_INDEX_PREFIX',
+    'MEILISEARCH_AGGREGATE_INDEX',
+    'KAST_API_URL',
+    'KAST_API_TOKEN',
   ],
-  'kast-plugin-stripe': ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'STRIPE_PRODUCT_TYPE_SLUG'],
+  'kast-plugin-stripe': [
+    'STRIPE_SECRET_KEY',
+    'STRIPE_WEBHOOK_SECRET',
+    'STRIPE_PRODUCT_TYPE_SLUG',
+    'KAST_API_URL',
+    'KAST_API_TOKEN',
+  ],
   'kast-plugin-resend': ['RESEND_API_KEY', 'RESEND_FROM_EMAIL', 'RESEND_FROM_NAME'],
   'kast-plugin-r2': [
     'R2_ACCOUNT_ID',
@@ -210,6 +222,7 @@ interface PluginDetailClientProps {
 }
 
 export function PluginDetailClient({ pluginId }: PluginDetailClientProps): JSX.Element {
+  const client = useApiClient();
   const { session } = useSession();
   const [plugin, setPlugin] = useState<PluginRecord | null>(null);
   const [config, setConfig] = useState<PluginConfig | null>(null);
@@ -220,7 +233,6 @@ export function PluginDetailClient({ pluginId }: PluginDetailClientProps): JSX.E
     if (!session) return;
     setLoading(true);
     try {
-      const client = createApiClient(session.accessToken);
       const res = await client.plugins.list();
       const found = res.data.find((p) => p.name === pluginId);
       if (found) {
@@ -235,7 +247,7 @@ export function PluginDetailClient({ pluginId }: PluginDetailClientProps): JSX.E
     } finally {
       setLoading(false);
     }
-  }, [session, pluginId]);
+  }, [session, pluginId, client]);
 
   useEffect(() => {
     void load();
@@ -246,7 +258,6 @@ export function PluginDetailClient({ pluginId }: PluginDetailClientProps): JSX.E
     if (!plugin) return;
     setBusy(true);
     try {
-      const client = createApiClient(session.accessToken);
       if (plugin.isActive) {
         await client.plugins.disable(plugin.name);
       } else {
@@ -256,7 +267,7 @@ export function PluginDetailClient({ pluginId }: PluginDetailClientProps): JSX.E
     } finally {
       setBusy(false);
     }
-  }, [session, plugin, load]);
+  }, [session, plugin, load, client]);
 
   if (loading) {
     return <PluginDetailSkeleton />;

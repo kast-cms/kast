@@ -1,13 +1,13 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Patch, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import type { GlobalSetting } from '@prisma/client';
 import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import type { AuthUser } from '../../common/types/auth.types';
 import { TestSmtpDto } from './dto/test-smtp.dto';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
-import { SettingsService } from './settings.service';
+import type { SafeSetting } from './settings-secret.util';
+import { SettingsService, type StorageProbeResult } from './settings.service';
 
 @ApiTags('settings')
 @Controller({ path: 'settings', version: '1' })
@@ -18,8 +18,8 @@ export class SettingsController {
   @ApiBearerAuth()
   @Roles(SYSTEM_ROLES.VIEWER, SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get all global settings' })
-  getAll(): Promise<{ data: GlobalSetting[] }> {
-    return this.service.getAll().then((data) => ({ data }));
+  getAll(@CurrentUser() user: AuthUser): Promise<{ data: SafeSetting[] }> {
+    return this.service.getAll(user).then((data) => ({ data }));
   }
 
   @Patch()
@@ -29,8 +29,8 @@ export class SettingsController {
   patch(
     @Body() dto: UpdateSettingsDto,
     @CurrentUser() user: AuthUser,
-  ): Promise<{ data: GlobalSetting[] }> {
-    return this.service.patch(dto, user.id).then((data) => ({ data }));
+  ): Promise<{ data: SafeSetting[] }> {
+    return this.service.patch(dto, user).then((data) => ({ data }));
   }
 
   @Post('test-smtp')
@@ -46,8 +46,8 @@ export class SettingsController {
   @ApiBearerAuth()
   @Roles(SYSTEM_ROLES.SUPER_ADMIN)
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Verify configured storage provider' })
-  testStorage(): Promise<{ provider: string; status: string }> {
+  @ApiOperation({ summary: 'Write, read back and delete a probe object in the storage backend' })
+  testStorage(): Promise<StorageProbeResult> {
     return this.service.testStorage();
   }
 }

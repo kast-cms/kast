@@ -7,8 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PageHeader } from '@/components/ui/page-header';
 import { Switch } from '@/components/ui/switch';
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { clearable } from '@/lib/nullable-field';
+import { useApiClient, useSession } from '@/lib/session';
 import type { FormDetail, FormFieldInput } from '@kast-cms/sdk';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
@@ -148,6 +148,7 @@ interface FormBuilderProps {
 }
 
 export function FormBuilder({ initial }: FormBuilderProps): JSX.Element {
+  const client = useApiClient();
   const t = useTranslations('forms.builder');
   const { session } = useSession();
   const router = useRouter();
@@ -178,7 +179,6 @@ export function FormBuilder({ initial }: FormBuilderProps): JSX.Element {
     setSaving(true);
     setError(null);
     try {
-      const client = createApiClient(session.accessToken);
       const fieldInputs: FormFieldInput[] = fields.map((f, i) => ({
         name: f.name,
         label: f.label,
@@ -187,13 +187,16 @@ export function FormBuilder({ initial }: FormBuilderProps): JSX.Element {
         position: i,
         config: f.config ?? {},
       }));
+      // Blank means "no notification/description", which only reaches the API as
+      // an explicit null — an omitted key leaves the stored value in place, so
+      // the form would keep mailing submissions to the removed address.
       const body = {
         name,
         slug,
         isActive,
         fields: fieldInputs,
-        ...(description ? { description } : {}),
-        ...(notifyEmail ? { notifyEmail } : {}),
+        description: clearable(description),
+        notifyEmail: clearable(notifyEmail),
       };
       if (initial) {
         await client.forms.update(initial.id, body);
@@ -206,7 +209,7 @@ export function FormBuilder({ initial }: FormBuilderProps): JSX.Element {
     } finally {
       setSaving(false);
     }
-  }, [session, name, slug, description, notifyEmail, isActive, fields, initial, router, t]);
+  }, [session, name, slug, description, notifyEmail, isActive, fields, initial, router, t, client]);
 
   return (
     <div className="space-y-6">

@@ -5,7 +5,8 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "test": "tsc -p tsconfig.spec.json && node --test dist/spec/*.spec.js"
   },
   "dependencies": {
     "@kast-cms/plugin-sdk": "workspace:*",

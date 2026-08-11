@@ -1,8 +1,9 @@
 'use client';
 
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { useToast } from '@/components/ui/use-toast';
+import { useApiClient } from '@/lib/session';
 import type { InviteUserBody, RoleSummary, UpdateUserBody, UserSummary } from '@kast-cms/sdk';
+import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState } from 'react';
 
 export interface UseUsersReturn {
@@ -15,13 +16,16 @@ export interface UseUsersReturn {
   setSearch: (v: string) => void;
   setRoleFilter: (v: string) => void;
   invite: (body: InviteUserBody) => Promise<void>;
+  resendInvite: (id: string) => Promise<void>;
+  revokeInvite: (id: string) => Promise<void>;
   update: (id: string, body: UpdateUserBody) => Promise<void>;
   trash: (id: string) => Promise<void>;
 }
 
 export function useUsers(): UseUsersReturn {
-  const { session } = useSession();
-  const client = createApiClient(session?.accessToken);
+  const client = useApiClient();
+  const { toast } = useToast();
+  const t = useTranslations('users');
 
   const [users, setUsers] = useState<UserSummary[]>([]);
   const [roles, setRoles] = useState<RoleSummary[]>([]);
@@ -29,20 +33,37 @@ export function useUsers(): UseUsersReturn {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
 
+  const reportError = useCallback(
+    (err: unknown): void => {
+      toast({
+        variant: 'destructive',
+        title: t('errorTitle'),
+        description: err instanceof Error ? err.message : t('loadError'),
+      });
+    },
+    [toast, t],
+  );
+
   const loadUsers = useCallback(async (): Promise<void> => {
     setLoading(true);
     try {
       const res = await client.users.list(roleFilter ? { role: roleFilter } : {});
       setUsers(res.data);
+    } catch (err) {
+      reportError(err);
     } finally {
       setLoading(false);
     }
-  }, [roleFilter]);
+  }, [roleFilter, reportError, client]);
 
   const loadRoles = useCallback(async (): Promise<void> => {
-    const res = await client.roles.list();
-    setRoles(res.data);
-  }, []);
+    try {
+      const res = await client.roles.list();
+      setRoles(res.data);
+    } catch (err) {
+      reportError(err);
+    }
+  }, [reportError, client]);
 
   useEffect(() => {
     void loadRoles();
@@ -54,24 +75,66 @@ export function useUsers(): UseUsersReturn {
 
   const invite = useCallback(
     async (body: InviteUserBody): Promise<void> => {
-      await client.users.invite(body);
-      void loadUsers();
+      try {
+        await client.users.invite(body);
+        void loadUsers();
+      } catch (err) {
+        reportError(err);
+        throw err;
+      }
     },
-    [loadUsers],
+    [loadUsers, reportError, client],
   );
 
   const update = useCallback(
     async (id: string, body: UpdateUserBody): Promise<void> => {
-      await client.users.update(id, body);
-      void loadUsers();
+      try {
+        await client.users.update(id, body);
+        void loadUsers();
+      } catch (err) {
+        reportError(err);
+        throw err;
+      }
     },
-    [loadUsers],
+    [loadUsers, reportError, client],
   );
 
-  const trash = useCallback(async (id: string): Promise<void> => {
-    await client.users.trash(id);
-    setUsers((prev) => prev.filter((u) => u.id !== id));
-  }, []);
+  const resendInvite = useCallback(
+    async (id: string): Promise<void> => {
+      try {
+        await client.users.resendInvite(id);
+        toast({ title: t('inviteResent') });
+      } catch (err) {
+        reportError(err);
+      }
+    },
+    [client, reportError, toast, t],
+  );
+
+  const revokeInvite = useCallback(
+    async (id: string): Promise<void> => {
+      try {
+        await client.users.revokeInvite(id);
+        toast({ title: t('inviteRevoked') });
+        void loadUsers();
+      } catch (err) {
+        reportError(err);
+      }
+    },
+    [client, loadUsers, reportError, toast, t],
+  );
+
+  const trash = useCallback(
+    async (id: string): Promise<void> => {
+      try {
+        await client.users.trash(id);
+        setUsers((prev) => prev.filter((u) => u.id !== id));
+      } catch (err) {
+        reportError(err);
+      }
+    },
+    [reportError, client],
+  );
 
   const filteredUsers = users.filter((u) => {
     if (!search) return true;
@@ -90,6 +153,8 @@ export function useUsers(): UseUsersReturn {
     setSearch,
     setRoleFilter,
     invite,
+    resendInvite,
+    revokeInvite,
     update,
     trash,
   };

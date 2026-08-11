@@ -9,6 +9,11 @@ export class TrashResource {
     return this.client.request(`/api/v1/trash${qs ? `?${qs}` : ''}`);
   }
 
+  /**
+   * Brings a trashed record back and clears its trashed marker. Moving an
+   * *archived* entry back to draft is a different operation:
+   * `client.content.unarchive()`.
+   */
   restore(model: TrashModel, id: string): Promise<void> {
     return this.client.request(
       `/api/v1/trash/${encodeURIComponent(model)}/${encodeURIComponent(id)}/restore`,

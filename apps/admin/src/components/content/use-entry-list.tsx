@@ -1,8 +1,9 @@
 'use client';
 
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
-import type { ContentEntrySummary, EntryStatus } from '@kast-cms/sdk';
+import { useToast } from '@/components/ui/use-toast';
+import { useApiClient } from '@/lib/session';
+import type { BulkActionResult, ContentEntrySummary, EntryStatus } from '@kast-cms/sdk';
+import { useTranslations } from 'next-intl';
 import { useCallback, useState } from 'react';
 
 interface UseEntryListParams {
@@ -30,8 +31,9 @@ interface EntryListState {
 }
 
 export function useEntryList({ typeId }: UseEntryListParams): EntryListState {
-  const { session } = useSession();
-  const client = createApiClient(session?.accessToken);
+  const client = useApiClient();
+  const { toast } = useToast();
+  const t = useTranslations('content');
   const [entries, setEntries] = useState<ContentEntrySummary[]>([]);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
@@ -60,30 +62,53 @@ export function useEntryList({ typeId }: UseEntryListParams): EntryListState {
     setSelected(new Set());
   }
 
+  /**
+   * Bulk routes are per-item and NOT atomic: one entry blocked by the SEO or
+   * schema gate leaves the rest applied. Only the ids the server reports as `ok`
+   * may be updated locally, and the failures have to be shown or a blocked
+   * publish looks like it worked until the next reload.
+   */
+  const applyBulk = useCallback(
+    (result: BulkActionResult, apply: (okIds: Set<string>) => void): void => {
+      const okIds = new Set(result.results.filter((r) => r.ok).map((r) => r.id));
+      apply(okIds);
+      if (result.failed > 0) {
+        const first = result.results.find((r) => !r.ok);
+        toast({
+          variant: 'destructive',
+          title: t('bulkPartial', { failed: result.failed, succeeded: result.succeeded }),
+          ...(first?.error ? { description: first.error.message } : {}),
+        });
+      }
+      clearSelection();
+    },
+    [toast, t],
+  );
+
   const bulkPublish = useCallback(async (): Promise<void> => {
-    const ids = [...selected];
-    await client.content.bulkPublish(typeId, ids);
-    setEntries((prev) =>
-      prev.map((e) => (selected.has(e.id) ? { ...e, status: 'PUBLISHED' as EntryStatus } : e)),
-    );
-    clearSelection();
-  }, [client, selected, typeId]);
+    const { data } = await client.content.bulkPublish(typeId, [...selected]);
+    applyBulk(data, (ok) => {
+      setEntries((prev) =>
+        prev.map((e) => (ok.has(e.id) ? { ...e, status: 'PUBLISHED' as EntryStatus } : e)),
+      );
+    });
+  }, [client, selected, typeId, applyBulk]);
 
   const bulkUnpublish = useCallback(async (): Promise<void> => {
-    const ids = [...selected];
-    await client.content.bulkUnpublish(typeId, ids);
-    setEntries((prev) =>
-      prev.map((e) => (selected.has(e.id) ? { ...e, status: 'DRAFT' as EntryStatus } : e)),
-    );
-    clearSelection();
-  }, [client, selected, typeId]);
+    const { data } = await client.content.bulkUnpublish(typeId, [...selected]);
+    applyBulk(data, (ok) => {
+      setEntries((prev) =>
+        prev.map((e) => (ok.has(e.id) ? { ...e, status: 'DRAFT' as EntryStatus } : e)),
+      );
+    });
+  }, [client, selected, typeId, applyBulk]);
 
   const bulkTrash = useCallback(async (): Promise<void> => {
-    const ids = [...selected];
-    await client.content.bulkTrash(typeId, ids);
-    setEntries((prev) => prev.filter((e) => !selected.has(e.id)));
-    clearSelection();
-  }, [client, selected, typeId]);
+    const { data } = await client.content.bulkTrash(typeId, [...selected]);
+    applyBulk(data, (ok) => {
+      setEntries((prev) => prev.filter((e) => !ok.has(e.id)));
+    });
+  }, [client, selected, typeId, applyBulk]);
 
   return {
     entries,

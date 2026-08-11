@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import type { AuthUser } from '../../../common/types/auth.types';
+import { ContentTypesService } from '../../content-types/content-types.service';
 import { ContentService } from '../../content/content.service';
+import {
+  ContentWriteGate,
+  type DryRunValidateOptions,
+} from '../../content/validation/content-write.gate';
 import { McpTool } from '../mcp-tool.decorator';
 import type { ToolContext } from '../types/mcp.types';
 
@@ -8,7 +13,25 @@ const ENTRY_SCHEMA_REQUIRED = ['typeSlug', 'entryId'];
 
 @Injectable()
 export class McpContentEntryTools {
-  constructor(private readonly contentService: ContentService) {}
+  constructor(
+    private readonly contentService: ContentService,
+    private readonly contentTypes: ContentTypesService,
+    private readonly gate: ContentWriteGate,
+  ) {}
+
+  /**
+   * Validates a payload exactly as the real write would, without persisting.
+   * A dry run that skipped this reported success for payloads the write
+   * rejects, which is the one thing a dry run must never do.
+   */
+  private async assertPayloadValid(
+    typeSlug: string,
+    data: Record<string, unknown>,
+    options: DryRunValidateOptions,
+  ): Promise<void> {
+    const ct = await this.contentTypes.findByName(typeSlug);
+    await this.gate.validateStandalone(ct, data, options);
+  }
 
   @McpTool({
     name: 'list_content_entries',
@@ -91,6 +114,10 @@ export class McpContentEntryTools {
       data: args['data'] as Record<string, unknown>,
     };
     if (ctx.dryRun) {
+      await this.assertPayloadValid(args['typeSlug'] as string, dto.data, {
+        locale: dto.locale,
+        mode: 'draft',
+      });
       return { action: 'create_content_entry', typeSlug: args['typeSlug'], wouldCreate: dto };
     }
     return this.contentService.create(args['typeSlug'] as string, dto, user.id);
@@ -125,6 +152,17 @@ export class McpContentEntryTools {
       ...(updateStatus !== undefined ? { status: updateStatus } : {}),
     };
     if (ctx.dryRun) {
+      if (updateData !== undefined) {
+        const dryRunLocale = args['locale'] as string | undefined;
+        // Delegated to the service rather than re-derived here: the mode depends on
+        // the entry's stored status, which only the service can see, and a mirror of
+        // that rule would go stale the moment the write path changed.
+        await this.contentService.validateUpdateWithoutWriting(
+          args['typeSlug'] as string,
+          args['entryId'] as string,
+          { ...dto, ...(dryRunLocale !== undefined ? { locale: dryRunLocale } : {}) },
+        );
+      }
       return {
         action: 'update_content_entry',
         entryId: args['entryId'],

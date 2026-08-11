@@ -1,5 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import { IsBoolean, IsOptional, IsString } from 'class-validator';
+import { toBoolean } from '../../../common/dto/to-boolean.transform';
 
 export class UpsertSeoMetaDto {
   @ApiPropertyOptional()
@@ -50,10 +52,12 @@ export class UpsertSeoMetaDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
+  @Transform(toBoolean)
   noIndex?: boolean;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
+  @Transform(toBoolean)
   noFollow?: boolean;
 }

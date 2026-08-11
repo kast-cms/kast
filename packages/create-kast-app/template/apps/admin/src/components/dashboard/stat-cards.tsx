@@ -1,31 +1,56 @@
 'use client';
 
+import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 import type { DashboardStats } from '@kast-cms/sdk';
-import { FileText, Image, Users } from 'lucide-react';
+import { FileText, Image, PencilLine, Users } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
+
+/**
+ * Tone drives the icon tile only. Published/draft/media/users each get a
+ * distinct tint so the row can be scanned by colour, and the tint is
+ * semantically honest: drafts are "pending", published is "live".
+ */
+type StatTone = 'success' | 'warning' | 'info' | 'brand';
+
+const TONE_TILE: Record<StatTone, string> = {
+  success: 'bg-success-subtle text-success-subtle-foreground',
+  warning: 'bg-warning-subtle text-warning-subtle-foreground',
+  info: 'bg-info-subtle text-info-subtle-foreground',
+  brand: 'bg-primary-subtle text-primary-subtle-foreground',
+};
 
 interface StatCardProps {
   icon: JSX.Element;
   label: string;
   value: number | string;
   sub?: string;
+  tone: StatTone;
 }
 
-function StatCard({ icon, label, value, sub }: StatCardProps): JSX.Element {
+function StatCard({ icon, label, value, sub, tone }: StatCardProps): JSX.Element {
   return (
-    <div className="rounded-lg border bg-white p-5 shadow-sm dark:bg-gray-900">
-      <div className="flex items-center gap-3">
-        <div className="rounded-md bg-indigo-50 p-2 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
+    <Card>
+      <CardContent className="flex items-start justify-between gap-3">
+        <div className="min-w-0 space-y-1">
+          <p className="truncate text-xs font-medium text-muted-foreground">{label}</p>
+          <p className="text-2xl leading-none font-semibold tracking-tight tabular-nums">{value}</p>
+          {sub !== undefined && (
+            <p className="truncate pt-0.5 text-xs text-muted-foreground">{sub}</p>
+          )}
+        </div>
+        <span
+          aria-hidden="true"
+          className={cn(
+            'grid size-9 shrink-0 place-items-center rounded-lg [&_svg]:size-4.5',
+            TONE_TILE[tone],
+          )}
+        >
           {icon}
-        </div>
-        <div>
-          <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{label}</p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
-          {sub !== undefined && <p className="text-xs text-gray-400 dark:text-gray-500">{sub}</p>}
-        </div>
-      </div>
-    </div>
+        </span>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -41,22 +66,25 @@ export function StatCards({ stats }: StatCardsProps): JSX.Element {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <StatCard
-        icon={<FileText size={20} />}
+        icon={<FileText />}
+        tone="success"
         label={t('publishedEntries')}
         value={stats.contentEntries.byStatus.published}
       />
       <StatCard
-        icon={<FileText size={20} />}
+        icon={<PencilLine />}
+        tone="warning"
         label={t('draftEntries')}
         value={stats.contentEntries.byStatus.draft}
       />
       <StatCard
-        icon={<Image size={20} />}
+        icon={<Image />}
+        tone="info"
         label={t('mediaFiles')}
         value={stats.media.total}
         sub={sizeLabel}
       />
-      <StatCard icon={<Users size={20} />} label={t('activeUsers')} value={stats.users.active} />
+      <StatCard icon={<Users />} tone="brand" label={t('activeUsers')} value={stats.users.active} />
     </div>
   );
 }

@@ -1,17 +1,16 @@
 'use client';
 
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { useApiClient, useSession } from '@/lib/session';
 import { AlertTriangle } from 'lucide-react';
 import { useEffect, useState, type JSX } from 'react';
 
 export function MaintenanceBanner(): JSX.Element | null {
+  const client = useApiClient();
   const { session } = useSession();
   const [isActive, setIsActive] = useState(false);
 
   useEffect(() => {
     if (!session?.accessToken) return;
-    const client = createApiClient(session.accessToken);
     client.settings
       .getAll()
       .then((res) => {
@@ -21,15 +20,19 @@ export function MaintenanceBanner(): JSX.Element | null {
       .catch(() => {
         // silently ignore — banner is non-critical
       });
-  }, [session?.accessToken]);
+  }, [session?.accessToken, client]);
 
   if (!isActive) return null;
 
   return (
-    <div className="flex items-center gap-2 bg-yellow-50 border-b border-yellow-200 px-6 py-2 text-sm text-yellow-800">
-      <AlertTriangle className="size-4 shrink-0" />
+    <div
+      role="status"
+      className="flex shrink-0 items-center gap-2 border-b border-warning/30 bg-warning-subtle px-6 py-2 text-sm text-warning-subtle-foreground"
+    >
+      <AlertTriangle className="size-4 shrink-0 text-warning" />
       <span>
-        <strong>Maintenance mode is active.</strong> Public API delivery routes are returning 503.
+        <strong className="font-semibold">Maintenance mode is active.</strong> Public API delivery
+        routes are returning 503.
       </span>
     </div>
   );

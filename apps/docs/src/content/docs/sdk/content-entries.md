@@ -50,6 +50,10 @@ const { data: post } = await kast.content.update('blog-post', entryId, {
 
 ```ts
 await kast.content.publish('blog-post', entryId);
+
+// Publishing is gated on SEO validation. ERROR-tier issues always block; the
+// WARNING tier can be overridden:
+await kast.content.publish('blog-post', entryId, { force: true });
 ```
 
 ## Unpublish

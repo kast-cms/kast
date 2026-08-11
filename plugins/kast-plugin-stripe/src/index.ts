@@ -1,5 +1,6 @@
 import { type IKastPlugin, type KastPluginContext, PluginHook } from '@kast-cms/plugin-sdk';
 import Stripe from 'stripe';
+import { KastApiClient } from './kast-api';
 
 /** Payload emitted on content.published / content.updated. */
 interface ContentLifecyclePayload {
@@ -40,13 +41,14 @@ const METADATA_KEY = 'kastEntryId';
  * Limitation: the Kast plugin context exposes neither an inbound HTTP route
  * registration API nor a content-data accessor. `handleWebhook` /
  * `createCheckoutSession` are therefore provided as callable methods that the
- * host must mount on a route, and product field data is fetched over HTTP from
- * the Kast content API (`KAST_API_URL`).
+ * host must mount on a route, and product field data is fetched over an
+ * authenticated HTTP call to the Kast management API (see `KastApiClient`).
  */
 export class StripePlugin implements IKastPlugin {
   private stripe: Stripe | null = null;
   private webhookSecret = '';
   private productTypeSlug = 'product';
+  private readonly api = new KastApiClient((message) => this.warn(message));
 
   async onLoad(ctx: KastPluginContext): Promise<void> {
     const secretKey = process.env['STRIPE_SECRET_KEY'] ?? '';
@@ -63,6 +65,10 @@ export class StripePlugin implements IKastPlugin {
       typescript: true,
     });
 
+    if (!this.api.isConfigured) {
+      this.warn('KAST_API_TOKEN not set — product entries cannot be read and nothing will sync');
+    }
+
     ctx.on(PluginHook.CONTENT_PUBLISHED, (payload) => this.onPublish(payload));
     ctx.on(PluginHook.CONTENT_UPDATED, (payload) => this.onUpdate(payload));
     ctx.on(PluginHook.CONTENT_TRASHED, (payload) => this.onTrash(payload));
@@ -71,6 +77,7 @@ export class StripePlugin implements IKastPlugin {
       provider: 'stripe',
       productTypeSlug: this.productTypeSlug,
       webhookConfigured: this.webhookSecret.length > 0,
+      contentApiConfigured: this.api.isConfigured,
       configuredAt: new Date().toISOString(),
     });
 
@@ -208,15 +215,12 @@ export class StripePlugin implements IKastPlugin {
   /**
    * Retrieves a product entry's field data from the Kast content API. See the
    * class-level note for why HTTP is used here rather than a context method.
+   * A readable entry with no locale data yields `{}`; an unreadable one `null`.
    */
   private async fetchEntryFields(entryId: string): Promise<Record<string, unknown> | null> {
-    const base = (process.env['KAST_API_URL'] ?? 'http://localhost:3001').replace(/\/$/, '');
-    const slug = encodeURIComponent(this.productTypeSlug);
-    const url = `${base}/api/v1/content-types/${slug}/entries/${encodeURIComponent(entryId)}`;
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const json = (await res.json()) as { data?: KastEntry };
-    return (json.data?.locales?.[0]?.data ?? {}) as Record<string, unknown>;
+    const entry = await this.api.fetchEntry<KastEntry>(this.productTypeSlug, entryId);
+    if (!entry) return null;
+    return (entry.locales?.[0]?.data ?? {}) as Record<string, unknown>;
   }
 
   private requireStripe(): Stripe {

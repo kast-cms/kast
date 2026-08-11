@@ -2,62 +2,43 @@
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { SeparatorWithLabel } from '@/components/ui/separator';
-import { PlugZap, Save } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PlugZap } from 'lucide-react';
 import { useState, type JSX } from 'react';
-import { SettingsField } from './settings-field';
+import { EnvManagedField } from './settings-field';
 import type { UseSettingsReturn } from './use-settings';
-
-const PROVIDERS = ['LOCAL', 'S3', 'R2', 'MINIO'] as const;
-type StorageProvider = (typeof PROVIDERS)[number];
 
 interface Props {
   s: UseSettingsReturn;
 }
 
-export function StorageTab({ s }: Props): JSX.Element {
-  const [provider, setProvider] = useState<StorageProvider>(
-    () => (s.getValue('storage.provider') as StorageProvider | undefined) ?? 'LOCAL',
-  );
-  const [maxSizeMb, setMaxSizeMb] = useState<string>(() =>
-    String(s.getValue('storage.maxFileSizeMb') ?? '10'),
-  );
-  const [mimeTypes, setMimeTypes] = useState<string>(() => {
-    const v = s.getValue('storage.allowedMimeTypes');
-    return Array.isArray(v) ? (v as string[]).join(', ') : String(v ?? 'image/*, application/pdf');
-  });
-  const [testResult, setTestResult] = useState<{ provider: string; status: string } | null>(null);
-  const [testing, setTesting] = useState(false);
+interface ProbeResult {
+  provider: string;
+  status: string;
+  warning?: string;
+}
 
-  const save = async (): Promise<void> => {
-    await s.patchSettings([
-      { key: 'storage.provider', value: provider },
-      { key: 'storage.maxFileSizeMb', value: parseInt(maxSizeMb, 10) },
-      { key: 'storage.allowedMimeTypes', value: mimeTypes.split(',').map((m) => m.trim()) },
-    ]);
-  };
+/**
+ * Read-only by design. Storage provider, size cap and MIME allow-list are all
+ * resolved from the environment at boot — the adapter is selected once during
+ * DI and the upload limit is baked into multer's options — so a value edited
+ * here could never take effect. The API refuses to store these keys and does
+ * not return them, so the previous editable form saved nothing and reported
+ * success. The connection test below is the part that was always real.
+ */
+export function StorageTab({ s }: Props): JSX.Element {
+  const [testResult, setTestResult] = useState<ProbeResult | null>(null);
+  const [testError, setTestError] = useState<string | null>(null);
+  const [testing, setTesting] = useState(false);
 
   const runTest = async (): Promise<void> => {
     setTesting(true);
+    setTestError(null);
     try {
-      const res = await s.testStorage();
-      setTestResult(res);
+      setTestResult((await s.testStorage()) as ProbeResult);
+    } catch (err) {
+      setTestResult(null);
+      setTestError(err instanceof Error ? err.message : 'Storage test failed.');
     } finally {
       setTesting(false);
     }
@@ -68,79 +49,36 @@ export function StorageTab({ s }: Props): JSX.Element {
       <Card>
         <CardHeader>
           <CardTitle>Storage</CardTitle>
-          <CardDescription>Where uploaded media is written, and what is accepted.</CardDescription>
+          <CardDescription>
+            Where uploaded media is written, and what is accepted. These are read from the
+            API&apos;s environment at startup and cannot be changed from the admin.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5 pt-4">
-          <SettingsField
+          <EnvManagedField
             label="Storage Provider"
-            htmlFor="storage-provider"
-            required
-            hint="LOCAL keeps files on the API server’s disk; the others write to object storage."
-          >
-            <Select value={provider} onValueChange={(v) => setProvider(v as StorageProvider)}>
-              <SelectTrigger id="storage-provider">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PROVIDERS.map((p) => (
-                  <SelectItem key={p} value={p}>
-                    {p}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </SettingsField>
-
-          <SeparatorWithLabel>Upload limits</SeparatorWithLabel>
-
-          <SettingsField
+            envVar="STORAGE_PROVIDER"
+            hint="local keeps files on the API server’s disk; s3 and r2 write to object storage. The adapter is chosen once when the API boots."
+          />
+          <EnvManagedField
             label="Max File Size"
-            htmlFor="max-size"
-            required
-            hint="Applies to a single upload. Larger files are rejected before they are stored."
-          >
-            <Input
-              id="max-size"
-              value={maxSizeMb}
-              onChange={(e) => setMaxSizeMb(e.target.value)}
-              placeholder="10"
-              className="pe-12"
-              endAdornment={<span className="text-xs font-medium">MB</span>}
-            />
-          </SettingsField>
-
-          <SettingsField
+            envVar="UPLOAD_MAX_FILE_SIZE_MB"
+            hint="Applies to a single upload. The request is aborted at this size before the body is buffered."
+          />
+          <EnvManagedField
             label="Allowed MIME Types"
-            htmlFor="mime-types"
-            hint="Comma-separated. Wildcards such as image/* are allowed."
-          >
-            <Input
-              id="mime-types"
-              value={mimeTypes}
-              onChange={(e) => setMimeTypes(e.target.value)}
-              placeholder="image/*, application/pdf"
-              className="font-mono"
-            />
-          </SettingsField>
+            envVar="UPLOAD_ALLOWED_MIME_TYPES"
+            hint="Comma-separated. image/svg+xml is excluded by default: an SVG is a script-bearing document and nothing here sanitises one."
+          />
         </CardContent>
-        <CardFooter className="justify-end">
-          <Button
-            onClick={() => {
-              void save();
-            }}
-            loading={s.saving}
-          >
-            {!s.saving && <Save />}
-            {s.saving ? 'Saving…' : 'Save Storage'}
-          </Button>
-        </CardFooter>
       </Card>
 
       <Card>
         <CardHeader>
           <CardTitle>Connection</CardTitle>
           <CardDescription>
-            Checks that the saved provider can be reached with the current credentials.
+            Writes a probe object through the live adapter, reads it back, compares the bytes and
+            deletes it.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 pt-4">
@@ -156,9 +94,16 @@ export function StorageTab({ s }: Props): JSX.Element {
           </Button>
 
           {testResult !== null && (
-            <Alert variant="success">
+            <Alert variant={testResult.warning === undefined ? 'success' : 'warning'}>
               <AlertTitle>{testResult.provider} reachable</AlertTitle>
-              <AlertDescription>{testResult.status}</AlertDescription>
+              <AlertDescription>{testResult.warning ?? testResult.status}</AlertDescription>
+            </Alert>
+          )}
+
+          {testError !== null && (
+            <Alert variant="destructive">
+              <AlertTitle>Storage test failed</AlertTitle>
+              <AlertDescription>{testError}</AlertDescription>
             </Alert>
           )}
         </CardContent>

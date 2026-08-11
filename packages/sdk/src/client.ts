@@ -17,11 +17,13 @@ import type {
   ApiListResponse,
   ApiResponse,
   BulkActionBody,
+  BulkActionResult,
   ContentEntryDetail,
   ContentEntrySummary,
   ContentEntryVersion,
   CreateEntryBody,
   EntryListParams,
+  PublishEntryBody,
   SchedulePublishBody,
   UpdateEntryBody,
   VersionListParams,
@@ -151,9 +153,15 @@ class ContentResource {
     });
   }
 
-  publish(typeSlug: string, id: string): Promise<ApiResponse<ContentEntryDetail>> {
+  /** Pass `{ force: true }` to publish despite SEO warnings; errors still block. */
+  publish(
+    typeSlug: string,
+    id: string,
+    body: PublishEntryBody = {},
+  ): Promise<ApiResponse<ContentEntryDetail>> {
     return this.client.request(`/api/v1/content-types/${typeSlug}/entries/${id}/publish`, {
       method: 'POST',
+      body,
     });
   }
 
@@ -169,10 +177,19 @@ class ContentResource {
     });
   }
 
-  restore(typeSlug: string, id: string): Promise<ApiResponse<ContentEntryDetail>> {
-    return this.client.request(`/api/v1/content-types/${typeSlug}/entries/${id}/restore`, {
+  /**
+   * Moves an ARCHIVED entry back to draft. Restoring a *trashed* entry is a
+   * different operation and lives on `client.trash.restore()`.
+   */
+  unarchive(typeSlug: string, id: string): Promise<ApiResponse<ContentEntryDetail>> {
+    return this.client.request(`/api/v1/content-types/${typeSlug}/entries/${id}/unarchive`, {
       method: 'POST',
     });
+  }
+
+  /** @deprecated Ambiguous with trash restore — use {@link unarchive}. */
+  restore(typeSlug: string, id: string): Promise<ApiResponse<ContentEntryDetail>> {
+    return this.unarchive(typeSlug, id);
   }
 
   schedulePublish(
@@ -198,21 +215,27 @@ class ContentResource {
     });
   }
 
-  bulkTrash(typeSlug: string, ids: string[]): Promise<void> {
+  /**
+   * Per-item and not atomic: inspect `data.results` for the ids that failed
+   * rather than assuming the whole batch applied.
+   */
+  bulkTrash(typeSlug: string, ids: string[]): Promise<ApiResponse<BulkActionResult>> {
     return this.client.request(`/api/v1/content-types/${typeSlug}/entries/bulk/trash`, {
       method: 'POST',
       body: { ids } satisfies BulkActionBody,
     });
   }
 
-  bulkPublish(typeSlug: string, ids: string[]): Promise<void> {
+  /** Each id runs the schema and SEO gates on its own; see {@link bulkTrash}. */
+  bulkPublish(typeSlug: string, ids: string[]): Promise<ApiResponse<BulkActionResult>> {
     return this.client.request(`/api/v1/content-types/${typeSlug}/entries/bulk/publish`, {
       method: 'POST',
       body: { ids } satisfies BulkActionBody,
     });
   }
 
-  bulkUnpublish(typeSlug: string, ids: string[]): Promise<void> {
+  /** Per-item and not atomic; see {@link bulkTrash}. */
+  bulkUnpublish(typeSlug: string, ids: string[]): Promise<ApiResponse<BulkActionResult>> {
     return this.client.request(`/api/v1/content-types/${typeSlug}/entries/bulk/unpublish`, {
       method: 'POST',
       body: { ids } satisfies BulkActionBody,

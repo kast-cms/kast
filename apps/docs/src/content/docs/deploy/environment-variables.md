@@ -20,6 +20,39 @@ sidebar:
 | `PORT`         | `3000`        | HTTP port the API listens on                              |
 | `CORS_ORIGINS` | `*`           | Comma-separated allowed origins. Lock down in production. |
 
+## Security
+
+| Variable                     | Default                    | Notes                                                                                   |
+| ---------------------------- | -------------------------- | --------------------------------------------------------------------------------------- |
+| `KAST_SECRET_ENCRYPTION_KEY` | falls back to `JWT_SECRET` | ≥ 32 chars. Encrypts secret settings (e.g. `smtp.password`) at rest.                    |
+| `WEBHOOK_ALLOWED_HOSTS`      | _(empty)_                  | Hosts webhooks may target despite resolving to a private address. Empty = default-deny. |
+
+:::caution
+If `KAST_SECRET_ENCRYPTION_KEY` is unset, secrets are encrypted with
+`JWT_SECRET` — rotating `JWT_SECRET` then makes every stored secret setting
+unreadable. Set it explicitly in production.
+:::
+
+### Webhook egress policy
+
+Webhook targets are validated at create/update time **and** again before every
+delivery, including after each redirect hop. Rejected by default:
+
+- any scheme other than `http`/`https`
+- loopback, private, link-local, unique-local, multicast and other reserved
+  addresses (IPv4 and IPv6, including IPv4-mapped forms)
+- hostnames that resolve to any of the above
+
+List hosts in `WEBHOOK_ALLOWED_HOSTS` (comma or space separated, `*.suffix`
+wildcards supported) to allow them anyway.
+
+## Plugins
+
+| Variable         | Default                            | Notes                                                                                              |
+| ---------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `KAST_API_URL`   | `http://127.0.0.1:${PORT ?? 3000}` | API origin plugins call back on. **Not** the admin panel.                                          |
+| `KAST_API_TOKEN` | —                                  | Required by the Meilisearch and Stripe plugins to read entries. A `READ_ONLY` token is sufficient. |
+
 ## Redis
 
 | Variable         | Default     | Notes                                                                 |
@@ -37,11 +70,11 @@ sidebar:
 
 ## Storage
 
-| Variable            | Default                         | Notes                             |
-| ------------------- | ------------------------------- | --------------------------------- |
-| `STORAGE_PROVIDER`  | `local`                         | One of `local`, `s3`, `r2`, `gcs` |
-| `STORAGE_LOCAL_DIR` | `./uploads`                     | Directory for local storage       |
-| `STORAGE_LOCAL_URL` | `http://localhost:3000/uploads` | Public URL prefix for local files |
+| Variable            | Default                                    | Notes                                                                                                                                   |
+| ------------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `STORAGE_PROVIDER`  | `local`                                    | One of `local`, `s3`, `r2`, `gcs`                                                                                                       |
+| `STORAGE_LOCAL_DIR` | `./uploads`                                | Directory for local storage                                                                                                             |
+| `STORAGE_LOCAL_URL` | `http://localhost:3000/api/v1/media/files` | Public URL prefix for local files. The API serves them from `/api/v1/media/files`; set this only if a CDN or proxy fronts the directory |
 
 ### S3 / R2
 
@@ -71,6 +104,17 @@ Required when `STORAGE_PROVIDER=s3` or `STORAGE_PROVIDER=r2`:
 | `GITHUB_CLIENT_ID`     | GitHub OAuth app client ID                                 |
 | `GITHUB_CLIENT_SECRET` | GitHub OAuth app client secret                             |
 | `SITE_URL`             | Base URL of your deployment — used for OAuth redirect URIs |
+
+## Admin URL
+
+| Variable    | Default                       | Notes                                                |
+| ----------- | ----------------------------- | ---------------------------------------------------- |
+| `ADMIN_URL` | `http://localhost:3001/admin` | Base URL of the admin panel, including its base path |
+
+**Set this in production.** Every link Kast emails — password reset and user
+invitations — is built from `ADMIN_URL`, so leaving it at the default sends
+recipients a `localhost` link they cannot open. Include the `/admin` base path;
+that is where the admin app is mounted.
 
 ## SMTP email (optional)
 

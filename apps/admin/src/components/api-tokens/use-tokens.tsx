@@ -1,8 +1,7 @@
 'use client';
 
 import { useToast } from '@/components/ui/use-toast';
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { useApiClient } from '@/lib/session';
 import type { ApiTokenCreated, ApiTokenSummary, CreateApiTokenBody } from '@kast-cms/sdk';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState } from 'react';
@@ -17,8 +16,7 @@ export interface UseTokensReturn {
 }
 
 export function useTokens(): UseTokensReturn {
-  const { session } = useSession();
-  const client = createApiClient(session?.accessToken);
+  const client = useApiClient();
   const { toast } = useToast();
   const t = useTranslations('apiTokens');
 
@@ -47,7 +45,7 @@ export function useTokens(): UseTokensReturn {
     } finally {
       setLoading(false);
     }
-  }, [reportError]);
+  }, [reportError, client]);
 
   useEffect(() => {
     void loadTokens();
@@ -64,7 +62,7 @@ export function useTokens(): UseTokensReturn {
         throw err;
       }
     },
-    [loadTokens, reportError],
+    [loadTokens, reportError, client],
   );
 
   const revoke = useCallback(
@@ -76,7 +74,7 @@ export function useTokens(): UseTokensReturn {
         reportError(err);
       }
     },
-    [loadTokens, reportError],
+    [loadTokens, reportError, client],
   );
 
   const clearCreatedToken = useCallback((): void => {

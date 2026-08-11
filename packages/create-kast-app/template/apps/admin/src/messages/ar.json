@@ -76,7 +76,8 @@
     "submit": "إنشاء الحساب",
     "submitting": "جارٍ إنشاء الحساب…",
     "passwordMismatch": "كلمتا المرور غير متطابقتين.",
-    "errorGeneric": "حدث خطأ ما. يرجى المحاولة مرة أخرى."
+    "errorGeneric": "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
+    "errorPasswordMismatch": "كلمتا المرور غير متطابقتين."
   },
   "common": {
     "loading": "جارٍ التحميل…",
@@ -100,7 +101,8 @@
   "error": {
     "title": "حدث خطأ ما",
     "description": "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.",
-    "retry": "حاول مرة أخرى"
+    "retry": "حاول مرة أخرى",
+    "digest": "المرجع: {digest}"
   },
   "contentTypes": {
     "title": "أنواع المحتوى",
@@ -154,15 +156,19 @@
       "TEXT": "نص",
       "RICH_TEXT": "نص منسق",
       "NUMBER": "رقم",
-      "BOOLEAN": "منطقي",
+      "BOOLEAN": "قيمة منطقية",
       "DATE": "تاريخ",
+      "DATETIME": "تاريخ ووقت",
       "MEDIA": "وسائط",
       "RELATION": "علاقة",
       "JSON": "JSON",
       "EMAIL": "بريد إلكتروني",
       "URL": "رابط",
-      "ENUM": "قائمة",
-      "UID": "معرف فريد"
+      "SELECT": "اختيار",
+      "MULTI_SELECT": "اختيار متعدد",
+      "COLOR": "لون",
+      "COMPONENT": "مكوّن",
+      "BLOCK": "كتلة"
     },
     "fieldDrawer": {
       "addTitle": "إضافة حقل",
@@ -190,6 +196,13 @@
   "content": {
     "title": "المحتوى",
     "description": "تصفح وإدارة مدخلات المحتوى.",
+    "landing": {
+      "description": "اختر نوع محتوى لتصفح إدخالاته وإدارتها.",
+      "entries": "{count, plural, =0 {لا توجد إدخالات} one {# إدخال} other {# إدخالات}}",
+      "emptyTitle": "لا توجد أنواع محتوى بعد",
+      "emptyDescription": "أنشئ نوع محتوى قبل أن تتمكن من إضافة إدخالات.",
+      "manageTypes": "إدارة أنواع المحتوى"
+    },
     "newEntry": "مدخل جديد",
     "emptyTitle": "لا توجد مدخلات بعد",
     "emptyDescription": "أنشئ أول مدخل لهذا النوع من المحتوى.",
@@ -278,6 +291,14 @@
       "confirmDescription": "سيؤدي هذا إلى استبدال محتوى المسودة الحالية. سيتم ضبط المدخل على مسودة.",
       "confirm": "استرجاع",
       "cancel": "إلغاء"
+    },
+    "bulkPartial": "تم تطبيق {succeeded}، وفشل {failed}",
+    "seoWarnings": {
+      "title": "النشر مع وجود تحذيرات تحسين محركات البحث؟",
+      "hint": "يحتوي هذا المدخل على تحذيرات تتعلق بتحسين محركات البحث. يمكنك النشر على أي حال، أو الإغلاق وإصلاحها أولاً.",
+      "cancel": "إلغاء",
+      "confirm": "انشر على أي حال",
+      "publishing": "جارٍ النشر…"
     }
   },
   "mediaLibrary": {
@@ -370,7 +391,14 @@
       "cannotSelfSuspend": "لا يمكنك إيقاف حسابك الخاص."
     },
     "noUsers": "لا يوجد مستخدمون.",
-    "never": "أبداً"
+    "never": "أبداً",
+    "errorTitle": "فشل إجراء المستخدم",
+    "loadError": "فشل تحميل المستخدمين.",
+    "resendInvite": "إعادة إرسال الدعوة",
+    "revokeInvite": "إلغاء الدعوة",
+    "revokeInviteConfirm": "هل تريد إلغاء هذه الدعوة؟ سيتوقف الرابط المُرسَل عن العمل.",
+    "inviteResent": "تمت إعادة إرسال الدعوة.",
+    "inviteRevoked": "تم إلغاء الدعوة."
   },
   "roles": {
     "title": "الأدوار",
@@ -408,12 +436,23 @@
       },
       "resources": {
         "content": "المحتوى",
+        "content-types": "أنواع المحتوى",
         "media": "الوسائط",
         "seo": "تحسين محركات البحث",
-        "content-types": "أنواع المحتوى",
+        "menus": "القوائم",
+        "forms": "النماذج",
+        "search": "البحث",
+        "trash": "المهملات",
         "users": "المستخدمون",
         "roles": "الأدوار",
-        "tokens": "رموز API"
+        "tokens": "رموز API",
+        "agent-tokens": "رموز الوكلاء",
+        "webhooks": "خطافات الويب",
+        "plugins": "الإضافات",
+        "locales": "اللغات",
+        "settings": "الإعدادات",
+        "audit": "سجل التدقيق",
+        "dashboard": "لوحة التحكم"
       },
       "save": "حفظ الصلاحيات",
       "saving": "جارٍ الحفظ…",
@@ -421,7 +460,9 @@
       "delete": "حذف",
       "deleteConfirm": "حذف الدور \"{name}\"؟ لا يمكن التراجع عن هذا الإجراء."
     },
-    "noRoles": "لا توجد أدوار."
+    "noRoles": "لا توجد أدوار.",
+    "errorTitle": "فشل إجراء الدور",
+    "loadError": "فشل تحميل الأدوار."
   },
   "apiTokens": {
     "title": "رموز API",
@@ -470,7 +511,9 @@
     "never": "أبداً",
     "noExpiry": "لا انتهاء",
     "revoke": "إلغاء",
-    "revokeConfirm": "إلغاء الرمز \"{name}\"؟ ستفقد جميع الخدمات التي تستخدمه الوصول."
+    "revokeConfirm": "إلغاء الرمز \"{name}\"؟ ستفقد جميع الخدمات التي تستخدمه الوصول.",
+    "errorTitle": "فشل إجراء الرمز",
+    "loadError": "فشل تحميل الرموز."
   },
   "seo": {
     "title": "تحسين محركات البحث",
@@ -496,6 +539,18 @@
       "title": "قواعد إعادة التوجيه",
       "description": "إدارة قواعد إعادة التوجيه 301/302.",
       "createButton": "إضافة إعادة توجيه",
+      "importButton": "استيراد CSV",
+      "importing": "جارٍ الاستيراد…",
+      "exportButton": "تصدير CSV",
+      "exporting": "جارٍ التصدير…",
+      "loading": "جارٍ التحميل…",
+      "yes": "نعم",
+      "no": "لا",
+      "importSuccessTitle": "اكتمل الاستيراد",
+      "importSuccessDescription": "{created, plural, =0 {لم يتم إنشاء عمليات إعادة توجيه} one {تم إنشاء # عملية إعادة توجيه} other {تم إنشاء # عمليات إعادة توجيه}}، تم تخطي {skipped}، {errors} أخطاء.",
+      "importErrorTitle": "فشل الاستيراد",
+      "exportErrorTitle": "فشل التصدير",
+      "genericError": "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
       "emptyTitle": "لا توجد إعادة توجيه بعد",
       "emptyDescription": "أضف أول قاعدة إعادة توجيه.",
       "table": {
@@ -730,12 +785,25 @@
       "subtitle": "{total} إرسال",
       "back": "رجوع",
       "exportCsv": "تصدير CSV",
+      "view": "عرض",
+      "markRead": "تعليم كمقروء",
+      "markUnread": "تعليم كغير مقروء",
       "deleteConfirm": "حذف هذه الإرسالة؟ لا يمكن التراجع.",
       "prev": "السابق",
       "next": "التالي",
       "table": {
         "date": "التاريخ",
         "actions": "الإجراءات"
+      },
+      "detail": {
+        "title": "تفاصيل الإرسال",
+        "submittedAt": "أُرسل في",
+        "ipAddress": "عنوان IP",
+        "userAgent": "وكيل المستخدم",
+        "fields": "بيانات النموذج",
+        "empty": "لم يتم التقاط أي بيانات.",
+        "close": "إغلاق",
+        "delete": "حذف"
       }
     }
   },
@@ -809,9 +877,11 @@
     "columns": {
       "name": "الاسم",
       "trashedAt": "تاريخ الحذف",
+      "trashedBy": "حذفه",
       "daysUntilDeletion": "ينتهي في",
       "actions": "إجراءات"
-    }
+    },
+    "unknownActor": "غير معروف"
   },
   "auditLog": {
     "title": "سجل التدقيق",

@@ -54,12 +54,18 @@ Returns a new `accessToken` and rotated `refreshToken`. The old refresh token is
 
 ```http
 POST /api/v1/auth/logout
-Authorization: Bearer <accessToken>
+Content-Type: application/json
 
 { "refreshToken": "eyJ..." }
 ```
 
 Revokes the refresh token. Returns `204 No Content`.
+
+**No `Authorization` header is required.** The refresh token in the body _is_ the
+credential being surrendered, so the route grants nothing a caller does not
+already hold, and requiring an access token would break the common case: a
+browser logout is issued by a server-side route handler that can read only the
+httpOnly refresh cookie. Rate limit: 60 / minute.
 
 ## Get current user
 
@@ -77,19 +83,50 @@ Authorization: Bearer <accessToken>
 { "name": "Oday Bakkour" }
 ```
 
-## OAuth — Google
+## OAuth
 
 ```http
 GET /api/v1/auth/oauth/google
-```
-
-Redirects to Google's OAuth consent screen. On success, redirects to `/oauth-callback?accessToken=...&refreshToken=...`.
-
-```http
 GET /api/v1/auth/oauth/github
 ```
 
-Same flow for GitHub.
+Redirects to the provider's consent screen. On success the browser is sent to
+`<ADMIN_URL>/oauth-callback?code=...` — a **single-use authorization code**, not
+the tokens. Tokens in a redirect URL leak through browser history, the
+`Referer` header and server logs.
+
+Exchange the code within 60 seconds:
+
+```http
+POST /api/v1/auth/oauth/exchange
+Content-Type: application/json
+
+{ "code": "<code-from-callback>" }
+```
+
+Returns the token pair. The code is deleted on exchange, even if it had expired.
+
+:::caution
+`ADMIN_URL` must include the admin's base path (`http://localhost:3001/admin` by
+default) — the callback is a page in the admin app, not an API route.
+:::
+
+### Self-registration policy
+
+An OAuth identity with **no matching account cannot create one** unless the
+installation opts in. Any provider will return an address for any inbox its own
+users control, so auto-provisioning is a self-registration policy rather than an
+authentication detail, and it fails closed.
+
+| Variable                        | Values                                        | Default    |
+| ------------------------------- | --------------------------------------------- | ---------- |
+| `OAUTH_SIGNUP_MODE`             | `disabled` / `allowlist` / `open`             | `disabled` |
+| `OAUTH_SIGNUP_ALLOWED_DOMAINS`  | comma-separated email domains, allowlist mode | empty      |
+| `OAUTH_SIGNUP_REQUIRE_VERIFIED` | `true` / `false`                              | `true`     |
+
+An unrecognised `OAUTH_SIGNUP_MODE` logs a warning and falls back to `disabled`.
+Set `OAUTH_SIGNUP_REQUIRE_VERIFIED=false` only for providers that do not assert
+the claim (GitHub). Signing in to an account that already exists is unaffected.
 
 ## Password reset
 
@@ -116,7 +153,29 @@ Content-Type: application/json
 }
 ```
 
-Token is single-use and expires after 1 hour. On success, all refresh tokens for the user are revoked.
+Token is single-use and expires after 1 hour. On success, all refresh tokens for
+the user are revoked.
+
+Redemption is atomic: the token is claimed by a conditional update inside one
+transaction, so two concurrent submissions of the same token produce exactly one
+winner and the loser gets `400`.
+
+## Accept an invitation
+
+```http
+POST /api/v1/auth/accept-invite
+Content-Type: application/json
+
+{
+  "token": "<token-from-invitation-email>",
+  "password": "new-secure-password"
+}
+```
+
+Sets the password on an invited account and marks it verified. The invitation
+token is single-use and expires after 7 days; an administrator can re-send or
+revoke it (`POST` / `DELETE /api/v1/users/:id/invite`). Rate limit: 5 / 15
+minutes.
 
 ## Authorization header
 

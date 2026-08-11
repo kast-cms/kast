@@ -25,18 +25,21 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const TEMPLATE_DIR = join(__dirname, '..', 'template');
 
 /**
- * Writes the runtime `.env` from `.env.example`, swapping the placeholder
- * JWT_SECRET for a freshly generated one. The placeholder is long enough to
- * satisfy the API's min-32-character check, so copying it verbatim would leave
- * every scaffolded project signing tokens with the same publicly known key
- * without anything ever failing to prompt the user.
+ * Writes the runtime `.env` from `.env.example`, swapping every placeholder
+ * secret for a freshly generated one. The placeholders are long enough to
+ * satisfy the API's min-32-character checks, so copying them verbatim would
+ * leave every scaffolded project signing tokens and encrypting stored secrets
+ * with the same publicly known keys without anything ever failing to prompt the
+ * user.
  */
 async function writeEnvFile(targetDir: string): Promise<void> {
   const envExample = await readFile(join(targetDir, '.env.example'), 'utf-8');
-  const env = envExample.replace(
-    /^JWT_SECRET=.*$/m,
-    `JWT_SECRET=${randomBytes(48).toString('base64url')}`,
-  );
+  const env = envExample
+    .replace(/^JWT_SECRET=.*$/m, `JWT_SECRET=${randomBytes(48).toString('base64url')}`)
+    .replace(
+      /^KAST_SECRET_ENCRYPTION_KEY=.*$/m,
+      `KAST_SECRET_ENCRYPTION_KEY=${randomBytes(48).toString('base64url')}`,
+    );
   await writeFile(join(targetDir, '.env'), env, 'utf-8');
 }
 

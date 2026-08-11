@@ -1,82 +1,105 @@
 ---
 title: Trash API
-description: List, restore, and permanently delete trashed content entries and media files.
+description: List, restore, and permanently delete trashed content entries, media files, users and forms.
 ---
+
+Four models are recoverable: `content`, `media`, `user` and `form`. The model is
+part of the path on every write route.
+
+Trashed records are kept for **30 days**, then removed by the `kast.trash` cron
+job. Each purged record is written to the audit log with no actor and
+`{ reason: "retention" }`.
 
 ## List trashed items
 
 ```http
 GET /api/v1/trash
-Authorization: Bearer <token>   (EDITOR+)
-?resource=ContentEntry&limit=20&cursor=<cursor>
+Authorization: Bearer <token>   (ADMIN+)
+?model=content&limit=20&cursor=<cursor>
 ```
 
 **Query params:**
 
-| Param      | Values                      | Description             |
-| ---------- | --------------------------- | ----------------------- |
-| `resource` | `ContentEntry`, `MediaFile` | Filter by resource type |
-| `limit`    | 1–100                       | Page size               |
-| `cursor`   | string                      | Pagination cursor       |
+| Param    | Values                             | Description                         |
+| -------- | ---------------------------------- | ----------------------------------- |
+| `model`  | `content`, `media`, `user`, `form` | Restrict to one model; omit for all |
+| `limit`  | 1–100 (default 20)                 | Page size                           |
+| `cursor` | string                             | Opaque cursor from `nextCursor`     |
 
 **Response:**
 
 ```json
 {
-  "data": [
+  "items": [
     {
       "id": "clxyz...",
-      "resource": "ContentEntry",
-      "resourceId": "entry_...",
-      "title": "Hello World",
-      "typeSlug": "blog-post",
+      "model": "content",
+      "name": "hello-world",
       "trashedAt": "2026-04-20T10:00:00Z",
-      "trashedBy": { "id": "...", "name": "Oday Bakkour" },
-      "expiresAt": "2026-05-20T10:00:00Z"
+      "trashedByUserId": "usr_...",
+      "trashedByName": "Oday Bakkour",
+      "daysUntilDeletion": 27
     }
   ],
-  "meta": { "total": 5, "cursor": null }
+  "total": 5,
+  "nextCursor": "MjAyNi0wNC0yMFQxMDowMDowMFp8Y2x4eXo"
 }
 ```
 
-`expiresAt` is 30 days after `trashedAt`. Items are auto-deleted by the `kast.trash` cron job after this date.
+`trashedByName` is resolved for the returned page and is `null` when the delete
+path recorded no actor or that account is itself gone.
+
+### Paging
+
+`nextCursor` is a keyset cursor spanning **every** model in the listing, not a
+row id. Pass it back as `cursor` to continue; `null` means the last page. A
+cursor the API did not issue is rejected with `400` rather than silently paging
+from the wrong place — slicing a concatenation instead would let whichever model
+is queried first fill the page and strand the others.
 
 ## Restore
 
 ```http
-POST /api/v1/trash/:id/restore
-Authorization: Bearer <token>   (EDITOR+)
+POST /api/v1/trash/:model/:id/restore
+Authorization: Bearer <token>   (ADMIN+)
 ```
 
-Sets entry status to `DRAFT`. Returns `200` with the restored resource.
+Returns `200`. Restoring:
+
+- **content** — clears `trashedAt` and returns the entry to `DRAFT`.
+- **user** — clears `trashedAt` and sets `isActive: true`, because trashing a
+  user also deactivates the account. A user who was already deactivated _before_
+  being trashed therefore comes back active; the schema records no prior state.
+- **media**, **form** — clears `trashedAt`.
+
+Restoring something that is not in the trash is a `404`.
+
+:::caution[Restoring a user is rank-checked]
+Because restoring a user sets `isActive: true` — and `isActive` is the only gate
+on every login path — it re-enables the account. It therefore enforces the same
+rule as `PATCH /api/v1/users/:id` (BR-USR-006): unless you are a `SUPER_ADMIN`,
+restoring a user whose highest role ranks at or above your own is refused with
+`403 "You cannot manage a user with an equal or higher role"`.
+
+The same check applies to `DELETE /api/v1/trash/user/:id` (permanent delete), so
+holding `trash:delete` is not by itself enough to destroy a higher-ranked
+account. The other models carry no privilege and are not rank-checked.
+:::
+
+:::note
+This is distinct from `POST /api/v1/content-types/:typeSlug/entries/:id/unarchive`,
+which returns an _archived_ (not trashed) entry to draft.
+:::
 
 ## Permanent delete
 
 ```http
-DELETE /api/v1/trash/:id
-Authorization: Bearer <token>   (ADMIN+)
+DELETE /api/v1/trash/:model/:id
+Authorization: Bearer <token>   (SUPER_ADMIN only)
 ```
 
-Irreversibly removes the record from the database.
+Returns `204`. Irreversible.
 
-## Bulk restore
-
-```http
-POST /api/v1/trash/bulk-restore
-Authorization: Bearer <token>
-
-{ "ids": ["id1", "id2"] }
-```
-
-## Bulk permanent delete
-
-```http
-POST /api/v1/trash/bulk-delete
-Authorization: Bearer <token>   (ADMIN+)
-
-{ "ids": ["id1", "id2"] }
-```
-
-## Auto-cleanup
-
-The `kast.trash` BullMQ queue runs a cron job daily at midnight UTC. It permanently deletes all items where `trashedAt < NOW() - 30 days`. The cleanup count is logged to the audit log.
+For `media` this also deletes the stored object, its thumbnails and the
+pre-optimisation original — permanently deleting a file releases its bytes,
+while moving it to the trash deliberately keeps them so a restore is not broken.

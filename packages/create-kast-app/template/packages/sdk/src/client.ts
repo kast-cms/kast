@@ -3,6 +3,7 @@ import { AuditResource } from './audit-resource.js';
 import { AuthResource, ContentTypesResource, HealthResource } from './content-types-resource.js';
 import { DashboardResource } from './dashboard-resource.js';
 import { FormsResource } from './forms-resource.js';
+import { KastHttpClient } from './http-client.js';
 import { LocalesResource } from './locales-resource.js';
 import { MediaResource } from './media-resource.js';
 import { MenusResource } from './menus-resource.js';
@@ -16,12 +17,13 @@ import type {
   ApiListResponse,
   ApiResponse,
   BulkActionBody,
+  BulkActionResult,
   ContentEntryDetail,
   ContentEntrySummary,
   ContentEntryVersion,
   CreateEntryBody,
   EntryListParams,
-  KastClientOptions,
+  PublishEntryBody,
   SchedulePublishBody,
   UpdateEntryBody,
   VersionListParams,
@@ -30,97 +32,7 @@ import { UsersResource } from './users-resource.js';
 import { VersionsResource } from './versions-resource.js';
 import { WebhooksResource } from './webhooks-resource.js';
 
-interface RequestOptions {
-  method?: string;
-  body?: unknown;
-  formData?: FormData;
-  headers?: Record<string, string>;
-}
-
-export class KastClient {
-  private readonly baseUrl: string;
-  private readonly apiKey: string | undefined;
-  private accessToken: string | undefined;
-  private readonly _fetch: typeof globalThis.fetch;
-
-  constructor(options: KastClientOptions) {
-    this.baseUrl = options.baseUrl.replace(/\/$/, '');
-    this.apiKey = options.apiKey;
-    this.accessToken = options.accessToken;
-    this._fetch = options.fetch ?? globalThis.fetch;
-  }
-
-  setAccessToken(token: string): void {
-    this.accessToken = token;
-  }
-
-  getBaseUrl(): string {
-    return this.baseUrl;
-  }
-
-  private buildAuthOnlyHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {};
-    if (this.accessToken) headers['Authorization'] = `Bearer ${this.accessToken}`;
-    else if (this.apiKey) headers['X-Kast-Key'] = this.apiKey;
-    return headers;
-  }
-
-  private buildHeaders(): Record<string, string> {
-    return { 'Content-Type': 'application/json', ...this.buildAuthOnlyHeaders() };
-  }
-
-  private buildRequestInit(options: RequestOptions): {
-    headers: Record<string, string>;
-    body: BodyInit | undefined;
-  } {
-    const isForm = options.formData !== undefined;
-    const headers = isForm
-      ? { ...this.buildAuthOnlyHeaders(), ...(options.headers ?? {}) }
-      : { ...this.buildHeaders(), ...(options.headers ?? {}) };
-    const body: BodyInit | undefined = isForm
-      ? options.formData
-      : options.body !== undefined
-        ? JSON.stringify(options.body)
-        : undefined;
-    return { headers, body };
-  }
-
-  private buildError(json: unknown, status: number): Error & { code?: string; status?: number } {
-    const err = (json as { error?: { message?: string; code?: string } }).error;
-    const message = err?.message ?? `HTTP ${status}`;
-    const error = new Error(message) as Error & { code?: string; status?: number };
-    if (err?.code !== undefined) error.code = err.code;
-    error.status = status;
-    return error;
-  }
-
-  async request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-    const url = `${this.baseUrl}${path}`;
-    const { headers, body } = this.buildRequestInit(options);
-    const res = await this._fetch(url, {
-      method: options.method ?? 'GET',
-      headers,
-      ...(body !== undefined ? { body } : {}),
-    });
-    const json = (await res.json()) as unknown;
-    if (!res.ok) throw this.buildError(json, res.status);
-    return json as T;
-  }
-
-  async requestBlob(path: string, options: RequestOptions = {}): Promise<Blob> {
-    const url = `${this.baseUrl}${path}`;
-    const headers = { ...this.buildAuthOnlyHeaders(), ...(options.headers ?? {}) };
-    const res = await this._fetch(url, {
-      method: options.method ?? 'GET',
-      headers,
-    });
-    if (!res.ok) {
-      const json = (await res.json()) as unknown;
-      throw this.buildError(json, res.status);
-    }
-    return res.blob();
-  }
-
+export class KastClient extends KastHttpClient {
   get agentTokens(): AgentTokensResource {
     return new AgentTokensResource(this);
   }
@@ -241,9 +153,15 @@ class ContentResource {
     });
   }
 
-  publish(typeSlug: string, id: string): Promise<ApiResponse<ContentEntryDetail>> {
+  /** Pass `{ force: true }` to publish despite SEO warnings; errors still block. */
+  publish(
+    typeSlug: string,
+    id: string,
+    body: PublishEntryBody = {},
+  ): Promise<ApiResponse<ContentEntryDetail>> {
     return this.client.request(`/api/v1/content-types/${typeSlug}/entries/${id}/publish`, {
       method: 'POST',
+      body,
     });
   }
 
@@ -259,10 +177,19 @@ class ContentResource {
     });
   }
 
-  restore(typeSlug: string, id: string): Promise<ApiResponse<ContentEntryDetail>> {
-    return this.client.request(`/api/v1/content-types/${typeSlug}/entries/${id}/restore`, {
+  /**
+   * Moves an ARCHIVED entry back to draft. Restoring a *trashed* entry is a
+   * different operation and lives on `client.trash.restore()`.
+   */
+  unarchive(typeSlug: string, id: string): Promise<ApiResponse<ContentEntryDetail>> {
+    return this.client.request(`/api/v1/content-types/${typeSlug}/entries/${id}/unarchive`, {
       method: 'POST',
     });
+  }
+
+  /** @deprecated Ambiguous with trash restore — use {@link unarchive}. */
+  restore(typeSlug: string, id: string): Promise<ApiResponse<ContentEntryDetail>> {
+    return this.unarchive(typeSlug, id);
   }
 
   schedulePublish(
@@ -288,21 +215,27 @@ class ContentResource {
     });
   }
 
-  bulkTrash(typeSlug: string, ids: string[]): Promise<void> {
+  /**
+   * Per-item and not atomic: inspect `data.results` for the ids that failed
+   * rather than assuming the whole batch applied.
+   */
+  bulkTrash(typeSlug: string, ids: string[]): Promise<ApiResponse<BulkActionResult>> {
     return this.client.request(`/api/v1/content-types/${typeSlug}/entries/bulk/trash`, {
       method: 'POST',
       body: { ids } satisfies BulkActionBody,
     });
   }
 
-  bulkPublish(typeSlug: string, ids: string[]): Promise<void> {
+  /** Each id runs the schema and SEO gates on its own; see {@link bulkTrash}. */
+  bulkPublish(typeSlug: string, ids: string[]): Promise<ApiResponse<BulkActionResult>> {
     return this.client.request(`/api/v1/content-types/${typeSlug}/entries/bulk/publish`, {
       method: 'POST',
       body: { ids } satisfies BulkActionBody,
     });
   }
 
-  bulkUnpublish(typeSlug: string, ids: string[]): Promise<void> {
+  /** Per-item and not atomic; see {@link bulkTrash}. */
+  bulkUnpublish(typeSlug: string, ids: string[]): Promise<ApiResponse<BulkActionResult>> {
     return this.client.request(`/api/v1/content-types/${typeSlug}/entries/bulk/unpublish`, {
       method: 'POST',
       body: { ids } satisfies BulkActionBody,

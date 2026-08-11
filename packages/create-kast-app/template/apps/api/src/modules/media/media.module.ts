@@ -3,10 +3,11 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { MulterModule } from '@nestjs/platform-express';
-import { memoryStorage } from 'multer';
 import type { Env } from '../../config/env.schema';
 import { QueueAdapter } from '../queue/queue.adapter';
 import { QUEUE_NAMES } from '../queue/queue.constants';
+import { MediaFileController } from './media-file.controller';
+import { MediaFolderService } from './media-folder.service';
 import { MediaController } from './media.controller';
 import { MediaProcessor, STORAGE_ADAPTER } from './media.processor';
 import { MediaRepository } from './media.repository';
@@ -14,16 +15,23 @@ import { MediaService } from './media.service';
 import { LocalStorageAdapter } from './storage/local-storage.adapter';
 import { R2StorageAdapter } from './storage/r2-storage.adapter';
 import { S3StorageAdapter } from './storage/s3-storage.adapter';
+import { buildMulterOptions } from './upload.options';
 
 @Module({
   imports: [
     ConfigModule,
-    MulterModule.register({ storage: memoryStorage() }),
+    MulterModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService<Env>) =>
+        buildMulterOptions(config.get('UPLOAD_MAX_FILE_SIZE_MB', { infer: true })),
+    }),
     BullModule.registerQueue({ name: QUEUE_NAMES.MEDIA }),
   ],
-  controllers: [MediaController],
+  controllers: [MediaFileController, MediaController],
   providers: [
     MediaRepository,
+    MediaFolderService,
     LocalStorageAdapter,
     S3StorageAdapter,
     R2StorageAdapter,

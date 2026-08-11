@@ -14,13 +14,18 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import type { FormSubmission } from '@prisma/client';
 import type { Request, Response } from 'express';
 import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
+import type { AuthUser } from '../../common/types/auth.types';
+import { resolveClientIp } from './client-ip';
 import {
   CreateFormDto,
   ListSubmissionsQueryDto,
+  MarkSubmissionReadDto,
   SubmitFormDto,
   UpdateFormDto,
 } from './dto/form.dto';
@@ -69,13 +74,13 @@ export class FormController {
   @Roles(SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Soft delete a form' })
-  async delete(@Param('id') id: string): Promise<void> {
-    await this.service.delete(id);
+  async delete(@Param('id') id: string, @CurrentUser() user: AuthUser): Promise<void> {
+    await this.service.delete(id, user.id);
   }
 
   @Post(':id/submit')
   @Public()
-  @Throttle({ public: { limit: 10, ttl: 60000 } })
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Submit a form (public, rate limited 10/min per IP)' })
   async submit(
@@ -83,9 +88,7 @@ export class FormController {
     @Body() dto: SubmitFormDto,
     @Req() req: Request,
   ): Promise<{ ok: boolean }> {
-    const ip =
-      (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ??
-      req.socket.remoteAddress;
+    const ip = resolveClientIp(req);
     const ua = req.headers['user-agent'];
     await this.service.submit(id, dto, ip, ua);
     return { ok: true };
@@ -111,6 +114,18 @@ export class FormController {
     @Query() query: ListSubmissionsQueryDto,
   ): Promise<PaginatedSubmissions> {
     return this.service.getSubmissions(id, query);
+  }
+
+  @Patch(':id/submissions/:subId/read')
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Mark a submission read or unread' })
+  markSubmissionRead(
+    @Param('id') id: string,
+    @Param('subId') subId: string,
+    @Body() dto: MarkSubmissionReadDto,
+  ): Promise<FormSubmission> {
+    return this.service.setSubmissionRead(id, subId, dto.isRead ?? true);
   }
 
   @Delete(':id/submissions/:subId')

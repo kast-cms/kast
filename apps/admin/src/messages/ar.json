@@ -76,7 +76,8 @@
     "submit": "إنشاء الحساب",
     "submitting": "جارٍ إنشاء الحساب…",
     "passwordMismatch": "كلمتا المرور غير متطابقتين.",
-    "errorGeneric": "حدث خطأ ما. يرجى المحاولة مرة أخرى."
+    "errorGeneric": "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
+    "errorPasswordMismatch": "كلمتا المرور غير متطابقتين."
   },
   "common": {
     "loading": "جارٍ التحميل…",
@@ -100,7 +101,8 @@
   "error": {
     "title": "حدث خطأ ما",
     "description": "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.",
-    "retry": "حاول مرة أخرى"
+    "retry": "حاول مرة أخرى",
+    "digest": "المرجع: {digest}"
   },
   "contentTypes": {
     "title": "أنواع المحتوى",
@@ -154,15 +156,19 @@
       "TEXT": "نص",
       "RICH_TEXT": "نص منسق",
       "NUMBER": "رقم",
-      "BOOLEAN": "منطقي",
+      "BOOLEAN": "قيمة منطقية",
       "DATE": "تاريخ",
+      "DATETIME": "تاريخ ووقت",
       "MEDIA": "وسائط",
       "RELATION": "علاقة",
       "JSON": "JSON",
       "EMAIL": "بريد إلكتروني",
       "URL": "رابط",
-      "ENUM": "قائمة",
-      "UID": "معرف فريد"
+      "SELECT": "اختيار",
+      "MULTI_SELECT": "اختيار متعدد",
+      "COLOR": "لون",
+      "COMPONENT": "مكوّن",
+      "BLOCK": "كتلة"
     },
     "fieldDrawer": {
       "addTitle": "إضافة حقل",
@@ -285,6 +291,14 @@
       "confirmDescription": "سيؤدي هذا إلى استبدال محتوى المسودة الحالية. سيتم ضبط المدخل على مسودة.",
       "confirm": "استرجاع",
       "cancel": "إلغاء"
+    },
+    "bulkPartial": "تم تطبيق {succeeded}، وفشل {failed}",
+    "seoWarnings": {
+      "title": "النشر مع وجود تحذيرات تحسين محركات البحث؟",
+      "hint": "يحتوي هذا المدخل على تحذيرات تتعلق بتحسين محركات البحث. يمكنك النشر على أي حال، أو الإغلاق وإصلاحها أولاً.",
+      "cancel": "إلغاء",
+      "confirm": "انشر على أي حال",
+      "publishing": "جارٍ النشر…"
     }
   },
   "mediaLibrary": {
@@ -379,7 +393,12 @@
     "noUsers": "لا يوجد مستخدمون.",
     "never": "أبداً",
     "errorTitle": "فشل إجراء المستخدم",
-    "loadError": "فشل تحميل المستخدمين."
+    "loadError": "فشل تحميل المستخدمين.",
+    "resendInvite": "إعادة إرسال الدعوة",
+    "revokeInvite": "إلغاء الدعوة",
+    "revokeInviteConfirm": "هل تريد إلغاء هذه الدعوة؟ سيتوقف الرابط المُرسَل عن العمل.",
+    "inviteResent": "تمت إعادة إرسال الدعوة.",
+    "inviteRevoked": "تم إلغاء الدعوة."
   },
   "roles": {
     "title": "الأدوار",
@@ -417,12 +436,23 @@
       },
       "resources": {
         "content": "المحتوى",
+        "content-types": "أنواع المحتوى",
         "media": "الوسائط",
         "seo": "تحسين محركات البحث",
-        "content-types": "أنواع المحتوى",
+        "menus": "القوائم",
+        "forms": "النماذج",
+        "search": "البحث",
+        "trash": "المهملات",
         "users": "المستخدمون",
         "roles": "الأدوار",
-        "tokens": "رموز API"
+        "tokens": "رموز API",
+        "agent-tokens": "رموز الوكلاء",
+        "webhooks": "خطافات الويب",
+        "plugins": "الإضافات",
+        "locales": "اللغات",
+        "settings": "الإعدادات",
+        "audit": "سجل التدقيق",
+        "dashboard": "لوحة التحكم"
       },
       "save": "حفظ الصلاحيات",
       "saving": "جارٍ الحفظ…",
@@ -756,6 +786,8 @@
       "back": "رجوع",
       "exportCsv": "تصدير CSV",
       "view": "عرض",
+      "markRead": "تعليم كمقروء",
+      "markUnread": "تعليم كغير مقروء",
       "deleteConfirm": "حذف هذه الإرسالة؟ لا يمكن التراجع.",
       "prev": "السابق",
       "next": "التالي",
@@ -845,9 +877,11 @@
     "columns": {
       "name": "الاسم",
       "trashedAt": "تاريخ الحذف",
+      "trashedBy": "حذفه",
       "daysUntilDeletion": "ينتهي في",
       "actions": "إجراءات"
-    }
+    },
+    "unknownActor": "غير معروف"
   },
   "auditLog": {
     "title": "سجل التدقيق",

@@ -1,5 +1,13 @@
 import { z } from 'zod';
 
+/**
+ * Every variable the API — or a plugin the API loads in-process — reads from
+ * `process.env` has to be declared here, even when nothing in this package uses
+ * it. @nestjs/config parses `.env` into a plain object, validates it, and assigns
+ * the *validated* result back onto `process.env`; zod strips keys this schema
+ * does not declare, so an undeclared name set in `.env` is silently discarded and
+ * can never reach its reader.
+ */
 const envSchema = z.object({
   // Server
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -18,13 +26,51 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(32),
   JWT_EXPIRES_IN: z.string().default('15m'),
 
+  // Encrypts secret settings (e.g. smtp.password) at rest. Falls back to
+  // JWT_SECRET when unset, which means rotating JWT_SECRET would make existing
+  // ciphertext unreadable — set this explicitly in production. The blank form is
+  // accepted because .env.example ships the key with no value.
+  KAST_SECRET_ENCRYPTION_KEY: z.union([z.string().min(32), z.literal('')]).optional(),
+
+  // Authorises the publicly documented admin@kast.local / writer@kast.local
+  // logins, both for `db:seed` and for this API's startup credential check. Only
+  // the opt-in phrase in weak-credential.util.ts counts; see it for why.
+  SEED_DEV_ACCOUNTS: z.string().optional(),
+
+  // Loopback callback into this same API, used by the in-process first-party
+  // plugins (Meilisearch indexing, Stripe product sync) to read entries. Blank
+  // means "not configured"; those plugins then stay idle.
+  KAST_API_URL: z.union([z.string().url(), z.literal('')]).optional(),
+  KAST_API_TOKEN: z.string().optional(),
+  KAST_API_KEY: z.string().optional(),
+
+  // Comma/space separated hosts webhooks may target despite resolving to a
+  // private address. Empty (the default) means default-deny.
+  WEBHOOK_ALLOWED_HOSTS: z.string().optional(),
+
   // CORS
   CORS_ORIGINS: z.string().default('*'),
+
+  /**
+   * Express `trust proxy` setting. Governs `req.ip`, which is both the address
+   * stored against a public form submission and the key the rate limiter counts
+   * on, so it is decided once for the whole app rather than per module.
+   *
+   * Default 'false' is the safe one: an untrusted `x-forwarded-for` would let
+   * any caller both forge the recorded IP and mint a fresh rate-limit bucket per
+   * request. Behind a reverse proxy set it to the number of proxies in front of
+   * this app ('1' for a single nginx/ALB), a specific IP/CIDR, or 'true' to
+   * trust the leftmost entry — only ever with a proxy that overwrites the header.
+   */
+  TRUST_PROXY: z.string().default('false'),
 
   // Storage
   STORAGE_PROVIDER: z.enum(['local', 's3', 'r2', 'gcs']).default('local'),
   STORAGE_LOCAL_DIR: z.string().default('./uploads'),
-  STORAGE_LOCAL_URL: z.string().default('http://localhost:3000/uploads'),
+  // Public base URL for locally stored objects. The default points at the route
+  // this API actually serves; override it only when a proxy or CDN fronts
+  // STORAGE_LOCAL_DIR itself.
+  STORAGE_LOCAL_URL: z.string().default('http://localhost:3000/api/v1/media/files'),
 
   // AWS S3 (optional — required if STORAGE_PROVIDER=s3 or r2)
   AWS_REGION: z.string().optional(),
@@ -34,10 +80,13 @@ const envSchema = z.object({
   AWS_S3_ENDPOINT: z.string().optional(),
 
   // Upload limits
-  UPLOAD_MAX_FILE_SIZE_MB: z.coerce.number().int().default(50),
+  UPLOAD_MAX_FILE_SIZE_MB: z.coerce.number().int().positive().max(1024).default(50),
+  // image/svg+xml is deliberately absent: an SVG is a script-bearing document
+  // and nothing here sanitises one. Adding it back opts into serving it as a
+  // forced download (see media.constants.ts) from whatever origin holds it.
   UPLOAD_ALLOWED_MIME_TYPES: z
     .string()
-    .default('image/jpeg,image/png,image/webp,image/gif,image/svg+xml,application/pdf'),
+    .default('image/jpeg,image/png,image/webp,image/gif,application/pdf'),
 
   // OAuth
   GOOGLE_CLIENT_ID: z.string().optional(),
@@ -46,11 +95,31 @@ const envSchema = z.object({
   GITHUB_CLIENT_SECRET: z.string().optional(),
   SITE_URL: z.string().default('http://localhost:3000'),
   /**
-   * Origin of the admin panel. It embeds the Bull board in an iframe, so it has
-   * to be named in the API's frame-ancestors directive or the browser blocks the
-   * queue monitor.
+   * Public base URL of the admin panel, INCLUDING its base path. The Next.js
+   * app sets `basePath: '/admin'`, so every link the API mints — the OAuth
+   * callback, password-reset and invite emails — 404s without it. main.ts
+   * reduces this to a bare origin where an origin is what is wanted (the CSP
+   * frame-ancestors entry that lets the admin embed the Bull board).
    */
-  ADMIN_URL: z.string().default('http://localhost:3001'),
+  ADMIN_URL: z.string().default('http://localhost:3001/admin'),
+
+  /**
+   * Whether an OAuth identity with no matching account may create one.
+   *   disabled  (default) — sign-in only; an unknown address is refused
+   *   allowlist — provision when the email domain is in OAUTH_SIGNUP_ALLOWED_DOMAINS
+   *   open      — provision any address the provider asserts
+   * Fail-closed: an unrecognised value falls back to `disabled`.
+   */
+  OAUTH_SIGNUP_MODE: z.enum(['disabled', 'allowlist', 'open']).default('disabled'),
+  /** Comma-separated domains for OAUTH_SIGNUP_MODE=allowlist. */
+  OAUTH_SIGNUP_ALLOWED_DOMAINS: z.string().default(''),
+  /**
+   * Require the provider to positively assert a verified address before
+   * provisioning. Set 'false' only for providers that omit the claim (GitHub).
+   * Left as a string, not coerced: OAuthPolicy parses it and must see the same
+   * value whether it came from this schema or straight from the environment.
+   */
+  OAUTH_SIGNUP_REQUIRE_VERIFIED: z.enum(['true', 'false']).default('true'),
 
   // SMTP (email queue)
   SMTP_HOST: z.string().default('localhost'),
@@ -72,6 +141,8 @@ const envSchema = z.object({
   MEILISEARCH_HOST: z.string().optional(),
   MEILISEARCH_MASTER_KEY: z.string().optional(),
   MEILISEARCH_INDEX_PREFIX: z.string().default('kast_'),
+  // 'false' disables the cross-type aggregate index the search endpoint reads.
+  MEILISEARCH_AGGREGATE_INDEX: z.string().optional(),
 
   // Cloudflare R2 (used by kast-plugin-r2)
   R2_ACCOUNT_ID: z.string().optional(),

@@ -1,17 +1,16 @@
 'use client';
 
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { useApiClient, useSession } from '@/lib/session';
 import { AlertTriangle } from 'lucide-react';
 import { useEffect, useState, type JSX } from 'react';
 
 export function MaintenanceBanner(): JSX.Element | null {
+  const client = useApiClient();
   const { session } = useSession();
   const [isActive, setIsActive] = useState(false);
 
   useEffect(() => {
     if (!session?.accessToken) return;
-    const client = createApiClient(session.accessToken);
     client.settings
       .getAll()
       .then((res) => {
@@ -21,7 +20,7 @@ export function MaintenanceBanner(): JSX.Element | null {
       .catch(() => {
         // silently ignore — banner is non-critical
       });
-  }, [session?.accessToken]);
+  }, [session?.accessToken, client]);
 
   if (!isActive) return null;
 

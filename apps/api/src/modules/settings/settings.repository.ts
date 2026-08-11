@@ -5,6 +5,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 export interface SettingPatch {
   key: string;
   value: Prisma.InputJsonValue;
+  /** Omitted patches leave the existing visibility (and the column default) alone. */
+  isPublic?: boolean;
 }
 
 @Injectable()
@@ -46,12 +48,13 @@ export class SettingsRepository {
   upsertMany(patches: SettingPatch[], updatedBy: string | null): Promise<GlobalSetting[]> {
     const by = updatedBy ?? null;
     return this.prisma.$transaction(
-      patches.map(({ key, value }) => {
+      patches.map(({ key, value, isPublic }) => {
         const group = key.split('.')[0] ?? key;
+        const visibility = isPublic === undefined ? {} : { isPublic };
         return this.prisma.globalSetting.upsert({
           where: { key },
-          update: { value, updatedBy: by },
-          create: { key, value, group, updatedBy: by },
+          update: { value, updatedBy: by, ...visibility },
+          create: { key, value, group, updatedBy: by, ...visibility },
         });
       }),
     );

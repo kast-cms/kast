@@ -59,7 +59,7 @@ export interface UpdateMenuBody {
 export interface CreateMenuItemBody {
   label: string;
   linkType: MenuLinkType;
-  url?: string;
+  url?: string | null;
   entryId?: string;
   target?: string;
   parentId?: string;
@@ -70,7 +70,8 @@ export interface CreateMenuItemBody {
 export interface UpdateMenuItemBody {
   label?: string;
   linkType?: MenuLinkType;
-  url?: string;
+  /** `null` clears the stored value; omitting the key leaves it untouched. */
+  url?: string | null;
   entryId?: string;
   target?: string;
   parentId?: string | null;

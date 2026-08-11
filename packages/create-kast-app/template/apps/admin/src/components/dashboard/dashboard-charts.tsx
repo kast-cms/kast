@@ -1,6 +1,10 @@
 'use client';
 
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { cn } from '@/lib/utils';
 import type { DashboardContentStats, DashboardSeoStats } from '@kast-cms/sdk';
+import { BarChart3, PieChart } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
@@ -8,7 +12,10 @@ import type { JSX } from 'react';
 
 interface DonutSegment {
   value: number;
-  color: string;
+  /** `stroke-*` utility for the arc. */
+  stroke: string;
+  /** `bg-*` utility for the matching legend swatch. */
+  swatch: string;
   label: string;
 }
 
@@ -28,36 +35,35 @@ function DonutChart({ segments, total }: { segments: DonutSegment[]; total: numb
   });
 
   return (
-    <div className="flex items-center gap-4">
-      <svg viewBox="0 0 100 100" className="h-24 w-24 flex-shrink-0 -rotate-90">
-        {arcs.map((arc, i) => (
-          <circle
-            key={i}
-            cx={cx}
-            cy={cy}
-            r={r}
-            fill="none"
-            stroke={arc.color}
-            strokeWidth={18}
-            strokeDasharray={`${arc.dash} ${circumference - arc.dash}`}
-            strokeDashoffset={-arc.offset}
-          />
-        ))}
-        {total === 0 && (
-          <circle cx={cx} cy={cy} r={r} fill="none" stroke="#e5e7eb" strokeWidth={18} />
-        )}
-      </svg>
-      <ul className="flex flex-col gap-1">
-        {segments.map((seg) => (
-          <li
-            key={seg.label}
-            className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300"
-          >
-            <span
-              className="inline-block h-2.5 w-2.5 rounded-sm"
-              style={{ background: seg.color }}
+    <div className="flex items-center gap-5">
+      <div className="relative size-24 shrink-0">
+        <svg viewBox="0 0 100 100" className="size-full -rotate-90" aria-hidden="true">
+          {/* Track first, so gaps read as "unfilled" rather than as a hole. */}
+          <circle cx={cx} cy={cy} r={r} fill="none" strokeWidth={14} className="stroke-muted" />
+          {arcs.map((arc, i) => (
+            <circle
+              key={i}
+              cx={cx}
+              cy={cy}
+              r={r}
+              fill="none"
+              strokeWidth={14}
+              strokeDasharray={`${arc.dash} ${circumference - arc.dash}`}
+              strokeDashoffset={-arc.offset}
+              className={arc.stroke}
             />
-            {seg.label}: <span className="font-semibold">{seg.value}</span>
+          ))}
+        </svg>
+        <span className="absolute inset-0 grid place-items-center text-md font-semibold tabular-nums">
+          {total}
+        </span>
+      </div>
+      <ul className="min-w-0 flex-1 space-y-1.5">
+        {segments.map((seg) => (
+          <li key={seg.label} className="flex items-center gap-2 text-xs">
+            <span aria-hidden="true" className={cn('size-2.5 shrink-0 rounded-xs', seg.swatch)} />
+            <span className="truncate text-muted-foreground">{seg.label}</span>
+            <span className="ms-auto font-semibold tabular-nums">{seg.value}</span>
           </li>
         ))}
       </ul>
@@ -69,24 +75,32 @@ function DonutChart({ segments, total }: { segments: DonutSegment[]; total: numb
 
 interface BarSegment {
   value: number;
-  color: string;
+  /** `bg-*` utility for the bar. */
+  bar: string;
   label: string;
 }
 
 function BarChart({ segments }: { segments: BarSegment[] }): JSX.Element {
   const max = Math.max(...segments.map((s) => s.value), 1);
+
   return (
-    <div className="flex h-24 items-end gap-3">
+    <div className="flex items-end gap-4">
       {segments.map((seg) => (
-        <div key={seg.label} className="flex flex-1 flex-col items-center gap-1">
-          <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">
-            {seg.value}
+        <div key={seg.label} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
+          <span className="text-xs font-semibold tabular-nums">{seg.value}</span>
+          {/* Fixed-height lane so the percentage height always resolves. */}
+          <div className="flex h-20 w-full items-end rounded-sm bg-muted/60">
+            <div
+              className={cn(
+                'w-full rounded-sm transition-[height] duration-500 ease-spring',
+                seg.bar,
+              )}
+              style={{ height: `${Math.max((seg.value / max) * 100, seg.value > 0 ? 6 : 0)}%` }}
+            />
+          </div>
+          <span className="w-full truncate text-center text-2xs text-muted-foreground">
+            {seg.label}
           </span>
-          <div
-            className="w-full rounded-t"
-            style={{ height: `${Math.round((seg.value / max) * 64)}px`, background: seg.color }}
-          />
-          <span className="text-[10px] text-gray-500">{seg.label}</span>
         </div>
       ))}
     </div>
@@ -101,25 +115,50 @@ interface EntryStatusChartProps {
 
 export function EntryStatusChart({ content }: EntryStatusChartProps): JSX.Element {
   const t = useTranslations('dashboard.charts');
+  // Reuses the same status labels the entry list and StatusBadge already use,
+  // so the legend is translated and cannot drift from the rest of the UI.
+  const tStatus = useTranslations('content.status');
 
   const segments: DonutSegment[] = [
-    { value: content.byStatus.published, color: '#6366f1', label: 'Published' },
-    { value: content.byStatus.draft, color: '#f59e0b', label: 'Draft' },
-    { value: content.byStatus.scheduled, color: '#3b82f6', label: 'Scheduled' },
-    { value: content.byStatus.archived, color: '#9ca3af', label: 'Archived' },
+    {
+      value: content.byStatus.published,
+      stroke: 'stroke-chart-1',
+      swatch: 'bg-chart-1',
+      label: tStatus('PUBLISHED'),
+    },
+    {
+      value: content.byStatus.draft,
+      stroke: 'stroke-chart-4',
+      swatch: 'bg-chart-4',
+      label: tStatus('DRAFT'),
+    },
+    {
+      value: content.byStatus.scheduled,
+      stroke: 'stroke-chart-2',
+      swatch: 'bg-chart-2',
+      label: tStatus('SCHEDULED'),
+    },
+    {
+      value: content.byStatus.archived,
+      stroke: 'stroke-border-strong',
+      swatch: 'bg-border-strong',
+      label: tStatus('ARCHIVED'),
+    },
   ];
 
   return (
-    <div className="rounded-lg border bg-white p-5 shadow-sm dark:bg-gray-900">
-      <h2 className="mb-4 text-sm font-semibold text-gray-700 dark:text-gray-200">
-        {t('entryStatusTitle')}
-      </h2>
-      {content.total === 0 ? (
-        <p className="text-sm text-gray-400">{t('noData')}</p>
-      ) : (
-        <DonutChart segments={segments} total={content.total} />
-      )}
-    </div>
+    <Card className="flex flex-col">
+      <CardHeader>
+        <CardTitle className="text-sm">{t('entryStatusTitle')}</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-1 items-center pt-4">
+        {content.total === 0 ? (
+          <EmptyState Icon={PieChart} title={t('noData')} size="sm" className="w-full" />
+        ) : (
+          <DonutChart segments={segments} total={content.total} />
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -129,14 +168,20 @@ interface SeoScoreChartProps {
   seo: DashboardSeoStats;
 }
 
+function scoreToneClass(score: number): string {
+  if (score >= 75) return 'text-success';
+  if (score >= 50) return 'text-warning';
+  return 'text-destructive';
+}
+
 export function SeoScoreChart({ seo }: SeoScoreChartProps): JSX.Element {
   const t = useTranslations('dashboard.charts');
   const tSeo = useTranslations('dashboard.seo');
 
   const segments: BarSegment[] = [
-    { value: seo.scoreDistribution.below50, color: '#ef4444', label: t('below50') },
-    { value: seo.scoreDistribution.between50and74, color: '#f59e0b', label: t('between50and74') },
-    { value: seo.scoreDistribution.above74, color: '#22c55e', label: t('above74') },
+    { value: seo.scoreDistribution.below50, bar: 'bg-chart-5', label: t('below50') },
+    { value: seo.scoreDistribution.between50and74, bar: 'bg-chart-4', label: t('between50and74') },
+    { value: seo.scoreDistribution.above74, bar: 'bg-chart-3', label: t('above74') },
   ];
   const total =
     seo.scoreDistribution.below50 +
@@ -144,18 +189,25 @@ export function SeoScoreChart({ seo }: SeoScoreChartProps): JSX.Element {
     seo.scoreDistribution.above74;
 
   return (
-    <div className="rounded-lg border bg-white p-5 shadow-sm dark:bg-gray-900">
-      <h2 className="mb-1 text-sm font-semibold text-gray-700 dark:text-gray-200">
-        {t('seoScoreTitle')}
-      </h2>
-      <p className="mb-4 text-xs text-gray-400">
-        {tSeo('averageScore')}: {seo.averageScore}
-      </p>
-      {total === 0 ? (
-        <p className="text-sm text-gray-400">{t('noData')}</p>
-      ) : (
-        <BarChart segments={segments} />
-      )}
-    </div>
+    <Card className="flex flex-col">
+      <CardHeader>
+        <CardTitle className="text-sm">{t('seoScoreTitle')}</CardTitle>
+        <CardDescription>
+          {tSeo('averageScore')}:{' '}
+          <span className={cn('font-semibold tabular-nums', scoreToneClass(seo.averageScore))}>
+            {seo.averageScore}
+          </span>
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-1 items-center pt-4">
+        {total === 0 ? (
+          <EmptyState Icon={BarChart3} title={t('noData')} size="sm" className="w-full" />
+        ) : (
+          <div className="w-full">
+            <BarChart segments={segments} />
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

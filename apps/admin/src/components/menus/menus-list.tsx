@@ -15,8 +15,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Hint } from '@/components/ui/tooltip';
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { useApiClient, useSession } from '@/lib/session';
 import type { MenuSummary } from '@kast-cms/sdk';
 import { ListTree, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -48,6 +47,7 @@ function MenusTableSkeleton(): JSX.Element {
 }
 
 export function MenusListClient(): JSX.Element {
+  const client = useApiClient();
   const t = useTranslations('menus');
   const tc = useTranslations('common');
   const { session } = useSession();
@@ -60,13 +60,12 @@ export function MenusListClient(): JSX.Element {
     if (!session) return;
     setLoading(true);
     try {
-      const client = createApiClient(session.accessToken);
       const data = await client.menus.list();
       setMenus(data);
     } finally {
       setLoading(false);
     }
-  }, [session]);
+  }, [session, client]);
 
   useEffect(() => {
     void load();
@@ -78,14 +77,13 @@ export function MenusListClient(): JSX.Element {
       if (!window.confirm(t('deleteConfirm', { name: menu.name }))) return;
       setDeleting(menu.id);
       try {
-        const client = createApiClient(session.accessToken);
         await client.menus.delete(menu.id);
         await load();
       } finally {
         setDeleting(null);
       }
     },
-    [session, load, t],
+    [session, load, t, client],
   );
 
   const isEmpty = menus.length === 0;

@@ -1,9 +1,9 @@
 'use client';
 
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
-import type { ContentEntryDetail, EntryStatus } from '@kast-cms/sdk';
+import { useApiClient } from '@/lib/session';
+import type { ContentEntryDetail, EntryStatus, KastClient } from '@kast-cms/sdk';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { buildSeoMetaBody } from './seo-meta-body';
 
 interface UseEntryEditorParams {
   typeId: string;
@@ -28,7 +28,7 @@ interface EntryEditorState {
   setData: (key: string, value: unknown) => void;
   setSeo: (key: string, value: string) => void;
   saveDraft: () => Promise<void>;
-  publish: () => Promise<void>;
+  publish: (force?: boolean) => Promise<void>;
   unpublish: () => Promise<void>;
   archive: () => Promise<void>;
   restore: () => Promise<void>;
@@ -58,6 +58,45 @@ function stripSeo(d: Record<string, unknown>): Record<string, unknown> {
   return copy;
 }
 
+interface PersistEntryParams {
+  client: KastClient;
+  typeId: string;
+  entryId: string | null;
+  data: Record<string, unknown>;
+  seo: Record<string, string>;
+  status?: EntryStatus;
+}
+
+/**
+ * Writes the entry, creating it when it has no id yet, and returns the id.
+ *
+ * The `_seo` block inside `data` is the editor's own copy of the panel. The
+ * SeoMeta row — what the delivery API serves and what the publish gate scores —
+ * only exists once it is written through PUT /seo/meta, and a field the user
+ * emptied only clears there when it is sent as null.
+ */
+async function persistEntry({
+  client,
+  typeId,
+  entryId,
+  data,
+  seo,
+  status,
+}: PersistEntryParams): Promise<string> {
+  const payload = { ...data, _seo: seo };
+  let id = entryId;
+  if (id === null) {
+    const res = await client.content.create(typeId, { data: payload });
+    id = res.data.id;
+  } else if (status === undefined) {
+    await client.content.update(typeId, id, { data: payload });
+  } else {
+    await client.content.update(typeId, id, { data: payload, status });
+  }
+  await client.seo.upsertMeta(id, buildSeoMetaBody(seo));
+  return id;
+}
+
 async function withFlag<T>(setFlag: (b: boolean) => void, fn: () => Promise<T>): Promise<T> {
   setFlag(true);
   try {
@@ -73,7 +112,7 @@ interface UseAutosaveParams {
   seo: Record<string, string>;
   status: EntryStatus;
   data: Record<string, unknown>;
-  client: ReturnType<typeof createApiClient>;
+  client: KastClient;
   setCreatedEntryId: (id: string) => void;
   setAutosaved: (v: boolean) => void;
 }
@@ -94,13 +133,14 @@ function useAutosave({
   }, [data]);
   const persistDraft = useCallback(async (): Promise<void> => {
     if (status === 'PUBLISHED') return;
-    const payload = { ...dataRef.current, _seo: seo };
-    if (createdEntryId) {
-      await client.content.update(typeId, createdEntryId, { data: payload });
-    } else {
-      const res = await client.content.create(typeId, { data: payload });
-      setCreatedEntryId(res.data.id);
-    }
+    const id = await persistEntry({
+      client,
+      typeId,
+      entryId: createdEntryId,
+      data: dataRef.current,
+      seo,
+    });
+    setCreatedEntryId(id);
     setAutosaved(true);
   }, [client, createdEntryId, seo, status, typeId, setCreatedEntryId, setAutosaved]);
   useEffect(() => {
@@ -116,8 +156,7 @@ export function useEntryEditor({
   entryId,
   initialEntry,
 }: UseEntryEditorParams): EntryEditorState {
-  const { session } = useSession();
-  const client = createApiClient(session?.accessToken);
+  const client = useApiClient();
   const [data, setDataState] = useState<Record<string, unknown>>(
     initialEntry ? stripSeo(initialEntry.data) : {},
   );
@@ -160,32 +199,33 @@ export function useEntryEditor({
   async function saveDraft(): Promise<void> {
     setIsSaving(true);
     try {
-      const payload = { ...data, _seo: seo };
-      if (createdEntryId) {
-        await client.content.update(typeId, createdEntryId, { data: payload, status: 'DRAFT' });
-      } else {
-        const res = await client.content.create(typeId, { data: payload });
-        setCreatedEntryId(res.data.id);
-      }
+      const id = await persistEntry({
+        client,
+        typeId,
+        entryId: createdEntryId,
+        data,
+        seo,
+        status: 'DRAFT',
+      });
+      setCreatedEntryId(id);
       setStatus('DRAFT');
       setAutosaved(true);
     } finally {
       setIsSaving(false);
     }
   }
-  async function publish(): Promise<void> {
+  /**
+   * `force` overrides the SEO gate's WARNING tier (the API refuses ERROR-tier
+   * issues either way). The caller passes it after the user confirms the
+   * warnings the first attempt reported.
+   */
+  async function publish(force = false): Promise<void> {
     setIsPublishing(true);
     try {
-      const payload = { ...data, _seo: seo };
-      let id = createdEntryId;
-      if (!id) {
-        const res = await client.content.create(typeId, { data: payload });
-        id = res.data.id;
-        setCreatedEntryId(id);
-      } else {
-        await client.content.update(typeId, id, { data: payload });
-      }
-      await client.content.publish(typeId, id);
+      // The SEO row has to be current before the gate scores it.
+      const id = await persistEntry({ client, typeId, entryId: createdEntryId, data, seo });
+      setCreatedEntryId(id);
+      await client.content.publish(typeId, id, force ? { force: true } : {});
       setStatus('PUBLISHED');
     } finally {
       setIsPublishing(false);
@@ -203,7 +243,7 @@ export function useEntryEditor({
   }
   async function restore(): Promise<void> {
     if (!createdEntryId) return;
-    await withFlag(setIsRestoring, () => client.content.restore(typeId, createdEntryId));
+    await withFlag(setIsRestoring, () => client.content.unarchive(typeId, createdEntryId));
     setStatus('DRAFT');
   }
   async function schedulePublish(publishAt: string): Promise<void> {

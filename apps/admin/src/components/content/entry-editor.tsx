@@ -5,13 +5,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { PageHeader } from '@/components/ui/page-header';
 import { cn } from '@/lib/utils';
-import type { ContentEntryDetail, ContentTypeDetail } from '@kast-cms/sdk';
+import type { ContentEntryDetail, ContentTypeDetail, KastApiError } from '@kast-cms/sdk';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useState, type JSX } from 'react';
 import { ActionBar } from './action-bar';
 import { FieldRenderer } from './field-renderer';
 import { SeoPanel } from './seo-panel';
+import { SeoWarningDialog } from './seo-warning-dialog';
+import { toSeoWarnings, type SeoWarning } from './seo-warnings';
 import { useEntryEditor } from './use-entry-editor';
 import { VersionPanel } from './version-panel';
 
@@ -143,6 +145,7 @@ export function EntryEditor({ typeId, contentType, entry }: EntryEditorProps): J
   } = useEntryEditor({ typeId, entryId: entry?.id ?? null, initialEntry: entry });
 
   const [versionPanelOpen, setVersionPanelOpen] = useState(false);
+  const [seoWarnings, setSeoWarnings] = useState<SeoWarning[] | null>(null);
   const effectiveEntryId = getEffectiveEntryId(entry?.id, createdEntryId);
 
   async function handleSaveDraft(): Promise<void> {
@@ -150,8 +153,21 @@ export function EntryEditor({ typeId, contentType, entry }: EntryEditorProps): J
     router.refresh();
   }
 
-  async function handlePublish(): Promise<void> {
-    await publish();
+  /**
+   * A warning-tier SEO failure is a question, not an error: the API blocks the
+   * publish and tells the caller it can be overridden. Catching that one code
+   * turns it into the confirm dialog; every other failure keeps propagating.
+   */
+  async function handlePublish(force = false): Promise<void> {
+    try {
+      await publish(force);
+    } catch (err) {
+      const e = err as KastApiError;
+      if (e.code !== 'SEO_VALIDATION_WARNINGS') throw err;
+      setSeoWarnings(toSeoWarnings(e.details));
+      return;
+    }
+    setSeoWarnings(null);
     router.refresh();
   }
 
@@ -219,6 +235,17 @@ export function EntryEditor({ typeId, contentType, entry }: EntryEditorProps): J
         }}
         onOpenVersions={() => {
           setVersionPanelOpen(true);
+        }}
+      />
+      <SeoWarningDialog
+        open={seoWarnings !== null}
+        warnings={seoWarnings ?? []}
+        isPublishing={isPublishing}
+        onConfirm={() => {
+          void handlePublish(true);
+        }}
+        onCancel={() => {
+          setSeoWarnings(null);
         }}
       />
       <FieldsCard contentType={contentType} data={data} onFieldChange={setData} disabled={busy} />

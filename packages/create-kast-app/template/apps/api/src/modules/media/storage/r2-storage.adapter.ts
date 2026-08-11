@@ -19,6 +19,8 @@ import type { StorageAdapter } from './storage.adapter';
  */
 @Injectable()
 export class R2StorageAdapter implements StorageAdapter {
+  readonly provider = 'r2' as const;
+
   private readonly client: S3Client;
   private readonly bucket: string;
   private readonly publicUrl: string;

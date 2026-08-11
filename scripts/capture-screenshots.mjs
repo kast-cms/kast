@@ -19,6 +19,11 @@
  *   SCREENSHOT_EMAIL     default admin@kast.local
  *   SCREENSHOT_PASSWORD  default Admin1234!
  *   PLAYWRIGHT_CHROMIUM  explicit path to a Chromium binary, if autodetect fails
+ *
+ * NOTE: `pnpm run db:seed` no longer creates any user account. The defaults
+ * above only exist on a database seeded with SEED_DEV_ACCOUNTS=1; otherwise
+ * login returns 401 and you must pass SCREENSHOT_EMAIL/SCREENSHOT_PASSWORD for
+ * an account you created at /admin/setup.
  */
 import fs from 'node:fs/promises';
 import { createRequire } from 'node:module';

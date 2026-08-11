@@ -1,6 +1,11 @@
 'use client';
 
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { cn } from '@/lib/utils';
 import type { DashboardActivityEntry } from '@kast-cms/sdk';
+import { History } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
@@ -27,6 +32,19 @@ function relativeTime(iso: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
+/**
+ * Destructive actions should be findable at a glance in a long feed, so the
+ * timeline dot is tinted by what the entry actually did rather than being a
+ * decorative brand colour on every row.
+ */
+function dotToneClass(action: string): string {
+  const normalized = action.toLowerCase();
+  if (normalized.includes('delete') || normalized.includes('destroy')) return 'bg-destructive';
+  if (normalized.includes('publish') || normalized.includes('create')) return 'bg-success';
+  if (normalized.includes('update') || normalized.includes('edit')) return 'bg-info';
+  return 'bg-primary';
+}
+
 interface ActivityFeedProps {
   entries: DashboardActivityEntry[];
 }
@@ -34,42 +52,52 @@ interface ActivityFeedProps {
 export function ActivityFeed({ entries }: ActivityFeedProps): JSX.Element {
   const t = useTranslations('dashboard.activity');
 
-  if (entries.length === 0) {
-    return (
-      <div className="rounded-lg border bg-white p-5 shadow-sm dark:bg-gray-900">
-        <h2 className="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">
-          {t('title')}
-        </h2>
-        <p className="text-sm text-gray-400">{t('empty')}</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="rounded-lg border bg-white p-5 shadow-sm dark:bg-gray-900">
-      <h2 className="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">{t('title')}</h2>
-      <ul className="max-h-72 space-y-2 overflow-y-auto">
-        {entries.slice(0, 15).map((entry) => (
-          <li key={entry.id} className="flex items-start gap-2 border-b pb-2 last:border-0">
-            <span className="mt-0.5 inline-block h-2 w-2 flex-shrink-0 rounded-full bg-indigo-400" />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-gray-800 dark:text-gray-100">
-                {formatAction(entry.action)}{' '}
-                <span className="font-normal text-gray-500">
-                  {entry.resource}
-                  {entry.resourceId !== null ? ` #${entry.resourceId}` : ''}
-                </span>
-              </p>
-              <p className="text-xs text-gray-400">
-                {actorLabel(entry, t('agent'))}
-                {entry.isDryRun && <span className="ml-1 text-amber-500">({t('dryRun')})</span>}
-                {' · '}
-                {relativeTime(entry.createdAt)}
-              </p>
-            </div>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <Card className="flex flex-col">
+      <CardHeader>
+        <CardTitle className="text-sm">{t('title')}</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-1 items-center pt-4">
+        {entries.length === 0 ? (
+          <EmptyState Icon={History} title={t('empty')} size="sm" className="w-full" />
+        ) : (
+          <ol className="max-h-72 w-full overflow-y-auto pe-1">
+            {entries.slice(0, 15).map((entry) => (
+              <li key={entry.id} className="group flex gap-3">
+                {/* Rail: dot, then a hairline running down to the next entry. */}
+                <div className="flex w-2 shrink-0 flex-col items-center" aria-hidden="true">
+                  <span
+                    className={cn(
+                      'mt-1.5 size-2 shrink-0 rounded-full',
+                      dotToneClass(entry.action),
+                    )}
+                  />
+                  <span className="my-1 w-px flex-1 bg-border group-last:hidden" />
+                </div>
+                <div className="min-w-0 flex-1 pb-4 group-last:pb-0">
+                  <p className="truncate text-sm font-medium">
+                    {formatAction(entry.action)}{' '}
+                    <span className="font-normal text-muted-foreground">
+                      {entry.resource}
+                      {entry.resourceId !== null ? ` #${entry.resourceId}` : ''}
+                    </span>
+                  </p>
+                  <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground">
+                    <span className="truncate">{actorLabel(entry, t('agent'))}</span>
+                    <span aria-hidden="true">·</span>
+                    <time dateTime={entry.createdAt}>{relativeTime(entry.createdAt)}</time>
+                    {entry.isDryRun && (
+                      <Badge variant="warning" size="sm">
+                        {t('dryRun')}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ol>
+        )}
+      </CardContent>
+    </Card>
   );
 }

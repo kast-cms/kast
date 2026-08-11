@@ -8,6 +8,7 @@
     "start": "next start --port 3001",
     "lint": "eslint \"src/**/*.{ts,tsx}\" --no-error-on-unmatched-pattern",
     "lint:fix": "eslint \"src/**/*.{ts,tsx}\" --fix",
+    "test": "pnpm --filter @kast-cms/api exec jest --config ../admin/jest.config.cjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

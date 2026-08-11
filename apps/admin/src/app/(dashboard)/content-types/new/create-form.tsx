@@ -5,9 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { FieldHint, Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { useApiClient, useSession } from '@/lib/session';
 import { useRouter } from 'next/navigation';
 import { useCallback, useState, type ChangeEvent, type FormEvent, type JSX } from 'react';
 
@@ -19,7 +19,78 @@ function toApiId(displayName: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
+interface OptionalFieldsProps {
+  description: string;
+  setDescription: (v: string) => void;
+  icon: string;
+  setIcon: (v: string) => void;
+  isLocalized: boolean;
+  setIsLocalized: (v: boolean) => void;
+  disabled: boolean;
+}
+
+function OptionalFields({
+  description,
+  setDescription,
+  icon,
+  setIcon,
+  isLocalized,
+  setIsLocalized,
+  disabled,
+}: OptionalFieldsProps): JSX.Element {
+  return (
+    <>
+      <div className="space-y-2">
+        <Label htmlFor="description">Description</Label>
+        <Textarea
+          id="description"
+          value={description}
+          onChange={(e) => {
+            setDescription(e.target.value);
+          }}
+          placeholder="A short description (optional)"
+          rows={3}
+          disabled={disabled}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="icon">Icon (emoji)</Label>
+        <Input
+          id="icon"
+          className="w-24 text-center text-md"
+          value={icon}
+          onChange={(e) => {
+            setIcon(e.target.value);
+          }}
+          placeholder="📝"
+          maxLength={4}
+          disabled={disabled}
+        />
+        <FieldHint>Shown next to the content type across the admin.</FieldHint>
+      </div>
+
+      <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-4">
+        <div className="space-y-1">
+          <Label htmlFor="isLocalized">Localized</Label>
+          <FieldHint>
+            Creates a row per active locale for every entry, so the same entry can be translated.
+            Leave off for content that exists once, regardless of language.
+          </FieldHint>
+        </div>
+        <Switch
+          id="isLocalized"
+          checked={isLocalized}
+          onCheckedChange={setIsLocalized}
+          disabled={disabled}
+        />
+      </div>
+    </>
+  );
+}
+
 export function CreateContentTypeForm(): JSX.Element {
+  const client = useApiClient();
   const { session } = useSession();
   const router = useRouter();
 
@@ -28,6 +99,7 @@ export function CreateContentTypeForm(): JSX.Element {
   const [apiIdManuallyEdited, setApiIdManuallyEdited] = useState(false);
   const [description, setDescription] = useState('');
   const [icon, setIcon] = useState('');
+  const [isLocalized, setIsLocalized] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,10 +128,16 @@ export function CreateContentTypeForm(): JSX.Element {
       setError(null);
 
       try {
-        const client = createApiClient(session?.accessToken);
-        const body: { name: string; displayName: string; description?: string; icon?: string } = {
+        const body: {
+          name: string;
+          displayName: string;
+          description?: string;
+          icon?: string;
+          isLocalized: boolean;
+        } = {
           displayName: displayName.trim(),
           name: apiId.trim(),
+          isLocalized,
         };
         if (description.trim() !== '') body.description = description.trim();
         if (icon.trim() !== '') body.icon = icon.trim();
@@ -71,7 +149,7 @@ export function CreateContentTypeForm(): JSX.Element {
         setIsSubmitting(false);
       }
     },
-    [session, displayName, apiId, description, icon, router],
+    [session, displayName, apiId, description, icon, isLocalized, router, client],
   );
 
   return (
@@ -122,35 +200,15 @@ export function CreateContentTypeForm(): JSX.Element {
             </FieldHint>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => {
-                setDescription(e.target.value);
-              }}
-              placeholder="A short description (optional)"
-              rows={3}
-              disabled={isSubmitting}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="icon">Icon (emoji)</Label>
-            <Input
-              id="icon"
-              className="w-24 text-center text-md"
-              value={icon}
-              onChange={(e) => {
-                setIcon(e.target.value);
-              }}
-              placeholder="📝"
-              maxLength={4}
-              disabled={isSubmitting}
-            />
-            <FieldHint>Shown next to the content type across the admin.</FieldHint>
-          </div>
+          <OptionalFields
+            description={description}
+            setDescription={setDescription}
+            icon={icon}
+            setIcon={setIcon}
+            isLocalized={isLocalized}
+            setIsLocalized={setIsLocalized}
+            disabled={isSubmitting}
+          />
         </CardContent>
 
         <CardFooter className="justify-end">

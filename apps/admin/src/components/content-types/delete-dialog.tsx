@@ -12,8 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { FieldHint, Label } from '@/components/ui/label';
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { useApiClient, useSession } from '@/lib/session';
 import { AlertTriangle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useState, type ChangeEvent, type JSX } from 'react';
@@ -29,6 +28,7 @@ export function DeleteContentTypeDialog({
   apiId,
   onClose,
 }: DeleteContentTypeDialogProps): JSX.Element {
+  const client = useApiClient();
   const { session } = useSession();
   const router = useRouter();
   const [confirmation, setConfirmation] = useState('');
@@ -42,7 +42,6 @@ export function DeleteContentTypeDialog({
     setError(null);
 
     try {
-      const client = createApiClient(session?.accessToken);
       await client.contentTypes.delete(apiId);
       router.push('/content-types');
     } catch (err) {
@@ -50,7 +49,7 @@ export function DeleteContentTypeDialog({
       setError(message);
       setIsDeleting(false);
     }
-  }, [session, apiId, confirmation, router]);
+  }, [session, apiId, confirmation, router, client]);
 
   const handleOpenChange = useCallback(
     (v: boolean) => {

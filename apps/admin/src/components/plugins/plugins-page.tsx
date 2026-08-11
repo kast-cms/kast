@@ -13,8 +13,7 @@ import {
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { useApiClient, useSession } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import type { PluginRecord } from '@kast-cms/sdk';
 import { Cloud, CreditCard, Mail, Puzzle, Search, ShieldAlert } from 'lucide-react';
@@ -138,6 +137,7 @@ function PluginsGridSkeleton(): JSX.Element {
 }
 
 export function PluginsPageClient(): JSX.Element {
+  const client = useApiClient();
   const t = useTranslations('plugins');
   const { session } = useSession();
   const [plugins, setPlugins] = useState<PluginRecord[]>([]);
@@ -148,13 +148,12 @@ export function PluginsPageClient(): JSX.Element {
     if (!session) return;
     setLoading(true);
     try {
-      const client = createApiClient(session.accessToken);
       const res = await client.plugins.list();
       setPlugins(res.data);
     } finally {
       setLoading(false);
     }
-  }, [session]);
+  }, [session, client]);
 
   useEffect(() => {
     void load();
@@ -165,7 +164,6 @@ export function PluginsPageClient(): JSX.Element {
       if (!session) return;
       setBusy(plugin.name);
       try {
-        const client = createApiClient(session.accessToken);
         const action = plugin.isActive ? client.plugins.disable : client.plugins.enable;
         await action.call(client.plugins, plugin.name);
         await load();
@@ -173,7 +171,7 @@ export function PluginsPageClient(): JSX.Element {
         setBusy(null);
       }
     },
-    [session, load],
+    [session, load, client],
   );
 
   const activeCount = plugins.filter((plugin) => plugin.isActive).length;

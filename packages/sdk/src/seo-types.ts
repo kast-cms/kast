@@ -48,15 +48,17 @@ export interface Redirect {
 }
 
 export interface UpsertSeoMetaBody {
-  metaTitle?: string;
-  metaDescription?: string;
-  ogTitle?: string;
-  ogDescription?: string;
+  // `null` clears a field. Do NOT send '' — the API stores a blank as null
+  // anyway, and the two used to be scored and served differently.
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  ogTitle?: string | null;
+  ogDescription?: string | null;
   ogImageId?: string;
-  twitterTitle?: string;
-  twitterDesc?: string;
+  twitterTitle?: string | null;
+  twitterDesc?: string | null;
   twitterImageId?: string;
-  canonicalUrl?: string;
+  canonicalUrl?: string | null;
   noIndex?: boolean;
   noFollow?: boolean;
 }

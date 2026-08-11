@@ -1,7 +1,6 @@
 'use client';
 
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { useApiClient } from '@/lib/session';
 import type { GlobalSetting } from '@kast-cms/sdk';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -17,8 +16,7 @@ export interface UseSettingsReturn {
 }
 
 export function useSettings(): UseSettingsReturn {
-  const { session } = useSession();
-  const client = createApiClient(session?.accessToken);
+  const client = useApiClient();
 
   const [settings, setSettings] = useState<GlobalSetting[]>([]);
   const [loading, setLoading] = useState(false);
@@ -32,7 +30,7 @@ export function useSettings(): UseSettingsReturn {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [client]);
 
   const patchSettings = useCallback(
     async (patches: { key: string; value: unknown }[]): Promise<void> => {
@@ -49,16 +47,19 @@ export function useSettings(): UseSettingsReturn {
         setSaving(false);
       }
     },
-    [],
+    [client],
   );
 
-  const testSmtp = useCallback(async (to: string): Promise<{ success: boolean }> => {
-    return client.settings.testSmtp({ to });
-  }, []);
+  const testSmtp = useCallback(
+    async (to: string): Promise<{ success: boolean }> => {
+      return client.settings.testSmtp({ to });
+    },
+    [client],
+  );
 
   const testStorage = useCallback(async (): Promise<{ provider: string; status: string }> => {
     return client.settings.testStorage();
-  }, []);
+  }, [client]);
 
   const getValue = useCallback(
     (key: string): unknown => {
