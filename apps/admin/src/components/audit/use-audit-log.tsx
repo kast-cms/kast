@@ -1,7 +1,6 @@
 'use client';
 
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { useApiClient, useSession } from '@/lib/session';
 import type { AuditLogEntry, AuditLogListParams, AuditLogMeta } from '@kast-cms/sdk';
 import { useEffect, useState } from 'react';
 
@@ -14,6 +13,7 @@ export interface UseAuditLogReturn {
 }
 
 export function useAuditLog(): UseAuditLogReturn {
+  const client = useApiClient();
   const { session } = useSession();
   const [entries, setEntries] = useState<AuditLogEntry[]>([]);
   const [meta, setMeta] = useState<AuditLogMeta | null>(null);
@@ -21,7 +21,6 @@ export function useAuditLog(): UseAuditLogReturn {
   const [params, setParamsState] = useState<AuditLogListParams>({ limit: 20 });
 
   useEffect(() => {
-    const client = createApiClient(session?.accessToken);
     setLoading(true);
     client.audit
       .list(params)
@@ -35,7 +34,7 @@ export function useAuditLog(): UseAuditLogReturn {
       .finally(() => {
         setLoading(false);
       });
-  }, [session?.accessToken, params]);
+  }, [session?.accessToken, params, client]);
 
   const setParams = (p: AuditLogListParams): void => {
     setParamsState(p);

@@ -76,6 +76,12 @@ export interface UserSummaryResponse {
   avatarUrl: string | null;
   isActive: boolean;
   isVerified: boolean;
+  /**
+   * True while the account still has no password, i.e. an invitation was sent
+   * and never accepted. Drives the resend/revoke controls; `POST :id/invite`
+   * refuses with 422 once this is false.
+   */
+  hasPendingInvite: boolean;
   roles: string[];
   lastLoginAt: string | null;
   createdAt: string;

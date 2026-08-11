@@ -50,6 +50,35 @@ export function checkDescription(metaDescription: string | null | undefined): Se
   return [];
 }
 
+/**
+ * Falling back to the site-wide title/description keeps the entry indexable, so
+ * it is reported rather than treated as missing — but every entry sharing one
+ * title is still worth flagging.
+ */
+export function checkSiteDefaults(usage: {
+  titleFromSiteDefault: boolean;
+  descriptionFromSiteDefault: boolean;
+}): SeoIssueInput[] {
+  const issues: SeoIssueInput[] = [];
+  if (usage.titleFromSiteDefault) {
+    issues.push({
+      type: 'title_from_site_default',
+      severity: 'INFO',
+      message: 'Meta title falls back to the site default.',
+      penalty: 5,
+    });
+  }
+  if (usage.descriptionFromSiteDefault) {
+    issues.push({
+      type: 'desc_from_site_default',
+      severity: 'INFO',
+      message: 'Meta description falls back to the site default.',
+      penalty: 3,
+    });
+  }
+  return issues;
+}
+
 export function checkOgImage(ogImageId: string | null | undefined): SeoIssueInput[] {
   if (!ogImageId) {
     return [
@@ -99,6 +128,10 @@ interface ProsemirrorNode {
   attrs?: { level?: number };
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 function extractText(node: ProsemirrorNode): string {
   if (node.text) return node.text;
   return (node.content ?? []).map(extractText).join(' ');
@@ -109,10 +142,51 @@ function hasH2(node: ProsemirrorNode): boolean {
   return (node.content ?? []).some(hasH2);
 }
 
+/** RICH_TEXT is stored either as a ProseMirror document or as an HTML string. */
+function documentText(doc: unknown): string {
+  if (typeof doc === 'string') return doc.replace(/<[^>]*>/g, ' ');
+  if (isPlainObject(doc)) return extractText(doc as unknown as ProsemirrorNode);
+  return '';
+}
+
+function documentHasH2(doc: unknown): boolean {
+  if (typeof doc === 'string') return /<h2[\s/>]/i.test(doc);
+  if (isPlainObject(doc)) return hasH2(doc as unknown as ProsemirrorNode);
+  return false;
+}
+
+function isPresentDocument(doc: unknown): boolean {
+  if (typeof doc === 'string') return doc.trim() !== '';
+  return isPlainObject(doc);
+}
+
+/**
+ * Selects the values of a content type's RICH_TEXT fields out of one locale's
+ * field map. Entry data is a map of every field, so the body checks have to be
+ * pointed at the configured rich-text fields rather than at the map itself.
+ */
+export function selectBodyDocuments(
+  fields: { name: string; type: string }[],
+  data: unknown,
+): { hasBodyField: boolean; documents: unknown[] } {
+  const bodyFields = fields.filter((field) => field.type === 'RICH_TEXT');
+  if (bodyFields.length === 0) return { hasBodyField: false, documents: [] };
+  const map = isPlainObject(data) ? data : {};
+  return {
+    hasBodyField: true,
+    documents: bodyFields.map((field) => map[field.name]).filter(isPresentDocument),
+  };
+}
+
 export function checkBody(bodyData: unknown): SeoIssueInput[] {
+  return checkBodyDocuments(bodyData === null || bodyData === undefined ? [] : [bodyData]);
+}
+
+/** Scores every rich-text document of an entry as one body. */
+export function checkBodyDocuments(documents: unknown[]): SeoIssueInput[] {
   const issues: SeoIssueInput[] = [];
-  const node = bodyData as ProsemirrorNode | null | undefined;
-  if (!node) {
+  const present = documents.filter(isPresentDocument);
+  if (present.length === 0) {
     issues.push({
       type: 'body_missing',
       severity: 'WARNING',
@@ -121,7 +195,7 @@ export function checkBody(bodyData: unknown): SeoIssueInput[] {
     });
     return issues;
   }
-  const text = extractText(node);
+  const text = present.map(documentText).join(' ');
   const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
   if (wordCount < BODY_MIN_WORDS) {
     issues.push({
@@ -131,7 +205,7 @@ export function checkBody(bodyData: unknown): SeoIssueInput[] {
       penalty: 10,
     });
   }
-  if (!hasH2(node)) {
+  if (!present.some(documentHasH2)) {
     issues.push({
       type: 'body_no_h2',
       severity: 'INFO',

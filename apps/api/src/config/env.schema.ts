@@ -51,10 +51,26 @@ const envSchema = z.object({
   // CORS
   CORS_ORIGINS: z.string().default('*'),
 
+  /**
+   * Express `trust proxy` setting. Governs `req.ip`, which is both the address
+   * stored against a public form submission and the key the rate limiter counts
+   * on, so it is decided once for the whole app rather than per module.
+   *
+   * Default 'false' is the safe one: an untrusted `x-forwarded-for` would let
+   * any caller both forge the recorded IP and mint a fresh rate-limit bucket per
+   * request. Behind a reverse proxy set it to the number of proxies in front of
+   * this app ('1' for a single nginx/ALB), a specific IP/CIDR, or 'true' to
+   * trust the leftmost entry — only ever with a proxy that overwrites the header.
+   */
+  TRUST_PROXY: z.string().default('false'),
+
   // Storage
   STORAGE_PROVIDER: z.enum(['local', 's3', 'r2', 'gcs']).default('local'),
   STORAGE_LOCAL_DIR: z.string().default('./uploads'),
-  STORAGE_LOCAL_URL: z.string().default('http://localhost:3000/uploads'),
+  // Public base URL for locally stored objects. The default points at the route
+  // this API actually serves; override it only when a proxy or CDN fronts
+  // STORAGE_LOCAL_DIR itself.
+  STORAGE_LOCAL_URL: z.string().default('http://localhost:3000/api/v1/media/files'),
 
   // AWS S3 (optional — required if STORAGE_PROVIDER=s3 or r2)
   AWS_REGION: z.string().optional(),
@@ -64,10 +80,13 @@ const envSchema = z.object({
   AWS_S3_ENDPOINT: z.string().optional(),
 
   // Upload limits
-  UPLOAD_MAX_FILE_SIZE_MB: z.coerce.number().int().default(50),
+  UPLOAD_MAX_FILE_SIZE_MB: z.coerce.number().int().positive().max(1024).default(50),
+  // image/svg+xml is deliberately absent: an SVG is a script-bearing document
+  // and nothing here sanitises one. Adding it back opts into serving it as a
+  // forced download (see media.constants.ts) from whatever origin holds it.
   UPLOAD_ALLOWED_MIME_TYPES: z
     .string()
-    .default('image/jpeg,image/png,image/webp,image/gif,image/svg+xml,application/pdf'),
+    .default('image/jpeg,image/png,image/webp,image/gif,application/pdf'),
 
   // OAuth
   GOOGLE_CLIENT_ID: z.string().optional(),
@@ -76,11 +95,31 @@ const envSchema = z.object({
   GITHUB_CLIENT_SECRET: z.string().optional(),
   SITE_URL: z.string().default('http://localhost:3000'),
   /**
-   * Origin of the admin panel. It embeds the Bull board in an iframe, so it has
-   * to be named in the API's frame-ancestors directive or the browser blocks the
-   * queue monitor.
+   * Public base URL of the admin panel, INCLUDING its base path. The Next.js
+   * app sets `basePath: '/admin'`, so every link the API mints — the OAuth
+   * callback, password-reset and invite emails — 404s without it. main.ts
+   * reduces this to a bare origin where an origin is what is wanted (the CSP
+   * frame-ancestors entry that lets the admin embed the Bull board).
    */
-  ADMIN_URL: z.string().default('http://localhost:3001'),
+  ADMIN_URL: z.string().default('http://localhost:3001/admin'),
+
+  /**
+   * Whether an OAuth identity with no matching account may create one.
+   *   disabled  (default) — sign-in only; an unknown address is refused
+   *   allowlist — provision when the email domain is in OAUTH_SIGNUP_ALLOWED_DOMAINS
+   *   open      — provision any address the provider asserts
+   * Fail-closed: an unrecognised value falls back to `disabled`.
+   */
+  OAUTH_SIGNUP_MODE: z.enum(['disabled', 'allowlist', 'open']).default('disabled'),
+  /** Comma-separated domains for OAUTH_SIGNUP_MODE=allowlist. */
+  OAUTH_SIGNUP_ALLOWED_DOMAINS: z.string().default(''),
+  /**
+   * Require the provider to positively assert a verified address before
+   * provisioning. Set 'false' only for providers that omit the claim (GitHub).
+   * Left as a string, not coerced: OAuthPolicy parses it and must see the same
+   * value whether it came from this schema or straight from the environment.
+   */
+  OAUTH_SIGNUP_REQUIRE_VERIFIED: z.enum(['true', 'false']).default('true'),
 
   // SMTP (email queue)
   SMTP_HOST: z.string().default('localhost'),

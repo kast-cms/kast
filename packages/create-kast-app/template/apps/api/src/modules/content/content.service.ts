@@ -1,6 +1,5 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import {
-  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -14,8 +13,18 @@ import { ContentTypesService } from '../content-types/content-types.service';
 import type { PublishJobData } from '../publish/publish.processor';
 import { QUEUE_NAMES } from '../queue/queue.constants';
 import { SeoService } from '../seo/seo.service';
-import { assertApplied, localeData, snapshotLocales, writeLocale } from './content-entry.helpers';
+import { runBulkEntryAction, type BulkEntryOutcome } from './content-bulk.ops';
+import {
+  assertApplied,
+  localeData,
+  paginate,
+  snapshotLocales,
+  writeLocale,
+} from './content-entry.helpers';
+import { addEntryLocale } from './content-locale.ops';
 import { revertEntryToVersion } from './content-revert.ops';
+import { cancelEntrySchedule, scheduleEntryPublish } from './content-schedule.ops';
+import { requireSlug, resolveEntrySlug } from './content-slug';
 import { ContentRepository, EntryWithLocale, VersionWithAuthor } from './content.repository';
 import type {
   AddLocaleDto,
@@ -40,7 +49,6 @@ export class ContentService {
     private readonly gate: ContentWriteGate,
   ) {}
 
-  /** Builds a { localeCode: { slug, data } } snapshot for version history. */
   /**
    * Resolves the route content type and the entry together. The entry is loaded by
    * ID *and* content type, so an ID from another type is a 404 rather than a hit.
@@ -89,10 +97,7 @@ export class ContentService {
     const ct = await this.contentTypesService.findByName(typeSlug);
     const limit = query.limit ?? 20;
     const { items, total } = await this.repo.findAll(ct.id, query);
-    const hasNextPage = items.length > limit;
-    const data = hasNextPage ? items.slice(0, limit) : items;
-    const cursor = hasNextPage ? (data[data.length - 1]?.id ?? null) : null;
-    return { data, meta: { total, limit, cursor, hasNextPage } };
+    return paginate(items, total, limit);
   }
 
   async findOne(typeSlug: string, id: string, locale?: string): Promise<{ data: EntryWithLocale }> {
@@ -113,9 +118,10 @@ export class ContentService {
       applyDefaults: true,
     });
 
-    const slugValue = result.data['slug'];
-    const slug =
-      typeof slugValue === 'string' && slugValue !== '' ? slugValue : `${typeSlug}-${Date.now()}`;
+    // The locale `slug` column is what URLs resolve against; it is derived from the
+    // request and normalized. A `slug` *field* on the type, if there is one, stays
+    // ordinary content and is stored exactly as it was validated.
+    const slug = resolveEntrySlug(typeSlug, dto.slug, result.data);
     const extraLocaleCodes = ct.isLocalized ? await this.repo.findActiveLocaleCodes() : [];
     const entry = await this.repo.create(
       ct.id,
@@ -143,6 +149,7 @@ export class ContentService {
   ): Promise<{ data: EntryWithLocale }> {
     const { ct, entry } = await this.requireEntry(typeSlug, id);
     const locale = writeLocale(entry, dto.locale);
+    const slug = dto.slug !== undefined ? requireSlug(dto.slug, 'slug') : undefined;
     // The status the entry ends up in, not just the one being asked for: a data-only
     // write to live or scheduled content has to clear the same bar as publishing it.
     const goesPublic = PUBLIC_STATUSES.has(dto.status ?? entry.status);
@@ -157,10 +164,15 @@ export class ContentService {
         userId,
         entry.status,
       );
-      await this.repo.update(id, ct.id, locale, result.data, result.uniqueChecks);
-    } else if (dto.status !== undefined && goesPublic) {
-      // A status-only transition must not be able to publish data that never passed.
-      await this.gate.assertStoredPublishable(ct, entry);
+      await this.repo.update(id, ct.id, locale, result.data, result.uniqueChecks, slug);
+    } else {
+      if (dto.status !== undefined && goesPublic) {
+        // A status-only transition must not be able to publish data that never passed.
+        await this.gate.assertStoredPublishable(ct, entry);
+      }
+      if (slug !== undefined) {
+        assertApplied(await this.repo.updateSlug(id, ct.id, locale, slug), id);
+      }
     }
 
     if (dto.status) assertApplied(await this.repo.updateStatus(id, ct.id, dto.status), id);
@@ -185,9 +197,9 @@ export class ContentService {
     return result.data;
   }
 
-  async trash(typeSlug: string, id: string): Promise<void> {
+  async trash(typeSlug: string, id: string, actorId?: string): Promise<void> {
     const { ct } = await this.requireEntry(typeSlug, id);
-    assertApplied(await this.repo.trash(id, ct.id), id);
+    assertApplied(await this.repo.trash(id, ct.id, actorId), id);
     this.eventEmitter.emit('content.trashed', { entryId: id, typeSlug });
   }
 
@@ -233,35 +245,7 @@ export class ContentService {
     _userId: string,
   ): Promise<{ data: EntryWithLocale }> {
     const { ct, entry } = await this.requireEntry(typeSlug, id);
-
-    if (entry.locales.some((l) => l.localeCode === dto.locale)) {
-      throw new ConflictException(`Entry already has locale "${dto.locale}"`);
-    }
-
-    // Optionally seed from another locale, then apply the supplied data on top.
-    let seed: Record<string, unknown> = {};
-    if (dto.copyFromLocale) {
-      const source = entry.locales.find((l) => l.localeCode === dto.copyFromLocale);
-      if (!source) {
-        throw new BadRequestException(`Source locale "${dto.copyFromLocale}" not found on entry`);
-      }
-      seed = source.data as Record<string, unknown>;
-    }
-    // A new locale on a live entry is published the moment it is written, so it
-    // faces publish rules: the mode comes from the entry, which is the only status
-    // this route can end up in.
-    const result = await this.gate.validatePayload(
-      ct,
-      { ...seed, ...dto.data },
-      {
-        mode: resolveValidationMode(entry.status),
-        localeCode: dto.locale,
-        applyDefaults: true,
-        previousData: seed,
-      },
-    );
-
-    await this.repo.addLocale(id, ct.id, dto.locale, dto.slug, result.data, result.uniqueChecks);
+    await addEntryLocale(this.repo, this.gate, ct, entry, dto);
     const updated = await this.reload(ct.id, id);
     this.eventEmitter.emit('content.updated', { entryId: id, typeSlug, status: updated.status });
     return { data: updated };
@@ -281,10 +265,47 @@ export class ContentService {
     return { data: await this.reload(ct.id, id) };
   }
 
-  async restore(typeSlug: string, id: string): Promise<{ data: EntryWithLocale }> {
-    const { ct } = await this.requireEntry(typeSlug, id);
+  /**
+   * Moves an ARCHIVED entry back to DRAFT. This is not trash restoration: a
+   * trashed entry is brought back with `POST /trash/content/:id/restore`, which
+   * also clears `trashedAt`. Flipping the status here would have left a trashed
+   * row marked DRAFT and still invisible, so it is refused.
+   */
+  async unarchive(typeSlug: string, id: string): Promise<{ data: EntryWithLocale }> {
+    const { ct, entry } = await this.requireEntry(typeSlug, id);
+    if (entry.trashedAt !== null) {
+      throw new ConflictException(
+        `Content entry ${id} is in the trash; restore it with POST /api/v1/trash/content/${id}/restore`,
+      );
+    }
     assertApplied(await this.repo.updateStatus(id, ct.id, 'DRAFT'), id);
     return { data: await this.reload(ct.id, id) };
+  }
+
+  /** @deprecated Ambiguous with trash restore — use {@link unarchive}. */
+  restore(typeSlug: string, id: string): Promise<{ data: EntryWithLocale }> {
+    return this.unarchive(typeSlug, id);
+  }
+
+  /**
+   * Bulk actions are per-item, not atomic: see `runBulkEntryAction`. Every id goes
+   * through the same single-entry path as the individual route, so the content-type
+   * binding, the schema gate and the SEO gate are enforced for each one.
+   */
+  async bulkTrash(
+    typeSlug: string,
+    ids: string[],
+    actorId?: string,
+  ): Promise<{ data: BulkEntryOutcome }> {
+    return { data: await runBulkEntryAction(ids, (id) => this.trash(typeSlug, id, actorId)) };
+  }
+
+  async bulkPublish(typeSlug: string, ids: string[]): Promise<{ data: BulkEntryOutcome }> {
+    return { data: await runBulkEntryAction(ids, (id) => this.publish(typeSlug, id)) };
+  }
+
+  async bulkUnpublish(typeSlug: string, ids: string[]): Promise<{ data: BulkEntryOutcome }> {
+    return { data: await runBulkEntryAction(ids, (id) => this.unpublish(typeSlug, id)) };
   }
 
   async schedulePublish(
@@ -293,28 +314,14 @@ export class ContentService {
     dto: SchedulePublishDto,
   ): Promise<{ data: EntryWithLocale }> {
     const { ct, entry } = await this.requireEntry(typeSlug, id);
-    const publishAt = new Date(dto.publishAt);
-    if (publishAt <= new Date()) {
-      throw new BadRequestException('publishAt must be in the future');
-    }
-    // The scheduled-publish worker flips the status directly, so the schema gate has
-    // to run here rather than at fire time.
-    await this.gate.assertStoredPublishable(ct, entry);
-    const delay = publishAt.getTime() - Date.now();
-    await this.publishQueue.add(
-      'publish',
-      { entryId: id, typeSlug },
-      { delay, jobId: `publish-${id}` },
-    );
-    assertApplied(await this.repo.updateSchedule(id, ct.id, publishAt, 'SCHEDULED'), id);
+    const queue = this.publishQueue;
+    await scheduleEntryPublish(this.repo, this.gate, queue, ct, entry, typeSlug, dto.publishAt);
     return { data: await this.reload(ct.id, id) };
   }
 
   async cancelSchedule(typeSlug: string, id: string): Promise<{ data: EntryWithLocale }> {
     const { ct } = await this.requireEntry(typeSlug, id);
-    const job = await this.publishQueue.getJob(`publish-${id}`);
-    await job?.remove();
-    assertApplied(await this.repo.updateSchedule(id, ct.id, null, 'DRAFT'), id);
+    await cancelEntrySchedule(this.repo, this.publishQueue, ct.id, id);
     return { data: await this.reload(ct.id, id) };
   }
 
@@ -326,10 +333,7 @@ export class ContentService {
   ): Promise<PaginatedResult<VersionWithAuthor>> {
     await this.requireEntry(typeSlug, id);
     const { items, total } = await this.repo.listVersions(id, limit, cursor);
-    const hasNextPage = items.length > limit;
-    const data = hasNextPage ? items.slice(0, limit) : items;
-    const nextCursor = hasNextPage ? (data[data.length - 1]?.id ?? null) : null;
-    return { data, meta: { total, limit, cursor: nextCursor, hasNextPage } };
+    return paginate(items, total, limit);
   }
 
   async getVersion(

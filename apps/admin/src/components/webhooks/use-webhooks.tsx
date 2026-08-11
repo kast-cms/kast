@@ -1,7 +1,6 @@
 'use client';
 
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { useApiClient } from '@/lib/session';
 import type {
   CreateWebhookBody,
   UpdateWebhookBody,
@@ -25,8 +24,7 @@ export interface UseWebhooksReturn {
 }
 
 export function useWebhooks(): UseWebhooksReturn {
-  const { session } = useSession();
-  const client = createApiClient(session?.accessToken);
+  const client = useApiClient();
 
   const [webhooks, setWebhooks] = useState<WebhookSummary[]>([]);
   const [loading, setLoading] = useState(false);
@@ -40,7 +38,7 @@ export function useWebhooks(): UseWebhooksReturn {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [client]);
 
   useEffect(() => {
     void loadWebhooks();
@@ -52,7 +50,7 @@ export function useWebhooks(): UseWebhooksReturn {
       setCreatedWebhook(res as WebhookCreated);
       void loadWebhooks();
     },
-    [loadWebhooks],
+    [loadWebhooks, client],
   );
 
   const update = useCallback(
@@ -60,7 +58,7 @@ export function useWebhooks(): UseWebhooksReturn {
       await client.webhooks.update(id, body);
       void loadWebhooks();
     },
-    [loadWebhooks],
+    [loadWebhooks, client],
   );
 
   const remove = useCallback(
@@ -68,25 +66,34 @@ export function useWebhooks(): UseWebhooksReturn {
       await client.webhooks.delete(id);
       void loadWebhooks();
     },
-    [loadWebhooks],
+    [loadWebhooks, client],
   );
 
-  const test = useCallback(async (id: string): Promise<void> => {
-    await client.webhooks.test(id);
-  }, []);
+  const test = useCallback(
+    async (id: string): Promise<void> => {
+      await client.webhooks.test(id);
+    },
+    [client],
+  );
 
   const clearCreatedWebhook = useCallback((): void => {
     setCreatedWebhook(null);
   }, []);
 
-  const getDeliveries = useCallback(async (id: string): Promise<WebhookDeliverySummary[]> => {
-    const res = await client.webhooks.deliveries(id);
-    return res as WebhookDeliverySummary[];
-  }, []);
+  const getDeliveries = useCallback(
+    async (id: string): Promise<WebhookDeliverySummary[]> => {
+      const res = await client.webhooks.deliveries(id);
+      return res as WebhookDeliverySummary[];
+    },
+    [client],
+  );
 
-  const redeliver = useCallback(async (id: string, deliveryId: string): Promise<void> => {
-    await client.webhooks.redeliver(id, deliveryId);
-  }, []);
+  const redeliver = useCallback(
+    async (id: string, deliveryId: string): Promise<void> => {
+      await client.webhooks.redeliver(id, deliveryId);
+    },
+    [client],
+  );
 
   return {
     webhooks,

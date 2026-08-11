@@ -289,7 +289,8 @@
       "confirmDescription": "This will overwrite the current draft content. The entry will be set to Draft.",
       "confirm": "Revert",
       "cancel": "Cancel"
-    }
+    },
+    "bulkPartial": "{succeeded} applied, {failed} failed"
   },
   "mediaLibrary": {
     "title": "Media Library",
@@ -383,7 +384,12 @@
     "noUsers": "No users found.",
     "never": "Never",
     "errorTitle": "User action failed",
-    "loadError": "Failed to load users."
+    "loadError": "Failed to load users.",
+    "resendInvite": "Resend invitation",
+    "revokeInvite": "Revoke invitation",
+    "revokeInviteConfirm": "Revoke this invitation? The emailed link will stop working.",
+    "inviteResent": "Invitation re-sent.",
+    "inviteRevoked": "Invitation revoked."
   },
   "roles": {
     "title": "Roles",
@@ -771,6 +777,8 @@
       "back": "Back",
       "exportCsv": "Export CSV",
       "view": "View",
+      "markRead": "Mark as read",
+      "markUnread": "Mark as unread",
       "deleteConfirm": "Delete this submission? This cannot be undone.",
       "prev": "Previous",
       "next": "Next",
@@ -860,9 +868,11 @@
     "columns": {
       "name": "Name",
       "trashedAt": "Trashed At",
+      "trashedBy": "Deleted By",
       "daysUntilDeletion": "Expires In",
       "actions": "Actions"
-    }
+    },
+    "unknownActor": "Unknown"
   },
   "auditLog": {
     "title": "Audit Log",

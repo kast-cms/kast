@@ -43,6 +43,41 @@ export function SettingsField({
   );
 }
 
+interface EnvManagedFieldProps {
+  label: ReactNode;
+  /** The environment variable that actually decides this value. */
+  envVar: string;
+  /** What the value is right now, when the admin can know it. */
+  value?: ReactNode;
+  hint?: ReactNode;
+}
+
+/**
+ * A setting the API stores nowhere and reads from the environment.
+ *
+ * These used to be editable controls whose Save button silently did nothing;
+ * the API now hides the rows and rejects a write naming the real source, so an
+ * editable control here would only produce a 400. Showing the variable name is
+ * the useful thing an operator can act on.
+ */
+export function EnvManagedField({ label, envVar, value, hint }: EnvManagedFieldProps): JSX.Element {
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      <div className="rounded-lg border border-border bg-muted/50 px-3 py-2">
+        {value !== undefined && (
+          <p className="truncate font-mono text-sm text-foreground">{value}</p>
+        )}
+        <p className="text-xs text-muted-foreground">
+          Set by the <code className="font-mono text-foreground">{envVar}</code> environment
+          variable.
+        </p>
+      </div>
+      {hint !== undefined && <FieldHint>{hint}</FieldHint>}
+    </div>
+  );
+}
+
 interface SettingsToggleFieldProps {
   label: ReactNode;
   /** `id` of the switch this label points at. */

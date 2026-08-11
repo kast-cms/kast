@@ -13,8 +13,7 @@ import {
 } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { useApiClient, useSession } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import type { PluginRecord } from '@kast-cms/sdk';
 import {
@@ -223,6 +222,7 @@ interface PluginDetailClientProps {
 }
 
 export function PluginDetailClient({ pluginId }: PluginDetailClientProps): JSX.Element {
+  const client = useApiClient();
   const { session } = useSession();
   const [plugin, setPlugin] = useState<PluginRecord | null>(null);
   const [config, setConfig] = useState<PluginConfig | null>(null);
@@ -233,7 +233,6 @@ export function PluginDetailClient({ pluginId }: PluginDetailClientProps): JSX.E
     if (!session) return;
     setLoading(true);
     try {
-      const client = createApiClient(session.accessToken);
       const res = await client.plugins.list();
       const found = res.data.find((p) => p.name === pluginId);
       if (found) {
@@ -248,7 +247,7 @@ export function PluginDetailClient({ pluginId }: PluginDetailClientProps): JSX.E
     } finally {
       setLoading(false);
     }
-  }, [session, pluginId]);
+  }, [session, pluginId, client]);
 
   useEffect(() => {
     void load();
@@ -259,7 +258,6 @@ export function PluginDetailClient({ pluginId }: PluginDetailClientProps): JSX.E
     if (!plugin) return;
     setBusy(true);
     try {
-      const client = createApiClient(session.accessToken);
       if (plugin.isActive) {
         await client.plugins.disable(plugin.name);
       } else {
@@ -269,7 +267,7 @@ export function PluginDetailClient({ pluginId }: PluginDetailClientProps): JSX.E
     } finally {
       setBusy(false);
     }
-  }, [session, plugin, load]);
+  }, [session, plugin, load, client]);
 
   if (loading) {
     return <PluginDetailSkeleton />;

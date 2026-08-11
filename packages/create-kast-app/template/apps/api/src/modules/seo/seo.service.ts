@@ -1,5 +1,5 @@
 import { InjectQueue } from '@nestjs/bullmq';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Redirect, SeoMeta } from '@prisma/client';
 import { Queue } from 'bullmq';
@@ -11,15 +11,24 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { QUEUE_NAMES } from '../queue/queue.constants';
 import type { CreateRedirectDto, UpdateRedirectDto } from './dto/redirect.dto';
 import type { UpsertSeoMetaDto } from './dto/seo-meta.dto';
+import { parseRedirectRows } from './redirect-import';
 import {
-  checkBody,
+  checkBodyDocuments,
   checkCanonical,
   checkDescription,
   checkOgImage,
+  checkSiteDefaults,
   checkSlug,
   checkTitle,
   computeScore,
+  selectBodyDocuments,
 } from './seo-checks';
+import {
+  checkRedirectTarget,
+  resolveGatePolicy,
+  type SeoGatePolicy,
+  type SeoSettings,
+} from './seo-settings';
 import type { SeoJobData } from './seo.processor';
 import {
   SeoRepository,
@@ -32,84 +41,100 @@ import type { SitemapEntry } from './sitemap.builder';
 export interface SeoValidationResult {
   score: number;
   issues: SeoIssueInput[];
+  /** Blocking subsets: empty unless the content type's gate policy is `enforce`. */
   errors: SeoIssueInput[];
   warnings: SeoIssueInput[];
+  policy?: SeoGatePolicy;
 }
 
-interface RedirectImportRow {
-  fromPath: string;
-  toPath: string;
-  type: 'PERMANENT' | 'TEMPORARY';
-  isActive: boolean;
+interface SeoMetaValues {
+  metaTitle: string | null;
+  metaDescription: string | null;
+  ogImageId: string | null;
+  canonicalUrl: string | null;
 }
 
-type RedirectRowParse = { ok: true; value: RedirectImportRow } | { ok: false; reason: string };
+interface EffectiveMeta extends SeoMetaValues {
+  titleFromSiteDefault: boolean;
+  descriptionFromSiteDefault: boolean;
+}
 
-const FALSEY = new Set(['false', '0', 'no']);
+function withSiteDefault(
+  own: string | null | undefined,
+  fallback: string | null,
+): { value: string | null; fromSiteDefault: boolean } {
+  if (own) return { value: own, fromSiteDefault: false };
+  return { value: fallback, fromSiteDefault: fallback !== null };
+}
 
-function parseRedirectRow(cols: string[]): RedirectRowParse {
-  const fromPath = (cols[0] ?? '').trim();
-  const toPath = (cols[1] ?? '').trim();
-  const typeRaw = (cols[2] ?? 'PERMANENT').trim().toUpperCase();
+/** Applies the saved site-wide fallbacks to an entry that defines none of its own. */
+function resolveEffectiveMeta(meta: SeoMetaValues | null, settings: SeoSettings): EffectiveMeta {
+  const title = withSiteDefault(meta?.metaTitle, settings.defaultMetaTitle);
+  const description = withSiteDefault(meta?.metaDescription, settings.defaultMetaDescription);
+  return {
+    metaTitle: title.value,
+    metaDescription: description.value,
+    ogImageId: meta?.ogImageId ?? null,
+    canonicalUrl: meta?.canonicalUrl ?? null,
+    titleFromSiteDefault: title.fromSiteDefault,
+    descriptionFromSiteDefault: description.fromSiteDefault,
+  };
+}
 
-  if (!fromPath || !toPath) return { ok: false, reason: 'Missing fromPath or toPath' };
-  if (typeRaw !== 'PERMANENT' && typeRaw !== 'TEMPORARY') {
-    return { ok: false, reason: `Invalid type "${typeRaw}"` };
+interface EntryAnalysisTarget {
+  exists: boolean;
+  contentTypeName: string | undefined;
+  fields: { name: string; type: string }[];
+  slug: string | undefined;
+  data: unknown;
+}
+
+function describeEntry(
+  entry: {
+    contentType: { name: string; fields: { name: string; type: string }[] };
+    locales: { slug: string; data: unknown }[];
+  } | null,
+): EntryAnalysisTarget {
+  if (!entry) {
+    return { exists: false, contentTypeName: undefined, fields: [], slug: undefined, data: null };
   }
-  const isActive = !FALSEY.has((cols[3] ?? 'true').trim().toLowerCase());
-  return { ok: true, value: { fromPath, toPath, type: typeRaw, isActive } };
+  const locale = entry.locales[0];
+  return {
+    exists: true,
+    contentTypeName: entry.contentType.name,
+    fields: entry.contentType.fields,
+    slug: locale?.slug,
+    data: locale?.data ?? null,
+  };
 }
 
-function parseRedirectRows(rows: string[][]): {
-  valid: RedirectImportRow[];
-  errors: { row: number; reason: string }[];
-  skipped: number;
-} {
-  // Detect and drop a header row if present.
-  const first = rows[0]?.map((c) => c.trim().toLowerCase()) ?? [];
-  const startIdx = first[0] === 'frompath' || first.includes('frompath') ? 1 : 0;
-
-  const valid: RedirectImportRow[] = [];
-  const errors: { row: number; reason: string }[] = [];
-  const seen = new Set<string>();
-  let skipped = 0;
-
-  for (let i = startIdx; i < rows.length; i++) {
-    const rowNum = i + 1;
-    const parsed = parseRedirectRow(rows[i] ?? []);
-    if (!parsed.ok) {
-      errors.push({ row: rowNum, reason: parsed.reason });
-      continue;
-    }
-    if (seen.has(parsed.value.fromPath)) {
-      skipped++;
-      errors.push({ row: rowNum, reason: 'Duplicate fromPath' });
-      continue;
-    }
-    seen.add(parsed.value.fromPath);
-    valid.push(parsed.value);
-  }
-  return { valid, errors, skipped };
+/** Splits issues into the subsets that block a publish under the given policy. */
+function splitBlockingIssues(
+  issues: SeoIssueInput[],
+  policy: SeoGatePolicy,
+): { errors: SeoIssueInput[]; warnings: SeoIssueInput[] } {
+  if (policy !== 'enforce') return { errors: [], warnings: [] };
+  return {
+    errors: issues.filter((i) => i.severity === 'ERROR'),
+    warnings: issues.filter((i) => i.severity === 'WARNING'),
+  };
 }
 
 /** Runs every SEO check against an entry's meta + primary locale. */
 function gatherSeoIssues(
-  meta: {
-    metaTitle: string | null;
-    metaDescription: string | null;
-    ogImageId: string | null;
-    canonicalUrl: string | null;
-  } | null,
+  meta: EffectiveMeta,
   slug: string | undefined,
-  bodyData: unknown,
+  body: { hasBodyField: boolean; documents: unknown[] },
 ): SeoIssueInput[] {
   return [
-    ...checkTitle(meta?.metaTitle ?? null),
-    ...checkDescription(meta?.metaDescription ?? null),
-    ...checkOgImage(meta?.ogImageId ?? null),
-    ...checkCanonical(meta?.canonicalUrl ?? null),
+    ...checkTitle(meta.metaTitle),
+    ...checkDescription(meta.metaDescription),
+    ...checkSiteDefaults(meta),
+    ...checkOgImage(meta.ogImageId),
+    ...checkCanonical(meta.canonicalUrl),
     ...checkSlug(slug),
-    ...checkBody(bodyData),
+    // A content type with no rich-text field has no body to score.
+    ...(body.hasBodyField ? checkBodyDocuments(body.documents) : []),
   ];
 }
 
@@ -130,34 +155,48 @@ export class SeoService {
   }
 
   /**
-   * Runs SEO validation synchronously for an entry and persists a SeoScore.
-   * Returns the computed score plus issues split by severity so callers (e.g.
-   * the publish gate) can block on ERROR-severity issues. If no SeoMeta exists
-   * yet it is treated as a set of "missing" issues so publish is still gated.
+   * Runs SEO validation synchronously for an entry and persists a SeoScore,
+   * creating the SeoMeta row when the entry has none so a validated entry always
+   * has a score to read back. Missing meta values stay "missing" issues so
+   * publish is still gated. `errors`/`warnings` carry only what the entry's
+   * content type actually blocks on — see `resolveGatePolicy`.
    */
   async validateNow(entryId: string): Promise<SeoValidationResult> {
-    const [meta, entry] = await Promise.all([
+    const [meta, entry, settings] = await Promise.all([
       this.repo.findMeta(entryId),
       this.prisma.contentEntry.findUnique({
         where: { id: entryId },
-        include: { locales: { take: 1 } },
+        include: {
+          locales: { take: 1 },
+          contentType: { select: { name: true, fields: { select: { name: true, type: true } } } },
+        },
       }),
+      this.repo.findSeoSettings(),
     ]);
 
-    const locale = entry?.locales[0];
-    const issues = gatherSeoIssues(meta, locale?.slug, locale?.data ?? null);
-    const score = computeScore(issues);
-
-    if (meta) {
-      await this.repo.saveScore(meta.id, score, issues);
+    const target = describeEntry(entry);
+    const body = selectBodyDocuments(target.fields, target.data);
+    const policy = resolveGatePolicy(settings, target.contentTypeName, body.hasBodyField);
+    if (policy === 'disabled') {
+      return { score: 100, issues: [], errors: [], warnings: [], policy };
     }
 
-    return {
-      score,
-      issues,
-      errors: issues.filter((i) => i.severity === 'ERROR'),
-      warnings: issues.filter((i) => i.severity === 'WARNING'),
-    };
+    const issues = gatherSeoIssues(resolveEffectiveMeta(meta, settings), target.slug, body);
+    const score = computeScore(issues);
+    // A score row needs a SeoMeta parent, and only an existing entry can have one.
+    if (target.exists) await this.persistScore(entryId, meta?.id, score, issues);
+
+    return { score, issues, ...splitBlockingIssues(issues, policy), policy };
+  }
+
+  private async persistScore(
+    entryId: string,
+    metaId: string | undefined,
+    score: number,
+    issues: SeoIssueInput[],
+  ): Promise<void> {
+    const parentId = metaId ?? (await this.repo.ensureMeta(entryId)).id;
+    await this.repo.saveScore(parentId, score, issues);
   }
 
   async upsertMeta(entryId: string, dto: UpsertSeoMetaDto): Promise<SeoMeta> {
@@ -199,6 +238,22 @@ export class SeoService {
    * locale lives at the bare path (`/blog/slug`); non-default locales are
    * prefixed with their code (`/ar/blog/slug`).
    */
+  /**
+   * The site-wide fallback title and description an entry inherits when it
+   * defines none of its own. The delivery payload applies these so a public page
+   * ships the value the SEO score was actually calculated against.
+   */
+  async getSiteMetaDefaults(): Promise<{
+    defaultMetaTitle: string | null;
+    defaultMetaDescription: string | null;
+  }> {
+    const settings = await this.repo.findSeoSettings();
+    return {
+      defaultMetaTitle: settings.defaultMetaTitle,
+      defaultMetaDescription: settings.defaultMetaDescription,
+    };
+  }
+
   async buildSitemapEntries(): Promise<SitemapEntry[]> {
     const [entries, locales] = await Promise.all([
       this.repo.findPublishedEntriesForSitemap(),
@@ -239,13 +294,26 @@ export class SeoService {
   }
 
   async createRedirect(dto: CreateRedirectDto, userId: string): Promise<Redirect> {
+    await this.assertRedirectTargetAllowed(dto.toPath);
     return this.repo.createRedirect(dto, userId);
   }
 
   async updateRedirect(id: string, dto: UpdateRedirectDto): Promise<Redirect> {
     const existing = await this.repo.findRedirectById(id);
     if (!existing) throw new NotFoundException(`Redirect ${id} not found`);
+    if (dto.toPath !== undefined) await this.assertRedirectTargetAllowed(dto.toPath);
     return this.repo.updateRedirect(id, dto);
+  }
+
+  /**
+   * A redirect target may only leave the site when its host is listed in
+   * `seo.redirects.allowedHosts`; without that policy the redirect table is an
+   * open redirect for whatever serves the rules.
+   */
+  private async assertRedirectTargetAllowed(toPath: string): Promise<void> {
+    const settings = await this.repo.findSeoSettings();
+    const verdict = checkRedirectTarget(toPath, settings.redirectAllowedHosts);
+    if (!verdict.ok) throw new BadRequestException(verdict.reason);
   }
 
   async deleteRedirect(id: string): Promise<void> {
@@ -257,7 +325,8 @@ export class SeoService {
   /**
    * Imports redirects from a CSV buffer (columns: fromPath,toPath,type,isActive).
    * Duplicates (existing or repeated within the file) are skipped and reported;
-   * malformed rows are returned with per-row reasons.
+   * malformed rows, and rows whose target the redirect policy refuses, are
+   * returned with per-row reasons.
    */
   async importRedirects(
     csv: string,
@@ -266,7 +335,12 @@ export class SeoService {
     const rows = parseCsv(csv);
     if (rows.length === 0) return { imported: 0, skipped: 0, errors: [] };
 
-    const { valid, errors, skipped: dupSkipped } = parseRedirectRows(rows);
+    const settings = await this.repo.findSeoSettings();
+    const {
+      valid,
+      errors,
+      skipped: dupSkipped,
+    } = parseRedirectRows(rows, settings.redirectAllowedHosts);
 
     const existing = await this.repo.findExistingFromPaths(valid.map((v) => v.fromPath));
     const toInsert = valid.filter((v) => !existing.has(v.fromPath));

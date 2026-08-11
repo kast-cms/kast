@@ -1,7 +1,15 @@
 /**
- * Locks the anonymous attack surface: /api/v1/delivery/* is the ONLY public
- * read surface. Every management content / content-type / media read must
- * answer 401 without credentials.
+ * Locks the anonymous attack surface. Exactly two things are public:
+ *   - /api/v1/delivery/*        the published content read API
+ *   - /api/v1/media/files/*     stored objects under the local storage adapter
+ *
+ * The media route is anonymous by design: delivery hands media URLs to public
+ * readers and the admin renders them in plain <img> tags, which is what an
+ * S3/R2 public bucket does. It serves bytes by opaque storage key only — it
+ * exposes no listing and no metadata — so an unknown key must 404, never 401.
+ *
+ * Every management content / content-type / media read must answer 401 without
+ * credentials.
  */
 import type { INestApplication } from '@nestjs/common';
 import { adminToken, bearer, createTestApp, httpServer } from './test-app';
@@ -84,6 +92,20 @@ describe('Public surface containment (e2e)', () => {
 
     it('serves the sitemap anonymously (200)', async () => {
       await request(httpServer(app)).get('/api/v1/delivery/sitemap.xml').expect(200);
+    });
+  });
+
+  describe('media objects are public, media management is not', () => {
+    it('404s an unknown media key rather than 401ing, because the route is public', async () => {
+      await request(httpServer(app)).get('/api/v1/media/files/nope.png').expect(404);
+    });
+
+    it('refuses to walk out of the upload directory', async () => {
+      await request(httpServer(app)).get('/api/v1/media/files/..%2f..%2fetc%2fpasswd').expect(404);
+    });
+
+    it('401s the media listing, which would expose every object', async () => {
+      await request(httpServer(app)).get('/api/v1/media').expect(401);
     });
   });
 });

@@ -4,6 +4,7 @@ import type { Job } from 'bullmq';
 import sharp from 'sharp';
 import { QUEUE_NAMES } from '../queue/queue.constants';
 import { MediaRepository } from './media.repository';
+import { THUMBNAIL_WIDTHS } from './storage/derived-keys.util';
 import type { StorageAdapter } from './storage/storage.adapter';
 
 export const STORAGE_ADAPTER = 'STORAGE_ADAPTER';
@@ -82,7 +83,7 @@ export class MediaProcessor extends WorkerHost {
     this.logger.log(`Generating thumbnails for ${mediaFileId}`);
     try {
       const original = await this.storage.read(storageKey);
-      for (const width of [400, 800]) {
+      for (const width of THUMBNAIL_WIDTHS) {
         const thumbBuffer = await sharp(original).resize(width).webp({ quality: 80 }).toBuffer();
         const thumbKey = `thumbs/${width}/${storageKey}`;
         await this.storage.upload(thumbKey, thumbBuffer, 'image/webp');

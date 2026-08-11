@@ -1,4 +1,8 @@
+/** Persisted on MediaFile.provider so a row records which backend holds its bytes. */
+export type StorageProviderId = 'local' | 's3' | 'r2';
+
 export interface StorageAdapter {
+  readonly provider: StorageProviderId;
   upload(
     key: string,
     buffer: Buffer,

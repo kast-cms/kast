@@ -13,7 +13,7 @@ import { SeparatorWithLabel } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Save } from 'lucide-react';
 import { useState, type JSX } from 'react';
-import { SettingsField } from './settings-field';
+import { EnvManagedField, SettingsField } from './settings-field';
 import type { UseSettingsReturn } from './use-settings';
 
 interface Props {
@@ -21,30 +21,12 @@ interface Props {
 }
 
 export function SecurityTab({ s }: Props): JSX.Element {
-  const [corsOrigins, setCorsOrigins] = useState<string>(() => {
-    const v = s.getValue('cors.allowedOrigins');
-    return Array.isArray(v) ? (v as string[]).join('\n') : String(v ?? '');
-  });
   const [robotsTxt, setRobotsTxt] = useState<string>(() =>
     String(s.getValue('robots.txt') ?? 'User-agent: *\nAllow: /'),
   );
 
-  const originCount = corsOrigins
-    .split('\n')
-    .map((o) => o.trim())
-    .filter(Boolean).length;
-
   const save = async (): Promise<void> => {
-    await s.patchSettings([
-      {
-        key: 'cors.allowedOrigins',
-        value: corsOrigins
-          .split('\n')
-          .map((o) => o.trim())
-          .filter(Boolean),
-      },
-      { key: 'robots.txt', value: robotsTxt },
-    ]);
+    await s.patchSettings([{ key: 'robots.txt', value: robotsTxt }]);
   };
 
   return (
@@ -57,24 +39,13 @@ export function SecurityTab({ s }: Props): JSX.Element {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5 pt-4">
-          <SettingsField
+          {/* CORS is applied once at bootstrap from the environment, so a value
+              stored here could never take effect; the API rejects the write. */}
+          <EnvManagedField
             label="Allowed CORS Origins"
-            htmlFor="cors-origins"
-            hint={
-              originCount === 0
-                ? 'One origin per line. With none listed, cross-origin browser calls are blocked.'
-                : `One origin per line. ${String(originCount)} configured.`
-            }
-          >
-            <Textarea
-              id="cors-origins"
-              rows={5}
-              value={corsOrigins}
-              onChange={(e) => setCorsOrigins(e.target.value)}
-              placeholder="https://example.com"
-              className="font-mono"
-            />
-          </SettingsField>
+            envVar="CORS_ORIGINS"
+            hint="Comma-separated origins, applied when the API starts. '*' allows any origin."
+          />
 
           <SeparatorWithLabel>Crawlers</SeparatorWithLabel>
 

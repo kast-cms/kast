@@ -22,6 +22,7 @@ import { Public } from '../../common/decorators/public.decorator';
 import type { AuthUser, TokenPair, UserSummary } from '../../common/types/auth.types';
 import type { Env } from '../../config/env.schema';
 import { AuthService } from './auth.service';
+import { AcceptInviteDto } from './dto/accept-invite.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
@@ -72,9 +73,16 @@ export class AuthController {
     return this.authService.refresh(dto.refreshToken).then((data) => ({ data }));
   }
 
+  /**
+   * Public on purpose: the refresh token in the body is itself the credential
+   * being surrendered, and it is the only one the admin holds at logout — the
+   * access token lives in browser memory the route handler cannot read. Behind
+   * a bearer guard this answered 401 and the server-side token stayed valid.
+   */
   @Post('logout')
+  @Public()
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiBearerAuth()
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
   @ApiOperation({ summary: 'Revoke refresh token' })
   async logout(@Body() dto: RefreshTokenDto): Promise<void> {
     await this.authService.logout(dto.refreshToken);
@@ -167,6 +175,16 @@ export class AuthController {
   async resetPassword(@Body() dto: ResetPasswordDto): Promise<{ message: string }> {
     await this.authService.resetPassword(dto.token, dto.newPassword);
     return { message: 'Password reset successfully.' };
+  }
+
+  @Post('accept-invite')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: 900000 } })
+  @ApiOperation({ summary: 'Set the first password for an invited account' })
+  async acceptInvite(@Body() dto: AcceptInviteDto): Promise<{ message: string }> {
+    await this.authService.acceptInvite(dto.token, dto.password);
+    return { message: 'Invitation accepted. You can now sign in.' };
   }
 
   // ─── Helpers ──────────────────────────────────────────────────

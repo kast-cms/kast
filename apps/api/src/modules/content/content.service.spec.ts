@@ -7,7 +7,12 @@ jest.mock('isomorphic-dompurify', () => {
   return { default: { sanitize }, sanitize };
 });
 
-import { ConflictException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import type { EventEmitter2 } from '@nestjs/event-emitter';
 import { ContentFieldType } from '@prisma/client';
 import type { Queue } from 'bullmq';
@@ -83,6 +88,7 @@ describe('ContentService', () => {
       update: jest.fn(),
       addLocale: jest.fn(),
       updateStatus: jest.fn().mockResolvedValue(true),
+      updateSlug: jest.fn().mockResolvedValue(true),
       updateSchedule: jest.fn().mockResolvedValue(true),
       trash: jest.fn().mockResolvedValue(true),
       createVersion: jest.fn().mockResolvedValue(undefined),
@@ -226,7 +232,14 @@ describe('ContentService', () => {
         'editor',
         'DRAFT',
       );
-      expect(repo.update).toHaveBeenCalledWith('e1', 'ct1', 'en', { title: 'Updated' }, []);
+      expect(repo.update).toHaveBeenCalledWith(
+        'e1',
+        'ct1',
+        'en',
+        { title: 'Updated' },
+        [],
+        undefined,
+      );
     });
 
     it('updates status without snapshotting when only status changes', async () => {
@@ -241,7 +254,14 @@ describe('ContentService', () => {
       contentTypes.findByName.mockResolvedValue(buildContentType());
       repo.findByIdForType.mockResolvedValue(buildEntry());
       await service.update('blog', 'e1', { locale: 'ar', data: { title: 'مرحبا' } }, 'editor');
-      expect(repo.update).toHaveBeenCalledWith('e1', 'ct1', 'ar', { title: 'مرحبا' }, []);
+      expect(repo.update).toHaveBeenCalledWith(
+        'e1',
+        'ct1',
+        'ar',
+        { title: 'مرحبا' },
+        [],
+        undefined,
+      );
     });
 
     it('throws NotFound when the entry is missing', async () => {
@@ -307,7 +327,7 @@ describe('ContentService', () => {
       );
       repo.findByIdForType.mockResolvedValue(buildEntry({ status: 'PUBLISHED' }));
       await service.update('blog', 'e1', { data: {}, status: 'DRAFT' }, 'editor');
-      expect(repo.update).toHaveBeenCalledWith('e1', 'ct1', 'en', {}, []);
+      expect(repo.update).toHaveBeenCalledWith('e1', 'ct1', 'en', {}, [], undefined);
     });
 
     it('re-validates stored data on a status-only move to SCHEDULED', async () => {
@@ -607,7 +627,9 @@ describe('ContentService', () => {
       await service.restore('blog', 'e1');
       expect(repo.updateStatus).toHaveBeenCalledWith('e1', 'ct1', 'DRAFT');
       await service.trash('blog', 'e1');
-      expect(repo.trash).toHaveBeenCalledWith('e1', 'ct1');
+      expect(repo.trash).toHaveBeenCalledWith('e1', 'ct1', undefined);
+      await service.trash('blog', 'e1', 'admin-1');
+      expect(repo.trash).toHaveBeenCalledWith('e1', 'ct1', 'admin-1');
       await service.cancelSchedule('blog', 'e1');
       expect(repo.updateSchedule).toHaveBeenCalledWith('e1', 'ct1', null, 'DRAFT');
       await expect(service.getVersion('blog', 'e1', 'v1')).rejects.toThrow(NotFoundException);
@@ -618,6 +640,200 @@ describe('ContentService', () => {
       repo.findByIdForType.mockResolvedValueOnce(buildEntry());
       repo.updateStatus.mockResolvedValue(false);
       await expect(service.archive('blog', 'e1')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('slug handling (CON-04)', () => {
+    it('normalizes an explicit slug and prefers it over data.slug', async () => {
+      contentTypes.findByName.mockResolvedValue(buildContentType());
+      repo.create.mockResolvedValue(buildEntry());
+
+      await service.create(
+        'blog',
+        { locale: 'en', slug: 'My First Post!', data: { slug: 'ignored' } },
+        'author',
+      );
+
+      expect(repo.create).toHaveBeenCalledWith(
+        'ct1',
+        { slug: 'ignored' },
+        'en',
+        'author',
+        'my-first-post',
+        [],
+        [],
+      );
+    });
+
+    it('generates a distinct slug for two entries created in the same millisecond', async () => {
+      contentTypes.findByName.mockResolvedValue(buildContentType());
+      repo.create.mockResolvedValue(buildEntry());
+
+      await service.create('blog', { locale: 'en', data: {} }, 'author');
+      await service.create('blog', { locale: 'en', data: {} }, 'author');
+
+      const slugs = repo.create.mock.calls.map((call) => call[4] as string);
+      expect(slugs[0]).not.toBe(slugs[1]);
+    });
+
+    it('rejects an explicit slug with no slug-safe characters', async () => {
+      contentTypes.findByName.mockResolvedValue(buildContentType());
+      await expect(
+        service.create('blog', { locale: 'en', slug: '///', data: {} }, 'author'),
+      ).rejects.toThrow(BadRequestException);
+      expect(repo.create).not.toHaveBeenCalled();
+    });
+
+    it('rewrites the locale slug on update alongside the data', async () => {
+      contentTypes.findByName.mockResolvedValue(buildContentType());
+      repo.findByIdForType.mockResolvedValue(buildEntry());
+
+      await service.update('blog', 'e1', { slug: 'New Slug', data: { title: 'x' } }, 'editor');
+
+      expect(repo.update).toHaveBeenCalledWith('e1', 'ct1', 'en', { title: 'x' }, [], 'new-slug');
+    });
+
+    it('rewrites the locale slug on its own', async () => {
+      contentTypes.findByName.mockResolvedValue(buildContentType());
+      repo.findByIdForType.mockResolvedValue(buildEntry());
+
+      await service.update('blog', 'e1', { slug: 'New Slug' }, 'editor');
+
+      expect(repo.updateSlug).toHaveBeenCalledWith('e1', 'ct1', 'en', 'new-slug');
+      expect(repo.createVersion).not.toHaveBeenCalled();
+    });
+
+    it('404s a slug-only update when the locale row is gone', async () => {
+      contentTypes.findByName.mockResolvedValue(buildContentType());
+      repo.findByIdForType.mockResolvedValue(buildEntry());
+      repo.updateSlug.mockResolvedValue(false);
+
+      await expect(service.update('blog', 'e1', { slug: 'new' }, 'editor')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('still gates a status change that also carries a slug', async () => {
+      contentTypes.findByName.mockResolvedValue(
+        buildType([buildField({ id: 'f-b', name: 'body', isRequired: true })]),
+      );
+      repo.findByIdForType.mockResolvedValue(buildEntry({ locales: [] }));
+
+      await expect(
+        service.update('blog', 'e1', { slug: 'new', status: 'PUBLISHED' }, 'editor'),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({ code: 'CONTENT_SCHEMA_INVALID' }),
+      });
+      expect(repo.updateSlug).not.toHaveBeenCalled();
+    });
+
+    it('normalizes the slug of a locale added to an existing entry', async () => {
+      contentTypes.findByName.mockResolvedValue(buildContentType());
+      repo.findByIdForType.mockResolvedValue(buildEntry());
+
+      await service.addLocale('blog', 'e1', { locale: 'ar', slug: 'Hello There', data: {} }, 'u');
+
+      expect(repo.addLocale).toHaveBeenCalledWith('e1', 'ct1', 'ar', 'hello-there', {}, []);
+    });
+  });
+
+  describe('unarchive vs trash restore (CON-08)', () => {
+    it('moves an archived entry back to draft', async () => {
+      contentTypes.findByName.mockResolvedValue(buildContentType());
+      repo.findByIdForType.mockResolvedValue(buildEntry({ status: 'ARCHIVED' }));
+
+      await service.unarchive('blog', 'e1');
+
+      expect(repo.updateStatus).toHaveBeenCalledWith('e1', 'ct1', 'DRAFT');
+    });
+
+    it('refuses a trashed entry and points at the trash endpoint', async () => {
+      contentTypes.findByName.mockResolvedValue(buildContentType());
+      repo.findByIdForType.mockResolvedValue(
+        buildEntry({ status: 'TRASHED', trashedAt: new Date() }),
+      );
+
+      await expect(service.unarchive('blog', 'e1')).rejects.toThrow(ConflictException);
+      // Flipping the status here would have left the row marked DRAFT and still
+      // hidden, because trashedAt would not have been cleared.
+      expect(repo.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('keeps restore() as an alias of unarchive', async () => {
+      contentTypes.findByName.mockResolvedValue(buildContentType());
+      repo.findByIdForType.mockResolvedValue(
+        buildEntry({ status: 'TRASHED', trashedAt: new Date() }),
+      );
+
+      await expect(service.restore('blog', 'e1')).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('bulk actions (CON-03)', () => {
+    beforeEach(() => {
+      contentTypes.findByName.mockResolvedValue(buildContentType());
+    });
+
+    it('trashes each id through the single-entry path', async () => {
+      repo.findByIdForType.mockResolvedValue(buildEntry());
+
+      const { data } = await service.bulkTrash('blog', ['a', 'b']);
+
+      expect(repo.trash).toHaveBeenCalledWith('a', 'ct1', undefined);
+      expect(repo.trash).toHaveBeenCalledWith('b', 'ct1', undefined);
+      expect(data).toMatchObject({ succeeded: 2, failed: 0 });
+    });
+
+    it('records the actor against every id in the batch (TRASH-03)', async () => {
+      repo.findByIdForType.mockResolvedValue(buildEntry());
+
+      await service.bulkTrash('blog', ['a', 'b'], 'admin-1');
+
+      // Without this the trash screen cannot say who deleted a bulk-trashed row.
+      expect(repo.trash).toHaveBeenCalledWith('a', 'ct1', 'admin-1');
+      expect(repo.trash).toHaveBeenCalledWith('b', 'ct1', 'admin-1');
+    });
+
+    it('reports the ids that belong to another content type instead of failing the batch', async () => {
+      repo.findByIdForType.mockImplementation((id: string) =>
+        Promise.resolve(id === 'mine' ? buildEntry() : null),
+      );
+
+      const { data } = await service.bulkTrash('blog', ['mine', 'foreign']);
+
+      expect(data.succeeded).toBe(1);
+      expect(data.results).toEqual([
+        { id: 'mine', ok: true },
+        { id: 'foreign', ok: false, error: expect.objectContaining({ status: 404 }) },
+      ]);
+      expect(repo.trash).toHaveBeenCalledTimes(1);
+    });
+
+    it('runs the SEO gate per entry on a bulk publish', async () => {
+      repo.findByIdForType.mockResolvedValue(buildEntry());
+      seo.validateNow.mockResolvedValueOnce(validation()).mockResolvedValueOnce(
+        validation({
+          errors: [{ type: 'title_missing', severity: 'ERROR', message: 'x', penalty: 20 }],
+        }),
+      );
+
+      const { data } = await service.bulkPublish('blog', ['ok', 'blocked']);
+
+      expect(data.succeeded).toBe(1);
+      expect(data.results[1]?.error).toMatchObject({
+        status: 422,
+        code: 'SEO_VALIDATION_FAILED',
+      });
+      expect(repo.updateStatus).toHaveBeenCalledTimes(1);
+    });
+
+    it('unpublishes each id', async () => {
+      repo.findByIdForType.mockResolvedValue(buildEntry());
+
+      const { data } = await service.bulkUnpublish('blog', ['a']);
+
+      expect(repo.updateStatus).toHaveBeenCalledWith('a', 'ct1', 'DRAFT');
+      expect(data.failed).toBe(0);
     });
   });
 });

@@ -4,6 +4,7 @@ import type { User } from '@prisma/client';
 import type { QueueAdapter } from '../queue/queue.adapter';
 import type { AuthRepository } from './auth.repository';
 import { AuthService } from './auth.service';
+import type { OAuthPolicy } from './oauth-policy';
 
 function buildOwner(email: string): User {
   return {
@@ -42,7 +43,10 @@ describe('AuthService setup concurrency', () => {
   function buildService(repo: AuthRepository): AuthService {
     const jwt = { signAsync: jest.fn().mockResolvedValue('access-jwt') } as unknown as JwtService;
     const queue = { enqueue: jest.fn().mockResolvedValue(undefined) } as unknown as QueueAdapter;
-    return new AuthService(repo, jwt, queue);
+    const policy = {
+      canProvision: jest.fn().mockReturnValue({ allowed: false, reason: 'disabled' }),
+    } as unknown as OAuthPolicy;
+    return new AuthService(repo, jwt, queue, policy);
   }
 
   it('creates exactly one owner when eight setup requests arrive at once', async () => {

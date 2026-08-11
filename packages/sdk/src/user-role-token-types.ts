@@ -8,6 +8,11 @@ export interface UserSummary {
   avatarUrl: string | null;
   isActive: boolean;
   isVerified: boolean;
+  /**
+   * True while the account still has no password: an invitation was sent and
+   * never accepted. `resendInvite` refuses with 422 once this is false.
+   */
+  hasPendingInvite: boolean;
   roles: string[];
   lastLoginAt: string | null;
   createdAt: string;

@@ -6,8 +6,7 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { useApiClient, useSession } from '@/lib/session';
 import type { FormSubmissionSummary } from '@kast-cms/sdk';
 import { ArrowLeft, Download, Inbox } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -19,10 +18,52 @@ interface SubmissionsPageClientProps {
   formName: string;
 }
 
+interface SubmissionsHeaderProps {
+  formName: string;
+  total: number;
+  isFirstLoad: boolean;
+  onBack: () => void;
+  onExport: () => void;
+}
+
+function SubmissionsHeader({
+  formName,
+  total,
+  isFirstLoad,
+  onBack,
+  onExport,
+}: SubmissionsHeaderProps): JSX.Element {
+  const t = useTranslations('forms.submissions');
+  return (
+    <PageHeader
+      title={formName}
+      description={isFirstLoad ? undefined : t('subtitle', { total })}
+      breadcrumb={
+        <Button
+          size="sm"
+          variant="ghost"
+          className="-ms-2 self-start text-muted-foreground hover:text-foreground"
+          onClick={onBack}
+        >
+          <ArrowLeft className="rtl:rotate-180" />
+          {t('back')}
+        </Button>
+      }
+      actions={
+        <Button variant="outline" onClick={onExport}>
+          <Download />
+          {t('exportCsv')}
+        </Button>
+      }
+    />
+  );
+}
+
 export function SubmissionsPageClient({
   formId,
   formName,
 }: SubmissionsPageClientProps): JSX.Element {
+  const client = useApiClient();
   const t = useTranslations('forms.submissions');
   const { session } = useSession();
   const router = useRouter();
@@ -39,14 +80,13 @@ export function SubmissionsPageClient({
     if (!session) return;
     setLoading(true);
     try {
-      const client = createApiClient(session.accessToken);
       const res = await client.forms.listSubmissions(formId, { page, limit });
       setSubmissions(res.data);
       setTotal(res.total);
     } finally {
       setLoading(false);
     }
-  }, [session, formId, page]);
+  }, [session, formId, page, client]);
 
   useEffect(() => {
     void load();
@@ -58,7 +98,6 @@ export function SubmissionsPageClient({
       if (!window.confirm(t('deleteConfirm'))) return;
       setDeleting(subId);
       try {
-        const client = createApiClient(session.accessToken);
         await client.forms.deleteSubmission(formId, subId);
         setSelected((prev) => (prev?.id === subId ? null : prev));
         await load();
@@ -66,41 +105,70 @@ export function SubmissionsPageClient({
         setDeleting(null);
       }
     },
-    [session, formId, load, t],
+    [session, formId, load, t, client],
   );
+
+  /** Writes the new read state locally rather than refetching the whole page. */
+  const applyRead = useCallback((subId: string, isRead: boolean): void => {
+    const stamp = isRead ? new Date().toISOString() : null;
+    setSubmissions((prev) =>
+      prev.map((s) => (s.id === subId ? { ...s, isRead, readAt: stamp } : s)),
+    );
+    setSelected((prev) => (prev?.id === subId ? { ...prev, isRead, readAt: stamp } : prev));
+  }, []);
+
+  const toggleRead = useCallback(
+    async (sub: FormSubmissionSummary): Promise<void> => {
+      const next = !sub.isRead;
+      applyRead(sub.id, next);
+      try {
+        await client.forms.markSubmissionRead(formId, sub.id, next);
+      } catch {
+        applyRead(sub.id, sub.isRead); // put it back; the server said no
+      }
+    },
+    [applyRead, client, formId],
+  );
+
+  /** Opening a submission is what "reading" it means. */
+  const handleView = useCallback(
+    (sub: FormSubmissionSummary): void => {
+      setSelected(sub);
+      if (!sub.isRead) void toggleRead(sub);
+    },
+    [toggleRead],
+  );
+
+  /**
+   * The export route requires a bearer token, so it cannot be a plain <a href>:
+   * the browser would send no Authorization header and get a 401. Fetch it
+   * through the SDK and hand the blob to a temporary object URL instead.
+   */
+  const downloadCsv = useCallback(async (): Promise<void> => {
+    const blob = await client.forms.exportCsv(formId);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `submissions-${formId}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [client, formId]);
 
   // The count is meaningless until the first page lands, so it is held back
   // rather than flashing "0 submissions" at every visitor.
   const isFirstLoad = loading && submissions.length === 0;
 
   const header = (
-    <PageHeader
-      title={formName}
-      description={isFirstLoad ? undefined : t('subtitle', { total })}
-      breadcrumb={
-        <Button
-          size="sm"
-          variant="ghost"
-          className="-ms-2 self-start text-muted-foreground hover:text-foreground"
-          onClick={() => {
-            router.push('/forms');
-          }}
-        >
-          <ArrowLeft className="rtl:rotate-180" />
-          {t('back')}
-        </Button>
-      }
-      actions={
-        <Button variant="outline" asChild>
-          <a
-            href={`/api/v1/forms/${formId}/submissions/export`}
-            download={`submissions-${formId}.csv`}
-          >
-            <Download />
-            {t('exportCsv')}
-          </a>
-        </Button>
-      }
+    <SubmissionsHeader
+      formName={formName}
+      total={total}
+      isFirstLoad={isFirstLoad}
+      onBack={() => {
+        router.push('/forms');
+      }}
+      onExport={() => {
+        void downloadCsv();
+      }}
     />
   );
 
@@ -137,7 +205,10 @@ export function SubmissionsPageClient({
             dataKeys={dataKeys}
             deleting={deleting}
             t={t}
-            onView={setSelected}
+            onView={handleView}
+            onToggleRead={(sub) => {
+              void toggleRead(sub);
+            }}
             onDelete={(subId) => {
               void handleDelete(subId);
             }}

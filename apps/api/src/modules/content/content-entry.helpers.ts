@@ -1,4 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
+import type { PaginatedResult } from '../../common/types/auth.types';
 import type { EntryWithLocale } from './content.repository';
 
 /** Flattens an entry's locales into the shape stored on a version snapshot. */
@@ -21,4 +22,19 @@ export function localeData(entry: EntryWithLocale, localeCode: string): Record<s
 
 export function writeLocale(entry: EntryWithLocale, requested?: string): string {
   return requested ?? entry.locales[0]?.localeCode ?? 'en';
+}
+
+/**
+ * Turns a `limit + 1` window into a page. The extra row is what tells the caller
+ * there is a next page; it is never returned.
+ */
+export function paginate<T extends { id: string }>(
+  items: T[],
+  total: number,
+  limit: number,
+): PaginatedResult<T> {
+  const hasNextPage = items.length > limit;
+  const data = hasNextPage ? items.slice(0, limit) : items;
+  const cursor = hasNextPage ? (data[data.length - 1]?.id ?? null) : null;
+  return { data, meta: { total, limit, cursor, hasNextPage } };
 }

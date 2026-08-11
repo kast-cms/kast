@@ -1,11 +1,13 @@
 import { Logger, ValidationPipe, VersioningType, type INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { assertNoKnownWeakCredentials } from './common/utils/weak-credential.util';
+import { originOf, parseTrustProxy } from './config/bootstrap.util';
 import type { Env } from './config/env.schema';
 import { PrismaService } from './prisma/prisma.service';
 
@@ -24,7 +26,7 @@ function applyHelmet(app: INestApplication, siteUrl: string, adminUrl: string): 
           frameSrc: ["'none'"],
           // The admin panel embeds the Bull board from this origin, so its
           // origin must be allowed to frame us; everything else stays blocked.
-          frameAncestors: ["'self'", adminUrl, siteUrl],
+          frameAncestors: ["'self'", originOf(adminUrl), originOf(siteUrl)],
           upgradeInsecureRequests: [],
         },
       },
@@ -83,14 +85,22 @@ async function buildSentryReporter(
 }
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true, rawBody: true });
+  // Typed as the Express app so `trust proxy` can be set below.
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bufferLogs: true,
+    rawBody: true,
+  });
   const configService = app.get<ConfigService<Env>>(ConfigService);
 
   applyHelmet(
     app,
     configService.get('SITE_URL', { infer: true }) ?? 'http://localhost:3000',
-    configService.get('ADMIN_URL', { infer: true }) ?? 'http://localhost:3001',
+    configService.get('ADMIN_URL', { infer: true }) ?? 'http://localhost:3001/admin',
   );
+
+  // Decides what `req.ip` means: the address recorded against a public form
+  // submission and the key the throttler counts on both read it.
+  app.set('trust proxy', parseTrustProxy(configService.get('TRUST_PROXY', { infer: true }) ?? ''));
 
   const corsOrigins = configService.get<string>('CORS_ORIGINS', { infer: true }) ?? '*';
   app.enableCors({

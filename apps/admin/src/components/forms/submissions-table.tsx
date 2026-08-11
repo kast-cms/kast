@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/table';
 import { Hint } from '@/components/ui/tooltip';
 import type { FormSubmissionSummary } from '@kast-cms/sdk';
-import { ChevronLeft, ChevronRight, Eye, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Eye, Mail, MailOpen, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import React, { type JSX } from 'react';
 
@@ -70,6 +70,7 @@ interface SubmissionsTableProps {
   t: SubmissionsT;
   onView: (sub: FormSubmissionSummary) => void;
   onDelete: (subId: string) => void;
+  onToggleRead: (sub: FormSubmissionSummary) => void;
 }
 
 export function SubmissionsTable({
@@ -79,6 +80,7 @@ export function SubmissionsTable({
   t,
   onView,
   onDelete,
+  onToggleRead,
 }: SubmissionsTableProps): JSX.Element {
   const tc = useTranslations('common');
 
@@ -100,15 +102,45 @@ export function SubmissionsTable({
           {submissions.map((sub) => (
             <TableRow key={sub.id} className="group">
               <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                {new Date(sub.createdAt).toLocaleString()}
+                <span className="flex items-center gap-2">
+                  {/* An unread marker is the whole point of the isRead column. */}
+                  <span
+                    aria-hidden="true"
+                    className={
+                      sub.isRead
+                        ? 'size-1.5 shrink-0 rounded-full bg-transparent'
+                        : 'size-1.5 shrink-0 rounded-full bg-primary'
+                    }
+                  />
+                  {new Date(sub.createdAt).toLocaleString()}
+                </span>
               </TableCell>
               {dataKeys.map((k) => (
-                <TableCell key={k} className="max-w-xs truncate text-sm text-foreground">
+                <TableCell
+                  key={k}
+                  className={
+                    sub.isRead
+                      ? 'max-w-xs truncate text-sm text-foreground'
+                      : 'max-w-xs truncate text-sm font-medium text-foreground'
+                  }
+                >
                   {String(sub.data[k] ?? '')}
                 </TableCell>
               ))}
               <TableCell className="text-end">
                 <div className="flex items-center justify-end gap-1">
+                  <Hint label={sub.isRead ? t('markUnread') : t('markRead')}>
+                    <Button
+                      size="icon-sm"
+                      variant="ghost"
+                      aria-label={sub.isRead ? t('markUnread') : t('markRead')}
+                      onClick={() => {
+                        onToggleRead(sub);
+                      }}
+                    >
+                      {sub.isRead ? <MailOpen /> : <Mail />}
+                    </Button>
+                  </Hint>
                   <Hint label={t('view')}>
                     <Button
                       size="icon-sm"

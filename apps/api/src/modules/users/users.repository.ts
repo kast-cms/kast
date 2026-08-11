@@ -11,6 +11,8 @@ const USER_SELECT = {
   avatarUrl: true,
   isActive: true,
   isVerified: true,
+  // Never returned as-is: toSummary reduces it to the `hasPendingInvite` flag.
+  passwordHash: true,
   lastLoginAt: true,
   createdAt: true,
   roles: { select: { role: { select: { name: true } } } },
@@ -102,6 +104,34 @@ export class UsersRepository {
         select: USER_SELECT,
       });
     });
+  }
+
+  async hasPassword(id: string): Promise<boolean> {
+    const row = await this.prisma.user.findUnique({
+      where: { id },
+      select: { passwordHash: true },
+    });
+    return Boolean(row?.passwordHash);
+  }
+
+  /**
+   * Stores the hashed invitation token. Invitations reuse the password-reset
+   * record — one pending single-use credential per user, hashed, with its own
+   * expiry — so an invite and a reset request supersede each other rather than
+   * leaving two independent ways to set the same password.
+   */
+  async upsertInviteToken(userId: string, hash: string, expiresAt: Date): Promise<void> {
+    await this.prisma.passwordResetToken.upsert({
+      where: { userId },
+      create: { userId, hash, expiresAt },
+      update: { hash, expiresAt, usedAt: null },
+    });
+  }
+
+  /** Drops any pending invite/reset credential. Returns whether one existed. */
+  async deleteInviteToken(userId: string): Promise<boolean> {
+    const { count } = await this.prisma.passwordResetToken.deleteMany({ where: { userId } });
+    return count > 0;
   }
 
   async softDelete(id: string, trashedByUserId: string): Promise<{ trashedAt: Date | null }> {

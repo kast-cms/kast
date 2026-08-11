@@ -97,6 +97,20 @@ Authorization: Bearer <token>
 
 Sets `status = ARCHIVED`.
 
+## Unarchive
+
+```http
+POST /api/v1/content-types/:typeSlug/entries/:id/unarchive
+Authorization: Bearer <token>
+```
+
+Returns an archived entry to `DRAFT`. This is **not** the same as restoring from
+the trash: an entry that is in the trash is refused with `409`, naming
+`POST /api/v1/trash/content/:id/restore` as the route to use instead.
+
+`POST .../entries/:id/restore` is a deprecated alias of this route, kept working
+for existing clients.
+
 ## Schedule
 
 ```http
@@ -129,12 +143,64 @@ Authorization: Bearer <token>
 
 ## Bulk operations
 
+Three separate routes, one per action:
+
 ```http
-POST /api/v1/content-types/:typeSlug/entries/bulk
+POST /api/v1/content-types/:typeSlug/entries/bulk/trash
+POST /api/v1/content-types/:typeSlug/entries/bulk/publish
+POST /api/v1/content-types/:typeSlug/entries/bulk/unpublish
 Authorization: Bearer <token>
 
+{ "ids": ["id1", "id2", "id3"] }
+```
+
+At most **100 ids** per request; duplicates are collapsed.
+
+### Not atomic
+
+Every id runs through the same single-entry path as the individual route, so
+each one is subject to the content-type binding check, the schema gate and the
+SEO gate on its own. **A failure does not roll back the ids that succeeded** —
+one entry blocked by the SEO gate must not undo a publish that was already
+valid. The response reports each id separately and the status is always `200`:
+
+```json
 {
-  "action": "publish",   // "publish" | "trash" | "archive"
-  "ids": ["id1", "id2", "id3"]
+  "data": {
+    "results": [
+      { "id": "id1", "ok": true },
+      {
+        "id": "id2",
+        "ok": false,
+        "error": {
+          "status": 422,
+          "code": "UNPROCESSABLE_ENTITY",
+          "message": "Meta title is missing"
+        }
+      }
+    ],
+    "succeeded": 1,
+    "failed": 1
+  }
 }
 ```
+
+Apply an optimistic UI update only to the ids reported with `ok: true`.
+
+## Slugs
+
+Each entry carries one slug per locale, and it is the URL identity the Delivery
+API looks entries up by.
+
+- Precedence on write: an explicit `slug` on the request body wins, then
+  `data.slug`, then a generated `<typeSlug>-<random>` fallback.
+- Stored slugs are normalised: NFKC, lower-cased, every run of non-alphanumeric
+  characters folded to a single hyphen, trimmed, capped at 200 characters.
+  Unicode letters and digits survive, so Arabic slugs are preserved.
+- An explicit slug that normalises to nothing is a `400` rather than being
+  silently replaced.
+- `(localeCode, slug)` is unique in the database; a collision is a `409`.
+- `slug` may also be sent on update, including on its own.
+
+A `slug` _field_ declared on the content type is ordinary content and is stored
+exactly as validated — only the locale's slug column is normalised.

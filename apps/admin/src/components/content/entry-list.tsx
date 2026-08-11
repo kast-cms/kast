@@ -5,8 +5,7 @@ import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { useApiClient } from '@/lib/session';
 import { useApiResource } from '@/lib/use-api-resource';
 import { FileText, Plus } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -47,8 +46,7 @@ function EntryTableSkeleton(): JSX.Element {
 
 export function EntryListClient({ typeId, displayName }: EntryListClientProps): JSX.Element {
   const t = useTranslations('content');
-  const { session } = useSession();
-  const client = createApiClient(session?.accessToken);
+  const client = useApiClient();
   const { data: contentType } = useApiResource(
     async (c) => (await c.contentTypes.get(typeId)).data,
     `content-type:${typeId}`,

@@ -120,6 +120,13 @@ export class SubmitFormDto {
   _hp?: string;
 }
 
+export class MarkSubmissionReadDto {
+  @ApiPropertyOptional({ default: true, description: 'Defaults to true' })
+  @IsOptional()
+  @IsBoolean()
+  isRead?: boolean;
+}
+
 export class ListSubmissionsQueryDto {
   @ApiPropertyOptional()
   @IsOptional()

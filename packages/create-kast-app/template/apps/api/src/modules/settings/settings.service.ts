@@ -1,18 +1,35 @@
-import { BadRequestException, ForbiddenException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma, type GlobalSetting } from '@prisma/client';
+import { randomUUID } from 'crypto';
 import { createTransport, type Transporter } from 'nodemailer';
 import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
 import type { AuthUser } from '../../common/types/auth.types';
 import { decryptSecret, encryptSecret } from '../../common/utils/secret-crypto.util';
 import type { Env } from '../../config/env.schema';
+import type { StorageAdapter } from '../media/storage/storage.adapter';
 import { TestSmtpDto } from './dto/test-smtp.dto';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
+import { describeInertSetting, isInertSettingKey } from './settings-catalog';
 import { isSecretSettingKey, toSafeSetting, type SafeSetting } from './settings-secret.util';
 import { SettingsRepository, type SettingPatch } from './settings.repository';
+import { STORAGE_PROBE_ADAPTER } from './storage-probe.token';
 
 /** Roles allowed to learn that a secret setting exists at all. */
 const SECRET_READER_ROLES: string[] = [SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN];
+
+export interface StorageProbeResult {
+  provider: string;
+  status: string;
+  checks: { write: boolean; read: boolean; delete: boolean };
+  warning?: string;
+}
 
 @Injectable()
 export class SettingsService {
@@ -21,7 +38,8 @@ export class SettingsService {
 
   constructor(
     private readonly repo: SettingsRepository,
-    config: ConfigService<Env>,
+    private readonly config: ConfigService<Env>,
+    @Inject(STORAGE_PROBE_ADAPTER) private readonly storage: StorageAdapter,
   ) {
     // KAST_SECRET_ENCRYPTION_KEY is intentionally read from the process env
     // rather than the validated schema so an existing deployment keeps booting
@@ -46,12 +64,16 @@ export class SettingsService {
   /**
    * Secret rows are withheld entirely below admin, and reduced to
    * `{ value: null, configured }` for everyone else — no caller ever reads a
-   * stored credential back out of the API.
+   * stored credential back out of the API. Keys the runtime does not read are
+   * withheld from everyone: a setting the API shows is a setting it honours.
    */
   async getAll(user?: AuthUser): Promise<SafeSetting[]> {
     const rows = await this.repo.findAll();
     const maySeeSecrets = (user?.roles ?? []).some((role) => SECRET_READER_ROLES.includes(role));
-    return rows.filter((row) => maySeeSecrets || !isSecretSettingKey(row.key)).map(toSafeSetting);
+    return rows
+      .filter((row) => !isInertSettingKey(row.key))
+      .filter((row) => maySeeSecrets || !isSecretSettingKey(row.key))
+      .map(toSafeSetting);
   }
 
   /** Returns public settings as a flat { key: value } map for delivery callers. */
@@ -59,17 +81,25 @@ export class SettingsService {
     const rows = await this.repo.findPublic();
     const out: Record<string, unknown> = {};
     for (const row of rows) {
-      if (isSecretSettingKey(row.key)) continue;
+      if (isSecretSettingKey(row.key) || isInertSettingKey(row.key)) continue;
       out[row.key] = row.value;
     }
     return out;
   }
 
   async patch(dto: UpdateSettingsDto, user: AuthUser): Promise<SafeSetting[]> {
-    const patches: SettingPatch[] = dto.settings.map(({ key, value }) =>
+    const inert = dto.settings.filter(({ key }) => isInertSettingKey(key));
+    if (inert.length > 0) {
+      throw new BadRequestException(inert.map(({ key }) => describeInertSetting(key)).join(' '));
+    }
+    const patches: SettingPatch[] = dto.settings.map(({ key, value, isPublic }) =>
       isSecretSettingKey(key)
         ? this.buildSecretPatch(key, value, user)
-        : { key, value: value as Prisma.InputJsonValue },
+        : {
+            key,
+            value: value as Prisma.InputJsonValue,
+            ...(isPublic === undefined ? {} : { isPublic }),
+          },
     );
     const rows = await this.repo.upsertMany(patches, user.id);
     return rows.map(toSafeSetting);
@@ -78,7 +108,9 @@ export class SettingsService {
   async testSmtp(dto: TestSmtpDto): Promise<{ success: boolean }> {
     const settings = await this.repo.findAll();
     const transport = this.buildTransporter(settings);
-    const from = this.getStringValue(settings, 'smtp.from') || 'noreply@kast.io';
+    const address = this.getStringValue(settings, 'smtp.from') || 'noreply@kast.io';
+    const fromName = this.getStringValue(settings, 'smtp.fromName');
+    const from = fromName ? `${fromName} <${address}>` : address;
     try {
       await transport.sendMail({
         from,
@@ -93,10 +125,51 @@ export class SettingsService {
     }
   }
 
-  async testStorage(): Promise<{ provider: string; status: string }> {
-    const settings = await this.repo.findAll();
-    const provider = this.getStringValue(settings, 'storage.provider') || 'LOCAL';
-    return { provider, status: 'configured' };
+  /**
+   * Writes, reads back and removes a probe object through the adapter the API
+   * actually uploads with. The provider is reported from the environment
+   * because that — not any stored setting — is what selects the adapter.
+   */
+  async testStorage(): Promise<StorageProbeResult> {
+    const configured = this.config.get('STORAGE_PROVIDER', { infer: true }) ?? 'local';
+    const effective = configured === 'gcs' ? 'local' : configured;
+    const key = `.kast-probe/${randomUUID()}.txt`;
+    const payload = Buffer.from(`kast storage probe ${new Date().toISOString()}`, 'utf8');
+
+    try {
+      await this.storage.upload(key, payload, 'text/plain');
+      const readBack = await this.storage.read(key);
+      if (!readBack.equals(payload)) {
+        throw new Error('the probe object read back with different contents');
+      }
+    } catch (err: unknown) {
+      await this.removeProbe(key);
+      this.logger.error(`Storage probe failed for provider "${effective}"`, err);
+      throw new BadRequestException(
+        `Storage test failed for provider "${effective}": ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+
+    return {
+      provider: effective.toUpperCase(),
+      status: 'ok',
+      checks: { write: true, read: true, delete: await this.removeProbe(key) },
+      ...(configured === effective
+        ? {}
+        : {
+            warning: `STORAGE_PROVIDER=${configured} has no adapter; the ${effective} adapter is in use.`,
+          }),
+    };
+  }
+
+  private async removeProbe(key: string): Promise<boolean> {
+    try {
+      await this.storage.delete(key);
+      return true;
+    } catch (err: unknown) {
+      this.logger.warn(`Storage probe object ${key} could not be deleted: ${String(err)}`);
+      return false;
+    }
   }
 
   private buildSecretPatch(key: string, value: unknown, user: AuthUser): SettingPatch {

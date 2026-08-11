@@ -59,15 +59,74 @@ POST /api/v1/forms/:id/submit
 Content-Type: application/json
 
 {
-  "name": "Oday Bakkour",
-  "email": "oday@example.com",
-  "message": "Hello!"
+  "data": {
+    "name": "Oday Bakkour",
+    "email": "oday@example.com",
+    "message": "Hello!"
+  },
+  "_hp": ""
 }
 ```
 
+The answers go under `data`. `_hp` is an optional honeypot: a non-empty value
+makes the request succeed while discarding the submission.
+
 No authentication required. Rate limit: 10 requests / minute per IP.
 
-Returns `201 Created` with the submission ID.
+Returns `200 OK` with a bare body — **not** a `{ data }` envelope:
+
+```json
+{ "ok": true }
+```
+
+### `ok` is not a receipt
+
+An unknown, trashed or inactive form answers exactly the same way. That is
+deliberate: it stops the endpoint being used to enumerate which form ids exist.
+
+### Validation
+
+Submissions are validated against the form's own field definitions before they
+are stored. Unknown keys are rejected, required fields are enforced (a required
+checkbox must actually be ticked), values are coerced per field type, and
+`choices` / `min` / `max` / `minLength` / `maxLength` / `regex` are honoured. The
+whole submission is capped at 64 KiB, and any string field without an explicit
+`maxLength` at 10,000 characters. Only declared fields are persisted.
+
+A failure is `400`:
+
+```json
+{
+  "code": "FORM_SUBMISSION_INVALID",
+  "errors": [
+    { "field": "email", "rule": "format", "message": "Must be a valid email address" },
+    { "field": "message", "rule": "required", "message": "This field is required" }
+  ]
+}
+```
+
+Messages name the failing rule only — they never echo the form's name, its
+configured bounds or its allowed choices.
+
+### Notification email
+
+When the form has `notifyEmail` set, a `form-submission` job is queued to mail
+the declared answers, HTML-escaped and truncated at 500 characters per value.
+The submitter's IP address and user agent are never mailed; they stay behind
+admin authentication. A queue failure is logged and swallowed — the submission
+is already stored and the public request must not fail.
+
+## Mark a submission read
+
+```http
+PATCH /api/v1/forms/:id/submissions/:subId/read
+Authorization: Bearer <token>   (ADMIN+)
+
+{ "isRead": true }
+```
+
+`isRead` defaults to `true`. `readAt` is set on read and cleared on unread. A
+submission id belonging to a different form is a `404`.
 
 ## List submissions
 

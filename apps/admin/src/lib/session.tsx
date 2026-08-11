@@ -1,12 +1,15 @@
 'use client';
 
 import { adminRoute } from '@/config/env';
+import { createApiClient } from '@/lib/api';
 import type { Session, SessionUser, TokenPair } from '@/types';
+import type { KastClient } from '@kast-cms/sdk';
 import {
   createContext,
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type JSX,
@@ -36,21 +39,14 @@ export function SessionProvider({ children }: SessionProviderProps): JSX.Element
   const [status, setStatus] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading');
   const refreshingRef = useRef(false);
 
-  const buildSession = useCallback((pair: TokenPair): Session => {
-    const payload = decodeJwtPayload(pair.accessToken);
-    const user: SessionUser = {
-      id: (payload['sub'] as string | undefined) ?? '',
-      email: (payload['email'] as string | undefined) ?? '',
-      firstName: (payload['firstName'] as string | null | undefined) ?? null,
-      lastName: (payload['lastName'] as string | null | undefined) ?? null,
-      roles: (payload['roles'] as string[] | undefined) ?? [],
-    };
-    return {
-      user,
+  const buildSession = useCallback(
+    (pair: TokenPair): Session => ({
+      user: sessionUserFrom(pair),
       accessToken: pair.accessToken,
       expiresAt: Date.now() + pair.expiresIn * 1000,
-    };
-  }, []);
+    }),
+    [],
+  );
 
   const setSession = useCallback(
     (pair: TokenPair): void => {
@@ -123,6 +119,57 @@ export function useSession(): SessionContextValue {
   const ctx = useContext(SessionContext);
   if (!ctx) throw new Error('useSession must be used inside <SessionProvider>');
   return ctx;
+}
+
+/**
+ * The API client bound to the session's current access token.
+ *
+ * Always prefer this over calling `createApiClient(session?.accessToken)` in a
+ * render body. That produced a fresh client every render, so any `useCallback`
+ * that closed over it kept the client — and therefore the token — from the
+ * render where the callback was memoized. Access tokens rotate every 15
+ * minutes, so those callbacks went on presenting an expired token and every
+ * action failed with a 401 until the page was reloaded.
+ *
+ * The identity returned here changes only when the token changes, so listing it
+ * in a dependency array both fixes the staleness and keeps the array honest:
+ * consumers must include `client` wherever they use it.
+ */
+export function useApiClient(): KastClient {
+  const { session } = useSession();
+  const token = session?.accessToken;
+  return useMemo(() => createApiClient(token), [token]);
+}
+
+/* ── Session user ───────────────────────────────────────────── */
+
+/**
+ * Login and refresh both return the profile alongside the tokens; the access
+ * token carries only sub/email/roles, so rebuilding the user from its claims
+ * left firstName and lastName permanently null. The JWT is the fallback for a
+ * response shape that predates `user`.
+ */
+function userFromClaims(payload: Record<string, unknown>): SessionUser {
+  return {
+    id: (payload['sub'] as string | undefined) ?? '',
+    email: (payload['email'] as string | undefined) ?? '',
+    firstName: (payload['firstName'] as string | null | undefined) ?? null,
+    lastName: (payload['lastName'] as string | null | undefined) ?? null,
+    roles: (payload['roles'] as string[] | undefined) ?? [],
+  };
+}
+
+export function sessionUserFrom(pair: TokenPair): SessionUser {
+  const claimed = userFromClaims(decodeJwtPayload(pair.accessToken));
+  const user = pair.user as SessionUser | undefined;
+  if (!user) return claimed;
+  return {
+    id: user.id || claimed.id,
+    email: user.email || claimed.email,
+    firstName: user.firstName ?? claimed.firstName,
+    lastName: user.lastName ?? claimed.lastName,
+    roles: user.roles.length ? user.roles : claimed.roles,
+  };
 }
 
 /* ── JWT decode (no validation — server validates) ──────────── */

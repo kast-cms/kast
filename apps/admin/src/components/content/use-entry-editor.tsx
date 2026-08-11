@@ -1,8 +1,7 @@
 'use client';
 
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
-import type { ContentEntryDetail, EntryStatus } from '@kast-cms/sdk';
+import { useApiClient } from '@/lib/session';
+import type { ContentEntryDetail, EntryStatus, KastClient } from '@kast-cms/sdk';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface UseEntryEditorParams {
@@ -73,7 +72,7 @@ interface UseAutosaveParams {
   seo: Record<string, string>;
   status: EntryStatus;
   data: Record<string, unknown>;
-  client: ReturnType<typeof createApiClient>;
+  client: KastClient;
   setCreatedEntryId: (id: string) => void;
   setAutosaved: (v: boolean) => void;
 }
@@ -116,8 +115,7 @@ export function useEntryEditor({
   entryId,
   initialEntry,
 }: UseEntryEditorParams): EntryEditorState {
-  const { session } = useSession();
-  const client = createApiClient(session?.accessToken);
+  const client = useApiClient();
   const [data, setDataState] = useState<Record<string, unknown>>(
     initialEntry ? stripSeo(initialEntry.data) : {},
   );
@@ -203,7 +201,7 @@ export function useEntryEditor({
   }
   async function restore(): Promise<void> {
     if (!createdEntryId) return;
-    await withFlag(setIsRestoring, () => client.content.restore(typeId, createdEntryId));
+    await withFlag(setIsRestoring, () => client.content.unarchive(typeId, createdEntryId));
     setStatus('DRAFT');
   }
   async function schedulePublish(publishAt: string): Promise<void> {

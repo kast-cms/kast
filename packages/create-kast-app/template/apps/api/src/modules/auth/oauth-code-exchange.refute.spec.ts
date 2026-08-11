@@ -12,6 +12,7 @@ import type { QueueAdapter } from '../queue/queue.adapter';
 import { AuthController } from './auth.controller';
 import type { AuthRepository } from './auth.repository';
 import { AuthService } from './auth.service';
+import type { OAuthPolicy } from './oauth-policy';
 
 function buildTokenPair(): TokenPair {
   return {
@@ -33,6 +34,12 @@ function buildConfig(adminUrl: string | undefined): ConfigService<Env> {
   return { get: jest.fn().mockReturnValue(adminUrl) } as unknown as ConfigService<Env>;
 }
 
+function buildPolicy(): OAuthPolicy {
+  return {
+    canProvision: jest.fn().mockReturnValue({ allowed: true, reason: 'allowed' }),
+  } as unknown as OAuthPolicy;
+}
+
 function buildResponse(): Response & { redirect: jest.Mock } {
   return { redirect: jest.fn() } as unknown as Response & { redirect: jest.Mock };
 }
@@ -49,6 +56,7 @@ describe('OAuth authorization-code exchange', () => {
       {} as unknown as AuthRepository,
       {} as unknown as JwtService,
       {} as unknown as QueueAdapter,
+      buildPolicy(),
     );
   });
 
@@ -164,6 +172,7 @@ describe('OAuth authorization-code exchange', () => {
         repo,
         {} as unknown as JwtService,
         {} as unknown as QueueAdapter,
+        buildPolicy(),
       );
 
       await expect(

@@ -67,7 +67,9 @@ export class MediaController {
   @Post()
   @ApiBearerAuth()
   @Roles(SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
-  @UseInterceptors(FileInterceptor('file', { storage: undefined }))
+  // No per-route options: they would shadow the module's memoryStorage and, more
+  // importantly, its env-derived fileSize limit.
+  @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Upload a media file' })
   upload(
@@ -153,7 +155,7 @@ export class MediaController {
   @ApiBearerAuth()
   @Roles(SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Delete a media file' })
-  remove(@Param('id') id: string): Promise<void> {
-    return this.service.delete(id);
+  remove(@Param('id') id: string, @CurrentUser() user: AuthUser): Promise<void> {
+    return this.service.delete(id, user.id);
   }
 }

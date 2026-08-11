@@ -1,8 +1,7 @@
 'use client';
 
 import { useToast } from '@/components/ui/use-toast';
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { useApiClient } from '@/lib/session';
 import type { AssignPermissionsBody, CreateRoleBody, RoleDetail, RoleSummary } from '@kast-cms/sdk';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState } from 'react';
@@ -20,8 +19,7 @@ export interface UseRolesReturn {
 }
 
 export function useRoles(): UseRolesReturn {
-  const { session } = useSession();
-  const client = createApiClient(session?.accessToken);
+  const client = useApiClient();
   const { toast } = useToast();
   const t = useTranslations('roles');
 
@@ -51,7 +49,7 @@ export function useRoles(): UseRolesReturn {
     } finally {
       setLoading(false);
     }
-  }, [reportError]);
+  }, [reportError, client]);
 
   useEffect(() => {
     void loadRoles();
@@ -71,7 +69,7 @@ export function useRoles(): UseRolesReturn {
         }
       })();
     },
-    [reportError],
+    [reportError, client],
   );
 
   const clearSelectedRole = useCallback((): void => {
@@ -88,7 +86,7 @@ export function useRoles(): UseRolesReturn {
         throw err;
       }
     },
-    [loadRoles, reportError],
+    [loadRoles, reportError, client],
   );
 
   const deleteRole = useCallback(
@@ -100,7 +98,7 @@ export function useRoles(): UseRolesReturn {
         reportError(err);
       }
     },
-    [loadRoles, reportError],
+    [loadRoles, reportError, client],
   );
 
   const savePermissions = useCallback(
@@ -114,7 +112,7 @@ export function useRoles(): UseRolesReturn {
         throw err;
       }
     },
-    [loadRoles, reportError],
+    [loadRoles, reportError, client],
   );
 
   return {

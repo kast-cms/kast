@@ -15,6 +15,7 @@ import { AuthRepository } from './auth.repository';
 import type { LoginDto } from './dto/login.dto';
 import type { SetupDto } from './dto/setup.dto';
 import type { UpdateProfileDto } from './dto/update-profile.dto';
+import { OAuthPolicy } from './oauth-policy';
 import type { OAuthProfile } from './types/oauth.types';
 
 /** An OAuth code only has to survive one provider→admin redirect hop. */
@@ -47,6 +48,7 @@ export class AuthService {
     private readonly authRepository: AuthRepository,
     private readonly jwtService: JwtService,
     private readonly queueAdapter: QueueAdapter,
+    private readonly oauthPolicy: OAuthPolicy,
   ) {}
 
   /** True while the install has no users and the setup endpoint is still open. */
@@ -238,6 +240,10 @@ export class AuthService {
     }
     const byEmail = await this.authRepository.findUserByEmail(email);
     if (byEmail) return byEmail;
+    // Past this point the identity is unknown to the install, so creating it is
+    // self-registration and needs the operator's explicit policy, not a default.
+    const decision = this.oauthPolicy.canProvision(email, profile.emails?.[0]?.verified);
+    if (!decision.allowed) throw new ForbiddenException(decision.reason);
     const role = await this.authRepository.findDefaultRole();
     if (!role) throw new UnauthorizedException('No default role configured');
     const { firstName, lastName, avatarUrl } = this.extractProfileData(profile);
@@ -291,16 +297,32 @@ export class AuthService {
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {
+    await this.consumeResetToken(token, newPassword, false, 'Invalid or expired reset token');
+  }
+
+  /**
+   * Completes an invitation: the same single-use token, plus the verification
+   * flag that separates an accepted invite from a pending one.
+   */
+  async acceptInvite(token: string, password: string): Promise<void> {
+    await this.consumeResetToken(token, password, true, 'Invalid or expired invitation token');
+  }
+
+  private async consumeResetToken(
+    token: string,
+    newPassword: string,
+    markVerified: boolean,
+    failureMessage: string,
+  ): Promise<void> {
     const { hash } = this.authRepository.generateHashOnly(token);
-    const record = await this.authRepository.findPasswordResetToken(hash);
-    if (!record) throw new BadRequestException('Invalid or expired reset token');
-    await Promise.all([
-      this.authRepository.markPasswordResetTokenUsed(record.id),
-      this.authRepository.revokeAllRefreshTokensForUser(record.userId),
-      this.authRepository.updateUser(record.userId, {
-        passwordHash: await argon2.hash(newPassword),
-      }),
-    ]);
+    // Hashed before the transaction opens: argon2 is deliberately slow and must
+    // not hold the row lock that serialises concurrent redemptions.
+    const passwordHash = await argon2.hash(newPassword);
+    const userId = await this.authRepository.consumePasswordResetToken(hash, {
+      passwordHash,
+      markVerified,
+    });
+    if (!userId) throw new BadRequestException(failureMessage);
   }
 
   private async issueAccessToken(id: string, email: string, roles: string[]): Promise<string> {

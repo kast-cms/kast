@@ -39,15 +39,21 @@ export class EmailProcessor extends WorkerHost {
   private readonly from: string;
   private readonly resendApiKey: string | undefined;
   private readonly resendFrom: string;
-  private readonly siteUrl: string;
+  /**
+   * Every link these templates emit lands on an admin screen, so they are built
+   * from ADMIN_URL. SITE_URL is the public site, which in a split deployment is
+   * a different origin entirely and has no /reset-password page. ADMIN_URL
+   * carries the whole public prefix, base path included.
+   */
+  private readonly adminUrl: string;
 
   constructor(config: ConfigService<Env>) {
     super();
     this.from = config.get('SMTP_FROM', { infer: true }) ?? 'noreply@kast.io';
     this.resendApiKey = config.get('RESEND_API_KEY', { infer: true });
     this.resendFrom = config.get('RESEND_FROM_EMAIL', { infer: true }) ?? this.from;
-    this.siteUrl = (config.get('SITE_URL', { infer: true }) ?? 'http://localhost:3001').replace(
-      /\/$/,
+    this.adminUrl = (config.get('ADMIN_URL', { infer: true }) ?? 'http://localhost:3001').replace(
+      /\/+$/,
       '',
     );
 
@@ -97,7 +103,7 @@ export class EmailProcessor extends WorkerHost {
   }
 
   private renderPasswordReset(data: PasswordResetJobData): RenderedEmail {
-    const link = `${this.siteUrl}/reset-password?token=${encodeURIComponent(data.token)}`;
+    const link = `${this.adminUrl}/reset-password?token=${encodeURIComponent(data.token)}`;
     const subject = 'Reset your Kast password';
     const html = [
       '<div style="font-family:system-ui,sans-serif;max-width:480px;margin:auto">',
@@ -115,13 +121,14 @@ export class EmailProcessor extends WorkerHost {
   private renderUserInvite(data: UserInviteJobData): RenderedEmail {
     const greeting = data.firstName ? `Hi ${data.firstName},` : 'Hello,';
     const link = data.token
-      ? `${this.siteUrl}/accept-invite?token=${encodeURIComponent(data.token)}`
-      : `${this.siteUrl}/login`;
+      ? `${this.adminUrl}/accept-invite?token=${encodeURIComponent(data.token)}`
+      : `${this.adminUrl}/login`;
     const subject = 'You have been invited to Kast CMS';
     const html = [
       '<div style="font-family:system-ui,sans-serif;max-width:480px;margin:auto">',
       `<h2>Welcome to Kast CMS</h2><p>${greeting}</p>`,
       '<p>An administrator has invited you to the Kast CMS admin panel.</p>',
+      data.token ? '<p>Use the link below to choose your password. It expires in 7 days.</p>' : '',
       `<p><a href="${link}" style="display:inline-block;padding:10px 18px;background:#111;color:#fff;border-radius:6px;text-decoration:none">Get started</a></p>`,
       `<p>Or open: <a href="${link}">${link}</a></p>`,
       '</div>',

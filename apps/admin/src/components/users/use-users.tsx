@@ -1,8 +1,7 @@
 'use client';
 
 import { useToast } from '@/components/ui/use-toast';
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { useApiClient } from '@/lib/session';
 import type { InviteUserBody, RoleSummary, UpdateUserBody, UserSummary } from '@kast-cms/sdk';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState } from 'react';
@@ -17,13 +16,14 @@ export interface UseUsersReturn {
   setSearch: (v: string) => void;
   setRoleFilter: (v: string) => void;
   invite: (body: InviteUserBody) => Promise<void>;
+  resendInvite: (id: string) => Promise<void>;
+  revokeInvite: (id: string) => Promise<void>;
   update: (id: string, body: UpdateUserBody) => Promise<void>;
   trash: (id: string) => Promise<void>;
 }
 
 export function useUsers(): UseUsersReturn {
-  const { session } = useSession();
-  const client = createApiClient(session?.accessToken);
+  const client = useApiClient();
   const { toast } = useToast();
   const t = useTranslations('users');
 
@@ -54,7 +54,7 @@ export function useUsers(): UseUsersReturn {
     } finally {
       setLoading(false);
     }
-  }, [roleFilter, reportError]);
+  }, [roleFilter, reportError, client]);
 
   const loadRoles = useCallback(async (): Promise<void> => {
     try {
@@ -63,7 +63,7 @@ export function useUsers(): UseUsersReturn {
     } catch (err) {
       reportError(err);
     }
-  }, [reportError]);
+  }, [reportError, client]);
 
   useEffect(() => {
     void loadRoles();
@@ -83,7 +83,7 @@ export function useUsers(): UseUsersReturn {
         throw err;
       }
     },
-    [loadUsers, reportError],
+    [loadUsers, reportError, client],
   );
 
   const update = useCallback(
@@ -96,7 +96,32 @@ export function useUsers(): UseUsersReturn {
         throw err;
       }
     },
-    [loadUsers, reportError],
+    [loadUsers, reportError, client],
+  );
+
+  const resendInvite = useCallback(
+    async (id: string): Promise<void> => {
+      try {
+        await client.users.resendInvite(id);
+        toast({ title: t('inviteResent') });
+      } catch (err) {
+        reportError(err);
+      }
+    },
+    [client, reportError, toast, t],
+  );
+
+  const revokeInvite = useCallback(
+    async (id: string): Promise<void> => {
+      try {
+        await client.users.revokeInvite(id);
+        toast({ title: t('inviteRevoked') });
+        void loadUsers();
+      } catch (err) {
+        reportError(err);
+      }
+    },
+    [client, loadUsers, reportError, toast, t],
   );
 
   const trash = useCallback(
@@ -108,7 +133,7 @@ export function useUsers(): UseUsersReturn {
         reportError(err);
       }
     },
-    [reportError],
+    [reportError, client],
   );
 
   const filteredUsers = users.filter((u) => {
@@ -128,6 +153,8 @@ export function useUsers(): UseUsersReturn {
     setSearch,
     setRoleFilter,
     invite,
+    resendInvite,
+    revokeInvite,
     update,
     trash,
   };

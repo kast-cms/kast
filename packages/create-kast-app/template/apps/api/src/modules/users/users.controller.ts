@@ -50,6 +50,24 @@ export class UsersController {
     return this.service.update(id, dto, user);
   }
 
+  @Post(':id/invite')
+  @ApiOperation({ summary: 'Re-send the invitation email with a fresh token' })
+  resendInvite(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthUser,
+  ): Promise<{ data: { id: string } }> {
+    return this.service.resendInvite(id, user);
+  }
+
+  @Delete(':id/invite')
+  @ApiOperation({ summary: 'Revoke a pending invitation token' })
+  revokeInvite(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthUser,
+  ): Promise<{ data: { id: string } }> {
+    return this.service.revokeInvite(id, user);
+  }
+
   @Delete(':id')
   @ApiOperation({ summary: 'Move a user to trash' })
   remove(

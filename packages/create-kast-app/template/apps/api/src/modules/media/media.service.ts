@@ -22,6 +22,8 @@ import { QUEUE_NAMES } from '../queue/queue.constants';
 import { ListMediaDto } from './dto/list-media.dto';
 import type { MediaJobData } from './media.processor';
 import { MediaRepository } from './media.repository';
+import { derivedStorageKeys } from './storage/derived-keys.util';
+import { safeExtension } from './storage/storage-key.util';
 import type { StorageAdapter } from './storage/storage.adapter';
 
 const IMAGE_MIME_TYPES = new Set([
@@ -73,7 +75,13 @@ export class MediaService {
     this.allowedMimes = new Set(mimeList);
   }
 
-  async upload(file: Express.Multer.File, uploaderId: string): Promise<{ data: MediaFile }> {
+  async upload(
+    file: Express.Multer.File | undefined,
+    uploaderId: string,
+  ): Promise<{ data: MediaFile }> {
+    if (!file) {
+      throw new BadRequestException('No file was uploaded under the "file" field');
+    }
     if (file.size > this.maxBytes) {
       throw new UnprocessableEntityException(
         `File exceeds max size of ${this.maxBytes / 1024 / 1024}MB`,
@@ -88,8 +96,7 @@ export class MediaService {
       );
     }
 
-    const ext = extname(file.originalname);
-    const key = `${randomUUID()}${ext}`;
+    const key = `${randomUUID()}${safeExtension(file.originalname)}`;
     const { url, storageKey } = await this.storage.upload(key, file.buffer, file.mimetype);
     const { width, height } = await this.getImageDimensions(file);
 
@@ -100,7 +107,7 @@ export class MediaService {
       size: file.size,
       url,
       storageKey,
-      provider: 'local',
+      provider: this.storage.provider,
       width: width ?? null,
       height: height ?? null,
       uploadedBy: { connect: { id: uploaderId } },
@@ -173,10 +180,33 @@ export class MediaService {
     return { data: updated };
   }
 
-  async delete(id: string): Promise<void> {
-    const { data: media } = await this.findById(id);
-    await this.storage.delete(media.storageKey);
-    await this.repo.softDelete(id);
+  /**
+   * Moves the file to the trash. The stored object stays put: trash restore only
+   * clears `trashedAt`, so dropping the bytes here would restore a broken row.
+   * {@link purge} is what releases storage.
+   */
+  async delete(id: string, actorId?: string): Promise<void> {
+    await this.findById(id);
+    await this.repo.softDelete(id, actorId);
+  }
+
+  /**
+   * Permanent delete: removes every object the row owns, then the row itself.
+   * Thumbnails and the pre-optimization original are stored beside the current
+   * key without being recorded, so {@link derivedStorageKeys} reconstructs them.
+   */
+  async purge(id: string): Promise<void> {
+    const media = await this.repo.findByIdIncludingTrashed(id);
+    if (!media) throw new NotFoundException(`Media ${id} not found`);
+    for (const key of derivedStorageKeys(media.storageKey)) {
+      try {
+        await this.storage.delete(key);
+      } catch (err: unknown) {
+        // A missing or unreachable object must not strand the row in the trash.
+        this.logger.warn(`Could not delete stored object ${key}: ${String(err)}`);
+      }
+    }
+    await this.repo.hardDelete(id);
   }
 
   /**
@@ -190,8 +220,7 @@ export class MediaService {
   ): Promise<{ data: MediaFile }> {
     const { buffer, mimeType, originalName } = await this.fetchRemoteFile(url);
 
-    const ext = extname(originalName);
-    const key = `${randomUUID()}${ext}`;
+    const key = `${randomUUID()}${safeExtension(originalName)}`;
     const { url: storedUrl, storageKey } = await this.storage.upload(key, buffer, mimeType);
     const { width, height } = await this.getImageDimensions({
       mimetype: mimeType,
@@ -206,7 +235,7 @@ export class MediaService {
       size: buffer.length,
       url: storedUrl,
       storageKey,
-      provider: 'local',
+      provider: this.storage.provider,
       width: width ?? null,
       height: height ?? null,
       ...(opts.altText !== undefined ? { altText: opts.altText } : {}),

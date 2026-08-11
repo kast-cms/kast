@@ -13,11 +13,12 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { ContentField } from '@prisma/client';
 import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
 import { Roles } from '../../common/decorators/roles.decorator';
-import type { ContentTypeWithFields } from './content-types.repository';
+import { toContentTypeResponse, type ContentTypeResponse } from './content-type.presenter';
 import { ContentTypesService } from './content-types.service';
 import {
   CreateContentTypeDto,
   CreateFieldDto,
+  ReorderFieldsDto,
   UpdateContentTypeDto,
   UpdateFieldDto,
 } from './dto/content-type.dto';
@@ -31,24 +32,26 @@ export class ContentTypesController {
   @ApiBearerAuth()
   @Roles(SYSTEM_ROLES.VIEWER, SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'List all content types' })
-  findAll(): Promise<{ data: ContentTypeWithFields[] }> {
-    return this.service.findAll().then((data) => ({ data }));
+  findAll(): Promise<{ data: ContentTypeResponse[] }> {
+    return this.service.findAll().then((data) => ({ data: data.map(toContentTypeResponse) }));
   }
 
   @Post()
   @ApiBearerAuth()
   @Roles(SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Create a content type' })
-  create(@Body() dto: CreateContentTypeDto): Promise<{ data: ContentTypeWithFields }> {
-    return this.service.create(dto).then((data) => ({ data }));
+  create(@Body() dto: CreateContentTypeDto): Promise<{ data: ContentTypeResponse }> {
+    return this.service.create(dto).then((data) => ({ data: toContentTypeResponse(data) }));
   }
 
   @Get(':name')
   @ApiBearerAuth()
   @Roles(SYSTEM_ROLES.VIEWER, SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get a content type by name' })
-  findOne(@Param('name') name: string): Promise<{ data: ContentTypeWithFields }> {
-    return this.service.findByName(name).then((data) => ({ data }));
+  findOne(@Param('name') name: string): Promise<{ data: ContentTypeResponse }> {
+    return this.service
+      .findDetailByName(name)
+      .then((data) => ({ data: toContentTypeResponse(data) }));
   }
 
   @Patch(':name')
@@ -58,8 +61,8 @@ export class ContentTypesController {
   update(
     @Param('name') name: string,
     @Body() dto: UpdateContentTypeDto,
-  ): Promise<{ data: ContentTypeWithFields }> {
-    return this.service.update(name, dto).then((data) => ({ data }));
+  ): Promise<{ data: ContentTypeResponse }> {
+    return this.service.update(name, dto).then((data) => ({ data: toContentTypeResponse(data) }));
   }
 
   @Delete(':name')
@@ -80,6 +83,21 @@ export class ContentTypesController {
     @Body() dto: CreateFieldDto,
   ): Promise<{ data: ContentField }> {
     return this.service.createField(name, dto).then((data) => ({ data }));
+  }
+
+  // Declared before ':name/fields/:fieldName' — Nest matches in declaration order,
+  // so the parameterised route would otherwise swallow "reorder" as a field name.
+  @Patch(':name/fields/reorder')
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Reorder the fields of a content type' })
+  reorderFields(
+    @Param('name') name: string,
+    @Body() dto: ReorderFieldsDto,
+  ): Promise<{ data: ContentTypeResponse }> {
+    return this.service
+      .reorderFields(name, dto)
+      .then((data) => ({ data: toContentTypeResponse(data) }));
   }
 
   @Patch(':name/fields/:fieldName')

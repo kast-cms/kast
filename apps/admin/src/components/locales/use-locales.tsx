@@ -1,7 +1,6 @@
 'use client';
 
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { useApiClient } from '@/lib/session';
 import type { CreateLocaleBody, LocaleSummary, UpdateLocaleBody } from '@kast-cms/sdk';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -16,8 +15,7 @@ export interface UseLocalesReturn {
 }
 
 export function useLocales(): UseLocalesReturn {
-  const { session } = useSession();
-  const client = createApiClient(session?.accessToken);
+  const client = useApiClient();
 
   const [locales, setLocales] = useState<LocaleSummary[]>([]);
   const [loading, setLoading] = useState(false);
@@ -30,14 +28,14 @@ export function useLocales(): UseLocalesReturn {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [client]);
 
   const createLocale = useCallback(
     async (body: CreateLocaleBody): Promise<void> => {
       await client.locales.create(body);
       await loadLocales();
     },
-    [loadLocales],
+    [loadLocales, client],
   );
 
   const updateLocale = useCallback(
@@ -45,7 +43,7 @@ export function useLocales(): UseLocalesReturn {
       await client.locales.update(code, body);
       await loadLocales();
     },
-    [loadLocales],
+    [loadLocales, client],
   );
 
   const deleteLocale = useCallback(
@@ -53,7 +51,7 @@ export function useLocales(): UseLocalesReturn {
       await client.locales.delete(code);
       await loadLocales();
     },
-    [loadLocales],
+    [loadLocales, client],
   );
 
   const setDefaultLocale = useCallback(
@@ -61,7 +59,7 @@ export function useLocales(): UseLocalesReturn {
       await client.locales.setDefault(code);
       await loadLocales();
     },
-    [loadLocales],
+    [loadLocales, client],
   );
 
   useEffect(() => {

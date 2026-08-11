@@ -5,6 +5,12 @@ import type { PaginatedResult } from '../../common/types/auth.types';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { CreateRedirectDto, UpdateRedirectDto } from './dto/redirect.dto';
 import type { UpsertSeoMetaDto } from './dto/seo-meta.dto';
+import {
+  parseSeoSettings,
+  SEO_SETTING_KEY_LIST,
+  SEO_SETTING_KEYS,
+  type SeoSettings,
+} from './seo-settings';
 
 export interface SeoIssueInput {
   type: string;
@@ -26,6 +32,31 @@ export class SeoRepository {
       create: { entryId, ...data },
       update: data,
     });
+  }
+
+  /** Creates the SeoMeta row a score has to hang off, without touching saved fields. */
+  async ensureMeta(entryId: string): Promise<SeoMeta> {
+    return this.prisma.seoMeta.upsert({
+      where: { entryId },
+      create: { entryId },
+      update: {},
+    });
+  }
+
+  async findSeoSettings(): Promise<SeoSettings> {
+    const rows = await this.prisma.globalSetting.findMany({
+      where: { key: { in: SEO_SETTING_KEY_LIST } },
+      select: { key: true, value: true },
+    });
+    return parseSeoSettings(rows);
+  }
+
+  async findRobotsTxt(): Promise<string | null> {
+    const row = await this.prisma.globalSetting.findUnique({
+      where: { key: SEO_SETTING_KEYS.robotsTxt },
+      select: { value: true },
+    });
+    return typeof row?.value === 'string' && row.value.trim() !== '' ? row.value : null;
   }
 
   async findMeta(entryId: string): Promise<SeoMetaFull | null> {

@@ -110,8 +110,12 @@ export class FormRepository {
     });
   }
 
-  delete(id: string): Promise<Form> {
-    return this.prisma.form.update({ where: { id }, data: { trashedAt: new Date() } });
+  /** `trashedByUserId` is what lets the trash screen name who deleted a row. */
+  delete(id: string, trashedByUserId?: string): Promise<Form> {
+    return this.prisma.form.update({
+      where: { id },
+      data: { trashedAt: new Date(), trashedByUserId: trashedByUserId ?? null },
+    });
   }
 
   createSubmission(
@@ -159,8 +163,26 @@ export class FormRepository {
     return { data, total, page, limit };
   }
 
-  deleteSubmission(subId: string): Promise<FormSubmission> {
-    return this.prisma.formSubmission.delete({ where: { id: subId } });
+  /** Scoped to the form so a submission id from another form cannot be deleted. */
+  async deleteSubmission(formId: string, subId: string): Promise<boolean> {
+    const { count } = await this.prisma.formSubmission.deleteMany({
+      where: { id: subId, formId },
+    });
+    return count > 0;
+  }
+
+  /** Scoped to the form so a submission id from another form cannot be flipped. */
+  async setSubmissionRead(
+    formId: string,
+    subId: string,
+    isRead: boolean,
+  ): Promise<FormSubmission | null> {
+    const { count } = await this.prisma.formSubmission.updateMany({
+      where: { id: subId, formId },
+      data: { isRead, readAt: isRead ? new Date() : null },
+    });
+    if (count === 0) return null;
+    return this.prisma.formSubmission.findUnique({ where: { id: subId } });
   }
 
   findAllSubmissions(formId: string): Promise<FormSubmission[]> {

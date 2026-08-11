@@ -80,10 +80,59 @@ Returns `Content-Type: application/xml`. No authentication required. For public,
 ## Robots.txt
 
 ```http
-GET /robots.txt
+GET /api/v1/robots.txt
 ```
 
-Content managed via Global Settings → SEO.
+Serves the `robots.txt` setting verbatim (Global Settings → Security), cached for
+60 seconds. Falls back to allow-all when nothing is saved.
+
+## The publish gate
+
+Publishing runs the SEO checks and, depending on the policy for that content
+type, can refuse the publish with `422`.
+
+| Policy     | Behaviour                                                   |
+| ---------- | ----------------------------------------------------------- |
+| `enforce`  | Score, persist, and block while an ERROR-level issue stands |
+| `advisory` | Score and persist, but never block                          |
+| `disabled` | Skip analysis entirely                                      |
+
+Resolution order: the content type's entry in `seo.gate.contentTypes`, then
+`seo.gate.defaultPolicy`, then a built-in heuristic — **enforce** for a type that
+has a rich-text body field, **advisory** for one that does not. That keeps
+page-like types protected while taxonomy-style types stop blocking out of the
+box.
+
+:::caution
+A page-like type built entirely from block or component fields, with no
+rich-text field, falls to `advisory` under the heuristic. Give it an explicit
+`seo.gate.contentTypes` entry of `enforce`.
+:::
+
+`PublishContentDto.force` overrides WARNING-level issues; ERROR-level issues
+under `enforce` always block.
+
+## Site-wide meta defaults
+
+`seo.defaultMetaTitle` and `seo.defaultMetaDescription` are applied to any entry
+that defines none of its own. They are used both when scoring — so inheriting the
+default is reported as an INFO issue, never an error — and in the Delivery API
+payload, so the score and what the front end receives agree.
+
+## Redirects
+
+Redirect targets are policy-checked on write (create, update, and per row on CSV
+import):
+
+- Site-relative paths (`/new-path`) are always allowed.
+- Protocol-relative (`//host`) and `/\host` are refused — browsers follow both
+  off-site.
+- Non-http(s) schemes (`javascript:`, `data:`, `mailto:`), bare relative paths
+  and empty targets are refused.
+- An absolute `http(s)` target is allowed only when its hostname appears in the
+  `seo.redirects.allowedHosts` setting, which defaults to empty.
+
+Existing rows are not rewritten; the check applies on write.
 
 ## List all SEO records
 

@@ -7,7 +7,7 @@ import type { AuthUser } from '../../common/types/auth.types';
 import { TestSmtpDto } from './dto/test-smtp.dto';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 import type { SafeSetting } from './settings-secret.util';
-import { SettingsService } from './settings.service';
+import { SettingsService, type StorageProbeResult } from './settings.service';
 
 @ApiTags('settings')
 @Controller({ path: 'settings', version: '1' })
@@ -46,8 +46,8 @@ export class SettingsController {
   @ApiBearerAuth()
   @Roles(SYSTEM_ROLES.SUPER_ADMIN)
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Verify configured storage provider' })
-  testStorage(): Promise<{ provider: string; status: string }> {
+  @ApiOperation({ summary: 'Write, read back and delete a probe object in the storage backend' })
+  testStorage(): Promise<StorageProbeResult> {
     return this.service.testStorage();
   }
 }

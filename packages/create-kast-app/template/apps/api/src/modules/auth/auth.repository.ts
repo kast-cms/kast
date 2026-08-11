@@ -9,6 +9,7 @@ import type {
 import { createHash, randomBytes } from 'crypto';
 import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
 import { PrismaService } from '../../prisma/prisma.service';
+import { generateResetToken, hashResetToken } from './reset-token.util';
 
 /** Mirrors prisma/seed.ts — the roles the RBAC guard expects to exist. */
 const SYSTEM_ROLE_SEED = [
@@ -228,14 +229,51 @@ export class AuthRepository {
     });
   }
 
+  /**
+   * Spends a reset/invite token and applies the new password in one
+   * transaction. The conditional update is the gate, not the preceding read: a
+   * second request racing the first blocks on the row lock and, once the winner
+   * commits, matches zero rows. Returns the owning user id, or null when the
+   * token was missing, expired or already spent.
+   */
+  consumePasswordResetToken(
+    hash: string,
+    data: { passwordHash: string; markVerified?: boolean },
+  ): Promise<string | null> {
+    return this.prisma.$transaction(async (tx) => {
+      const record = await tx.passwordResetToken.findFirst({
+        where: { hash, usedAt: null, expiresAt: { gt: new Date() } },
+        select: { id: true, userId: true },
+      });
+      if (!record) return null;
+
+      const consumed = await tx.passwordResetToken.updateMany({
+        where: { id: record.id, usedAt: null },
+        data: { usedAt: new Date() },
+      });
+      if (consumed.count === 0) return null;
+
+      await tx.user.update({
+        where: { id: record.userId },
+        data: {
+          passwordHash: data.passwordHash,
+          ...(data.markVerified ? { isVerified: true } : {}),
+        },
+      });
+      await tx.refreshToken.updateMany({
+        where: { userId: record.userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      return record.userId;
+    });
+  }
+
   generateResetToken(): { raw: string; hash: string } {
-    const raw = randomBytes(32).toString('hex');
-    const hash = createHash('sha256').update(raw).digest('hex');
-    return { raw, hash };
+    return generateResetToken();
   }
 
   generateHashOnly(raw: string): { hash: string } {
-    return { hash: createHash('sha256').update(raw).digest('hex') };
+    return { hash: hashResetToken(raw) };
   }
 
   countUsers(): Promise<number> {

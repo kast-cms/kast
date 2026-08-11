@@ -60,15 +60,26 @@ WEBHOOK_ALLOWED_HOSTS=
 # Comma-separated list of allowed origins. Do not use * in production.
 CORS_ORIGINS=http://localhost:3001,http://localhost:3002
 
-# Admin panel origin. Allowed to frame the API so the queue monitor works.
-ADMIN_URL=http://localhost:3001
+# Express 'trust proxy' setting. Governs req.ip, which is both the address recorded
+# against a public form submission and the rate limiter's key. Keep 'false'
+# unless a reverse proxy sits in front and overwrites X-Forwarded-For; then use
+# the number of proxies ('1'), an IP/CIDR, or 'true'.
+TRUST_PROXY=false
+
+# Public base URL of the admin panel, INCLUDING its base path: the admin is
+# served under /admin, and the API mints OAuth-callback, password-reset and
+# invite links from this value. Its bare origin is also what may frame the API,
+# so the queue monitor works.
+ADMIN_URL=http://localhost:3001/admin
 
 # ---------------------------------------------------------------------------
 # Storage
 # ---------------------------------------------------------------------------
 STORAGE_PROVIDER={{storageProvider}}
 STORAGE_LOCAL_DIR=./uploads
-STORAGE_LOCAL_URL=http://localhost:{{apiPort}}/uploads
+# Public base URL for locally stored objects: the route the API actually serves.
+# Override only when a proxy or CDN fronts STORAGE_LOCAL_DIR directly.
+STORAGE_LOCAL_URL=http://localhost:{{apiPort}}/api/v1/media/files
 {{#if storageIsCloud}}
 
 # Cloud storage (required when STORAGE_PROVIDER is s3, r2, or minio)
@@ -84,7 +95,30 @@ AWS_S3_BUCKET={{projectName}}-media
 # Uploads
 # ---------------------------------------------------------------------------
 UPLOAD_MAX_FILE_SIZE_MB=50
-UPLOAD_ALLOWED_MIME_TYPES=image/jpeg,image/png,image/webp,image/gif,image/svg+xml,application/pdf
+# image/svg+xml is deliberately absent: an SVG is a script-bearing document and
+# nothing in the API sanitises one. Adding it back opts into serving SVGs as a
+# forced download from whatever origin holds them.
+UPLOAD_ALLOWED_MIME_TYPES=image/jpeg,image/png,image/webp,image/gif,application/pdf
+
+# ---------------------------------------------------------------------------
+# OAuth sign-in
+# ---------------------------------------------------------------------------
+# GOOGLE_CLIENT_ID=
+# GOOGLE_CLIENT_SECRET=
+# GITHUB_CLIENT_ID=
+# GITHUB_CLIENT_SECRET=
+
+# Whether an OAuth identity with no matching account may create one. Any
+# provider will hand back an address for any inbox its own users control, so
+# this is a self-registration policy and it stays closed until opened.
+#   disabled  (default) sign-in only; an unknown address is refused
+#   allowlist provision when the email domain is listed below
+#   open      provision any address the provider asserts
+OAUTH_SIGNUP_MODE=disabled
+OAUTH_SIGNUP_ALLOWED_DOMAINS=
+# Require the provider to assert the address is verified. Set 'false' only for
+# providers that omit the claim (GitHub).
+OAUTH_SIGNUP_REQUIRE_VERIFIED=true
 
 # ---------------------------------------------------------------------------
 # SMTP (Email / Queue notifications)

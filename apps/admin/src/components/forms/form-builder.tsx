@@ -7,8 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PageHeader } from '@/components/ui/page-header';
 import { Switch } from '@/components/ui/switch';
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { useApiClient, useSession } from '@/lib/session';
 import type { FormDetail, FormFieldInput } from '@kast-cms/sdk';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
@@ -148,6 +147,7 @@ interface FormBuilderProps {
 }
 
 export function FormBuilder({ initial }: FormBuilderProps): JSX.Element {
+  const client = useApiClient();
   const t = useTranslations('forms.builder');
   const { session } = useSession();
   const router = useRouter();
@@ -178,7 +178,6 @@ export function FormBuilder({ initial }: FormBuilderProps): JSX.Element {
     setSaving(true);
     setError(null);
     try {
-      const client = createApiClient(session.accessToken);
       const fieldInputs: FormFieldInput[] = fields.map((f, i) => ({
         name: f.name,
         label: f.label,
@@ -206,7 +205,7 @@ export function FormBuilder({ initial }: FormBuilderProps): JSX.Element {
     } finally {
       setSaving(false);
     }
-  }, [session, name, slug, description, notifyEmail, isActive, fields, initial, router, t]);
+  }, [session, name, slug, description, notifyEmail, isActive, fields, initial, router, t, client]);
 
   return (
     <div className="space-y-6">

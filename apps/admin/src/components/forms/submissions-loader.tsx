@@ -3,8 +3,7 @@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { useApiClient, useSession } from '@/lib/session';
 import type { FormDetail } from '@kast-cms/sdk';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState, type JSX } from 'react';
@@ -44,6 +43,7 @@ interface SubmissionsLoaderProps {
 }
 
 export function SubmissionsLoader({ formId }: SubmissionsLoaderProps): JSX.Element {
+  const client = useApiClient();
   const tc = useTranslations('common');
   const { session } = useSession();
   const [form, setForm] = useState<FormDetail | null>(null);
@@ -53,7 +53,6 @@ export function SubmissionsLoader({ formId }: SubmissionsLoaderProps): JSX.Eleme
   useEffect(() => {
     if (!session) return;
     setLoading(true);
-    const client = createApiClient(session.accessToken);
     client.forms
       .findOne(formId)
       .then((data) => {
@@ -65,7 +64,7 @@ export function SubmissionsLoader({ formId }: SubmissionsLoaderProps): JSX.Eleme
       .finally(() => {
         setLoading(false);
       });
-  }, [session, formId]);
+  }, [session, formId, client]);
 
   if (loading) {
     return <SubmissionsSkeleton label={tc('loading')} />;

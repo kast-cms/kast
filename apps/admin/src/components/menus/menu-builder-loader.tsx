@@ -2,8 +2,7 @@
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { useApiClient, useSession } from '@/lib/session';
 import type { MenuDetail } from '@kast-cms/sdk';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState, type JSX } from 'react';
@@ -14,15 +13,15 @@ interface Props {
 }
 
 export function MenuBuilderLoader({ menuId }: Props): JSX.Element {
+  const client = useApiClient();
   const t = useTranslations('menus');
   const { session } = useSession();
   const [menu, setMenu] = useState<MenuDetail | null>(null);
 
   useEffect(() => {
     if (!session) return;
-    const client = createApiClient(session.accessToken);
     void client.menus.findOne(menuId).then(setMenu);
-  }, [session, menuId]);
+  }, [session, menuId, client]);
 
   if (!menu) {
     // Mirrors the builder's own layout so the screen settles instead of jumping.

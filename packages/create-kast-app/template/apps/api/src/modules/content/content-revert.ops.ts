@@ -2,8 +2,11 @@ import { NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import type { ContentTypeWithFields } from '../content-types/content-types.repository';
 import { writeLocale } from './content-entry.helpers';
+import { allocateVersionNumber } from './content-version.ops';
 import type { ContentRepository, EntryWithLocale, VersionWithAuthor } from './content.repository';
+import type { UniqueCheck } from './validation/content-validation.types';
 import type { ContentWriteGate } from './validation/content-write.gate';
+import { assertUniqueFields } from './validation/unique-field.guard';
 import { resolveValidationMode } from './validation/validation-mode';
 
 /**
@@ -74,4 +77,49 @@ export function buildRevertLocaleOps(
       update: { data: version.data as Prisma.InputJsonValue },
     }),
   ];
+}
+
+interface RevertInput {
+  entryId: string;
+  contentTypeId: string;
+  version: VersionWithAuthor;
+  userId: string;
+  uniqueChecks: UniqueCheck[];
+}
+
+/**
+ * Restores a snapshot and records the restore as a new version. Runs inside the
+ * caller's transaction so the locale writes, the status change and the version
+ * row either all land or none do.
+ */
+export async function applyVersionRevert(
+  tx: Prisma.TransactionClient,
+  { entryId, contentTypeId, version, userId, uniqueChecks }: RevertInput,
+): Promise<EntryWithLocale> {
+  const entry = await tx.contentEntry.findFirstOrThrow({
+    where: { id: entryId, contentTypeId },
+    include: { locales: true },
+  });
+  await assertUniqueFields(tx, contentTypeId, uniqueChecks, entryId);
+  const primaryLocale = entry.locales[0]?.localeCode ?? 'en';
+
+  for (const op of buildRevertLocaleOps(tx, entryId, version, primaryLocale)) {
+    await op;
+  }
+  await tx.contentEntry.update({ where: { id: entryId }, data: { status: 'DRAFT' } });
+
+  await tx.contentEntryVersion.create({
+    data: {
+      entryId,
+      versionNumber: await allocateVersionNumber(tx, entryId),
+      status: 'DRAFT',
+      data: version.data as Prisma.InputJsonValue,
+      localesData: (version.localesData ?? {}) as Prisma.InputJsonValue,
+      savedById: userId,
+    },
+  });
+  return tx.contentEntry.findUniqueOrThrow({
+    where: { id: entryId },
+    include: { locales: true },
+  }) as Promise<EntryWithLocale>;
 }

@@ -1,5 +1,6 @@
 import type { GlobalSetting } from '@prisma/client';
 import { isSecretSettingKey } from '../../common/utils/secret-key.util';
+import { enforcedBy } from './settings-catalog';
 
 export { isSecretSettingKey };
 
@@ -7,6 +8,8 @@ export interface SafeSetting extends Omit<GlobalSetting, 'value'> {
   value: GlobalSetting['value'] | null;
   isSecret: boolean;
   configured: boolean;
+  /** The runtime path that reads this value; null for caller-defined keys. */
+  enforcedBy: string | null;
 }
 
 /** True when the stored value is something other than "absent" or "blank". */
@@ -28,5 +31,6 @@ export function toSafeSetting(row: GlobalSetting): SafeSetting {
     value: secret ? null : row.value,
     isSecret: secret,
     configured: isConfigured(row.value),
+    enforcedBy: enforcedBy(row.key),
   };
 }

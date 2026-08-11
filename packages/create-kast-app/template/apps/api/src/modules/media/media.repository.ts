@@ -49,6 +49,11 @@ export class MediaRepository {
     return this.prisma.mediaFile.findFirst({ where: { id, trashedAt: null } });
   }
 
+  /** Used by permanent delete, which has to reach rows already in the trash. */
+  findByIdIncludingTrashed(id: string): Promise<MediaFile | null> {
+    return this.prisma.mediaFile.findUnique({ where: { id } });
+  }
+
   create(data: Prisma.MediaFileCreateInput): Promise<MediaFile> {
     return this.prisma.mediaFile.create({ data });
   }
@@ -57,8 +62,16 @@ export class MediaRepository {
     return this.prisma.mediaFile.update({ where: { id }, data });
   }
 
-  softDelete(id: string): Promise<MediaFile> {
-    return this.prisma.mediaFile.update({ where: { id }, data: { trashedAt: new Date() } });
+  /** `trashedByUserId` is what lets the trash screen name who deleted a row. */
+  softDelete(id: string, trashedByUserId?: string): Promise<MediaFile> {
+    return this.prisma.mediaFile.update({
+      where: { id },
+      data: { trashedAt: new Date(), trashedByUserId: trashedByUserId ?? null },
+    });
+  }
+
+  async hardDelete(id: string): Promise<void> {
+    await this.prisma.mediaFile.delete({ where: { id } });
   }
 
   // ── Folders ──────────────────────────────────────────────

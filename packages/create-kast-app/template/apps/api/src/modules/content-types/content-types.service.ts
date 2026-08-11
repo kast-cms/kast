@@ -1,9 +1,19 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma, type ContentField } from '@prisma/client';
-import { ContentTypesRepository, ContentTypeWithFields } from './content-types.repository';
+import {
+  ContentTypesRepository,
+  ContentTypeWithCounts,
+  ContentTypeWithFields,
+} from './content-types.repository';
 import type {
   CreateContentTypeDto,
   CreateFieldDto,
+  ReorderFieldsDto,
   UpdateContentTypeDto,
   UpdateFieldDto,
 } from './dto/content-type.dto';
@@ -26,7 +36,7 @@ function toNullableJsonInput(value: unknown): Prisma.InputJsonValue | Prisma.Nul
 export class ContentTypesService {
   constructor(private readonly repo: ContentTypesRepository) {}
 
-  findAll(): Promise<ContentTypeWithFields[]> {
+  findAll(): Promise<ContentTypeWithCounts[]> {
     return this.repo.findAll();
   }
 
@@ -36,7 +46,13 @@ export class ContentTypesService {
     return ct;
   }
 
-  async create(dto: CreateContentTypeDto): Promise<ContentTypeWithFields> {
+  async findDetailByName(name: string): Promise<ContentTypeWithCounts> {
+    const ct = await this.repo.findByNameWithCounts(name);
+    if (!ct) throw new NotFoundException(`Content type '${name}' not found`);
+    return ct;
+  }
+
+  async create(dto: CreateContentTypeDto): Promise<ContentTypeWithCounts> {
     const existing = await this.repo.findByName(dto.name);
     if (existing) throw new ConflictException(`Content type '${dto.name}' already exists`);
     return this.repo.create({
@@ -44,12 +60,45 @@ export class ContentTypesService {
       displayName: dto.displayName,
       description: dto.description ?? null,
       icon: dto.icon ?? null,
+      // Entry writes branch on this at runtime, so a type created through the API
+      // has to be able to declare it.
+      isLocalized: dto.isLocalized ?? false,
     });
   }
 
-  async update(name: string, dto: UpdateContentTypeDto): Promise<ContentTypeWithFields> {
+  async update(name: string, dto: UpdateContentTypeDto): Promise<ContentTypeWithCounts> {
     await this.findByName(name);
     return this.repo.update(name, dto);
+  }
+
+  /**
+   * Rewrites every field position from the supplied name order. The order has to
+   * name each field on the type exactly once, so a stale client cannot drop a
+   * field that another editor added between load and drop.
+   */
+  async reorderFields(typeName: string, dto: ReorderFieldsDto): Promise<ContentTypeWithCounts> {
+    const ct = await this.findByName(typeName);
+    const byName = new Map(ct.fields.map((f) => [f.name, f]));
+
+    if (new Set(dto.order).size !== dto.order.length) {
+      throw new BadRequestException('order must not repeat a field name');
+    }
+    if (dto.order.length !== ct.fields.length) {
+      throw new BadRequestException(
+        `order must list all ${ct.fields.length} fields of '${typeName}', got ${dto.order.length}`,
+      );
+    }
+    const ids: string[] = [];
+    for (const fieldName of dto.order) {
+      const field = byName.get(fieldName);
+      if (!field) {
+        throw new NotFoundException(`Field '${fieldName}' not found on '${typeName}'`);
+      }
+      ids.push(field.id);
+    }
+
+    await this.repo.reorderFields(ids);
+    return this.findDetailByName(typeName);
   }
 
   async delete(name: string): Promise<void> {

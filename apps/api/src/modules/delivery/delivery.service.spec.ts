@@ -87,7 +87,12 @@ describe('DeliveryService', () => {
     } as unknown as Mocked<ContentTypesService>;
     menus = { findBySlug: jest.fn() } as unknown as Mocked<MenuService>;
     settings = { getPublicSettings: jest.fn() } as unknown as Mocked<SettingsService>;
-    seo = { buildSitemapEntries: jest.fn() } as unknown as Mocked<SeoService>;
+    seo = {
+      buildSitemapEntries: jest.fn(),
+      getSiteMetaDefaults: jest
+        .fn()
+        .mockResolvedValue({ defaultMetaTitle: null, defaultMetaDescription: null }),
+    } as unknown as Mocked<SeoService>;
     service = new DeliveryService(
       repo as unknown as DeliveryRepository,
       contentTypes as unknown as ContentTypesService,
@@ -95,6 +100,68 @@ describe('DeliveryService', () => {
       settings as unknown as SettingsService,
       seo as unknown as SeoService,
     );
+  });
+
+  describe('site meta defaults (SEO-04)', () => {
+    it('serves the site default title when the entry defines none', async () => {
+      seo.getSiteMetaDefaults.mockResolvedValue({
+        defaultMetaTitle: 'My Site',
+        defaultMetaDescription: 'A site.',
+      });
+      contentTypes.findByName.mockResolvedValue(buildContentType());
+      repo.findPublishedBySlug.mockResolvedValue(
+        buildRow({
+          seoMeta: {
+            ...buildRow().seoMeta,
+            metaTitle: null,
+            metaDescription: null,
+          } as PublishedEntryRow['seoMeta'],
+        }),
+      );
+
+      const { data } = await service.getContentBySlug('blog', 'hello-world', 'en');
+
+      // The SEO score already treats the site default as the effective title,
+      // so shipping null here made the score and the payload disagree.
+      expect(data.seoMeta?.metaTitle).toBe('My Site');
+      expect(data.seoMeta?.metaDescription).toBe('A site.');
+    });
+
+    it('never overrides a title the entry set for itself', async () => {
+      seo.getSiteMetaDefaults.mockResolvedValue({
+        defaultMetaTitle: 'My Site',
+        defaultMetaDescription: 'A site.',
+      });
+      contentTypes.findByName.mockResolvedValue(buildContentType());
+      repo.findPublishedBySlug.mockResolvedValue(buildRow());
+
+      const { data } = await service.getContentBySlug('blog', 'hello-world', 'en');
+
+      expect(data.seoMeta?.metaTitle).toBe(buildRow().seoMeta?.metaTitle);
+    });
+
+    it('synthesises meta for an entry with no SeoMeta row at all', async () => {
+      seo.getSiteMetaDefaults.mockResolvedValue({
+        defaultMetaTitle: 'My Site',
+        defaultMetaDescription: null,
+      });
+      contentTypes.findByName.mockResolvedValue(buildContentType());
+      repo.findPublishedBySlug.mockResolvedValue(buildRow({ seoMeta: null }));
+
+      const { data } = await service.getContentBySlug('blog', 'hello-world', 'en');
+
+      expect(data.seoMeta?.metaTitle).toBe('My Site');
+      expect(data.seoMeta?.noIndex).toBe(false);
+    });
+
+    it('stays null when neither the entry nor the site defines any meta', async () => {
+      contentTypes.findByName.mockResolvedValue(buildContentType());
+      repo.findPublishedBySlug.mockResolvedValue(buildRow({ seoMeta: null }));
+
+      const { data } = await service.getContentBySlug('blog', 'hello-world', 'en');
+
+      expect(data.seoMeta).toBeNull();
+    });
   });
 
   describe('entry projection', () => {

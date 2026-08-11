@@ -10,8 +10,7 @@ import { Label } from '@/components/ui/label';
 import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { useApiClient, useSession } from '@/lib/session';
 import type { RoleSummary, UpdateUserBody, UserSummary } from '@kast-cms/sdk';
 import { ArrowLeft } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -95,7 +94,7 @@ export function EditUserPageClient({ userId }: Props): JSX.Element {
   const tStatus = useTranslations('users.status');
   const tCommon = useTranslations('common');
   const { session } = useSession();
-  const client = createApiClient(session?.accessToken);
+  const client = useApiClient();
   const router = useRouter();
 
   const [user, setUser] = useState<UserSummary | null>(null);
@@ -120,7 +119,7 @@ export function EditUserPageClient({ userId }: Props): JSX.Element {
       setSelectedRoles(u.roles);
       setRoles(rolesRes.data);
     })();
-  }, [userId]);
+  }, [userId, client]);
 
   const toggleRole = (name: string): void => {
     setSelectedRoles((prev) =>

@@ -254,6 +254,7 @@ describe('validation mode comes from the stored entry status', () => {
         'en',
         { title: 'Hello', internal: 'notes' },
         [],
+        undefined,
       );
     });
 

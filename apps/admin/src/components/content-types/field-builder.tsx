@@ -12,8 +12,7 @@ import {
 } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Hint } from '@/components/ui/tooltip';
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { useApiClient, useSession } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import {
   closestCenter,
@@ -179,6 +178,7 @@ interface FieldBuilderProps {
 }
 
 export function FieldBuilder({ contentType, onUpdate }: FieldBuilderProps): JSX.Element {
+  const client = useApiClient();
   const { session } = useSession();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingField, setEditingField] = useState<ContentField | null>(null);
@@ -200,7 +200,6 @@ export function FieldBuilder({ contentType, onUpdate }: FieldBuilderProps): JSX.
 
   const handleDrawerSave = useCallback(
     async (data: AddFieldBody | UpdateFieldBody, fieldName?: string) => {
-      const client = createApiClient(session?.accessToken);
       if (fieldName !== undefined) {
         await client.contentTypes.updateField(contentType.name, fieldName, data as UpdateFieldBody);
       } else {
@@ -209,19 +208,18 @@ export function FieldBuilder({ contentType, onUpdate }: FieldBuilderProps): JSX.
       const updated = await client.contentTypes.get(contentType.name);
       onUpdate(updated.data);
     },
-    [session, contentType.name, onUpdate],
+    [session, contentType.name, onUpdate, client],
   );
 
   const handleDeleteField = useCallback(
     async (fieldName: string) => {
-      const client = createApiClient(session?.accessToken);
       await client.contentTypes.deleteField(contentType.name, fieldName);
       onUpdate({
         ...contentType,
         fields: contentType.fields.filter((f) => f.name !== fieldName),
       });
     },
-    [session, contentType, onUpdate],
+    [session, contentType, onUpdate, client],
   );
 
   const handleDragEnd = useCallback(
@@ -243,7 +241,6 @@ export function FieldBuilder({ contentType, onUpdate }: FieldBuilderProps): JSX.
       onUpdate({ ...contentType, fields: reordered });
 
       try {
-        const client = createApiClient(session?.accessToken);
         await client.contentTypes.reorderFields(contentType.name, {
           order: reordered.map((f) => f.name),
         });
@@ -252,7 +249,7 @@ export function FieldBuilder({ contentType, onUpdate }: FieldBuilderProps): JSX.
         onUpdate(contentType);
       }
     },
-    [session, contentType, onUpdate],
+    [session, contentType, onUpdate, client],
   );
 
   const sortedFields = [...contentType.fields].sort((a, b) => a.position - b.position);

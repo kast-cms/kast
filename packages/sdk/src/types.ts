@@ -61,6 +61,9 @@ export interface ContentTypeSummary {
   description: string | null;
   icon: string | null;
   isSystem: boolean;
+  /** Entries of a localized type carry a row per active locale. */
+  isLocalized: boolean;
+  fields: ContentField[];
   fieldsCount: number;
   entriesCount: number;
   createdAt: string;
@@ -76,12 +79,14 @@ export interface CreateContentTypeBody {
   displayName: string;
   description?: string;
   icon?: string;
+  isLocalized?: boolean;
 }
 
 export interface UpdateContentTypeBody {
   displayName?: string;
   description?: string | null;
   icon?: string | null;
+  isLocalized?: boolean;
 }
 
 export interface AddFieldBody {
@@ -117,24 +122,27 @@ export interface SchedulePublishBody {
   publishAt: string;
 }
 
-export interface ContentEntrySummary {
+/** One translation of an entry, as stored. */
+export interface ContentEntryLocale {
   id: string;
-  status: EntryStatus;
-  locale: string;
-  titleField: string | null; // value of the first text field
-  authorId: string | null;
-  authorName: string | null;
-  isAiGenerated: boolean;
+  entryId: string;
+  localeCode: string;
+  slug: string;
+  data: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
-  publishedAt: string | null;
-  scheduledAt: string | null;
 }
 
+/**
+ * The requested locale flattened onto the entry (`locale`, `slug`, `data`), with
+ * every stored translation still available under `locales`.
+ */
 export interface ContentEntryDetail {
   id: string;
+  contentTypeId: string;
   status: EntryStatus;
-  locale: string;
+  locale: string | null;
+  slug: string | null;
   data: Record<string, unknown>;
   authorId: string | null;
   authorName: string | null;
@@ -143,6 +151,13 @@ export interface ContentEntryDetail {
   updatedAt: string;
   publishedAt: string | null;
   scheduledAt: string | null;
+  trashedAt: string | null;
+  locales: ContentEntryLocale[];
+}
+
+export interface ContentEntrySummary extends ContentEntryDetail {
+  /** Value of the type's first TEXT field in the active locale. */
+  titleField: string | null;
 }
 
 /**
@@ -151,17 +166,47 @@ export interface ContentEntryDetail {
  */
 export interface CreateEntryBody {
   locale?: string;
+  /**
+   * URL slug for this locale. Normalized to lower case with non-alphanumeric runs
+   * folded to hyphens, and unique per locale. Falls back to a `slug` key inside
+   * `data`, then to a generated value.
+   */
+  slug?: string;
   data: Record<string, unknown>;
 }
 
 export interface UpdateEntryBody {
+  locale?: string;
+  /** Rewrites the slug of the locale being written. */
+  slug?: string;
   data?: Record<string, unknown>;
   status?: EntryStatus;
   scheduledAt?: string | null;
 }
 
+export interface PublishEntryBody {
+  /** Publish despite SEO warnings. Errors still block. */
+  force?: boolean;
+}
+
 export interface BulkActionBody {
   ids: string[];
+}
+
+export interface BulkActionItemResult {
+  id: string;
+  ok: boolean;
+  error?: { status: number; code: string; message: string };
+}
+
+/**
+ * Bulk actions are per-item and not atomic: a failure is reported against its own
+ * id and does not roll back the ids that succeeded.
+ */
+export interface BulkActionResult {
+  results: BulkActionItemResult[];
+  succeeded: number;
+  failed: number;
 }
 
 export interface EntryListParams {

@@ -33,6 +33,20 @@ export class UsersResource {
     return this.client.request(`/api/v1/users/${id}`, { method: 'PATCH', body: data });
   }
 
+  /**
+   * Issues a fresh invitation token and mails it again. The previous token stops
+   * working. Rejected with 422 once the account has a password — that would be a
+   * silent password reset; use the forgot-password flow instead.
+   */
+  resendInvite(id: string): Promise<ApiResponse<{ id: string }>> {
+    return this.client.request(`/api/v1/users/${id}/invite`, { method: 'POST' });
+  }
+
+  /** Revokes a pending invitation so the mailed link can no longer be redeemed. */
+  revokeInvite(id: string): Promise<ApiResponse<{ id: string }>> {
+    return this.client.request(`/api/v1/users/${id}/invite`, { method: 'DELETE' });
+  }
+
   trash(id: string): Promise<ApiResponse<{ id: string; trashedAt: string }>> {
     return this.client.request(`/api/v1/users/${id}`, { method: 'DELETE' });
   }

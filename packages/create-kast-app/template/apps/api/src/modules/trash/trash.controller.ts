@@ -17,7 +17,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import {
   TRASH_MODELS,
   TrashQueryDto,
-  type TrashedItemDto,
+  type TrashListResult,
   type TrashModel,
 } from './dto/trash-query.dto';
 import { TrashService } from './trash.service';
@@ -31,7 +31,7 @@ export class TrashController {
   @Get()
   @Roles(SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'List trashed items' })
-  list(@Query() query: TrashQueryDto): Promise<{ items: TrashedItemDto[]; total: number }> {
+  list(@Query() query: TrashQueryDto): Promise<TrashListResult> {
     return this.service.list(query);
   }
 

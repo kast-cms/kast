@@ -12,6 +12,7 @@ import {
   type SystemRole,
 } from '../../common/constants/roles.constants';
 import type { AuthUser, PaginatedResult } from '../../common/types/auth.types';
+import { generateResetToken } from '../auth/reset-token.util';
 import { QueueAdapter } from '../queue/queue.adapter';
 import { QUEUE_NAMES } from '../queue/queue.constants';
 import type {
@@ -21,6 +22,9 @@ import type {
   UserSummaryResponse,
 } from './dto/user.dto';
 import { UsersRepository, type UserRow } from './users.repository';
+
+/** An invitation stays redeemable for a week, then has to be re-sent. */
+const INVITE_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class UsersService {
@@ -38,6 +42,10 @@ export class UsersService {
       avatarUrl: row.avatarUrl,
       isActive: row.isActive,
       isVerified: row.isVerified,
+      // An invited account has no password until the invite is accepted, so
+      // this is what distinguishes "invited" from "active" in the admin. The
+      // hash itself is never sent.
+      hasPendingInvite: row.passwordHash === null,
       roles: row.roles.map((r) => r.role.name),
       lastLoginAt: row.lastLoginAt?.toISOString() ?? null,
       createdAt: row.createdAt.toISOString(),
@@ -129,13 +137,48 @@ export class UsersService {
     });
 
     if (dto.sendInvite !== false) {
-      await this.queue.enqueue(QUEUE_NAMES.EMAIL, 'user-invite', {
-        to: user.email,
-        firstName: user.firstName,
-      });
+      await this.issueInvite(user);
     }
 
     return { data: this.toSummary(user) };
+  }
+
+  /**
+   * Re-sends an invitation, replacing any token already outstanding. Refused
+   * once the account has a password: at that point the credential the invite
+   * grants is no longer "your first password" but a silent reset of an active
+   * account, which is what /auth/forgot-password is for.
+   */
+  async resendInvite(id: string, actor: AuthUser): Promise<{ data: { id: string } }> {
+    const target = await this.repo.findById(id);
+    if (!target) throw new NotFoundException(`User ${id} not found`);
+    this.assertCanManageTarget(actor, target);
+    if (await this.repo.hasPassword(id)) {
+      throw new UnprocessableEntityException(
+        'This user has already set a password; use the password reset flow instead',
+      );
+    }
+    await this.issueInvite(target);
+    return { data: { id } };
+  }
+
+  /** Invalidates the outstanding invitation without touching the account. */
+  async revokeInvite(id: string, actor: AuthUser): Promise<{ data: { id: string } }> {
+    const target = await this.repo.findById(id);
+    if (!target) throw new NotFoundException(`User ${id} not found`);
+    this.assertCanManageTarget(actor, target);
+    await this.repo.deleteInviteToken(id);
+    return { data: { id } };
+  }
+
+  private async issueInvite(user: UserRow): Promise<void> {
+    const { raw, hash } = generateResetToken();
+    await this.repo.upsertInviteToken(user.id, hash, new Date(Date.now() + INVITE_TOKEN_TTL_MS));
+    await this.queue.enqueue(QUEUE_NAMES.EMAIL, 'user-invite', {
+      to: user.email,
+      firstName: user.firstName,
+      token: raw,
+    });
   }
 
   async update(

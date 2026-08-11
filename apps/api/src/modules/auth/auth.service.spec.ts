@@ -5,6 +5,7 @@ import type { QueueAdapter } from '../queue/queue.adapter';
 import { QUEUE_NAMES } from '../queue/queue.constants';
 import type { AuthRepository } from './auth.repository';
 import { AuthService } from './auth.service';
+import type { OAuthPolicy } from './oauth-policy';
 import type { OAuthProfile } from './types/oauth.types';
 
 type Mocked<T> = { [K in keyof T]: jest.Mock };
@@ -31,6 +32,7 @@ describe('AuthService', () => {
   let repo: Mocked<AuthRepository>;
   let jwt: Mocked<JwtService>;
   let queue: Mocked<QueueAdapter>;
+  let policy: Mocked<OAuthPolicy>;
   let service: AuthService;
 
   beforeEach(() => {
@@ -52,17 +54,22 @@ describe('AuthService', () => {
       markPasswordResetTokenUsed: jest.fn().mockResolvedValue(undefined),
       generateResetToken: jest.fn().mockReturnValue({ raw: 'reset-raw', hash: 'reset-hash' }),
       generateHashOnly: jest.fn().mockReturnValue({ hash: 'reset-hash' }),
+      consumePasswordResetToken: jest.fn().mockResolvedValue('u1'),
       countUsers: jest.fn().mockResolvedValue(0),
       createInitialOwner: jest.fn(),
     } as unknown as Mocked<AuthRepository>;
 
     jwt = { signAsync: jest.fn().mockResolvedValue('access-jwt') } as unknown as Mocked<JwtService>;
     queue = { enqueue: jest.fn().mockResolvedValue(undefined) } as unknown as Mocked<QueueAdapter>;
+    policy = {
+      canProvision: jest.fn().mockReturnValue({ allowed: true, reason: 'allowed' }),
+    } as unknown as Mocked<OAuthPolicy>;
 
     service = new AuthService(
       repo as unknown as AuthRepository,
       jwt as unknown as JwtService,
       queue as unknown as QueueAdapter,
+      policy as unknown as OAuthPolicy,
     );
   });
 
@@ -281,21 +288,72 @@ describe('AuthService', () => {
 
   describe('resetPassword', () => {
     it('rejects an invalid reset token', async () => {
-      repo.findPasswordResetToken.mockResolvedValue(null);
-      await expect(service.resetPassword('tok', 'newpw')).rejects.toThrow(BadRequestException);
+      repo.consumePasswordResetToken.mockResolvedValue(null);
+      await expect(service.resetPassword('tok', 'newpassword')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
-    it('updates the password and revokes refresh tokens on a valid reset', async () => {
-      repo.findPasswordResetToken.mockResolvedValue({ id: 'prt1', userId: 'u1' });
+    it('consumes the token and stores the new password in one call', async () => {
       jest.spyOn(argon2, 'hash').mockResolvedValue('reset-pw-hash');
-      repo.updateUser.mockResolvedValue({});
+      repo.consumePasswordResetToken.mockResolvedValue('u1');
 
       await service.resetPassword('tok', 'newpassword');
 
-      expect(repo.markPasswordResetTokenUsed).toHaveBeenCalledWith('prt1');
-      expect(repo.revokeAllRefreshTokensForUser).toHaveBeenCalledWith('u1');
-      const data = repo.updateUser.mock.calls[0]?.[1] as Record<string, unknown>;
-      expect(data.passwordHash).toBe('reset-pw-hash');
+      expect(repo.consumePasswordResetToken).toHaveBeenCalledWith('reset-hash', {
+        passwordHash: 'reset-pw-hash',
+        markVerified: false,
+      });
+    });
+
+    it('never marks the token used separately from the password write', async () => {
+      jest.spyOn(argon2, 'hash').mockResolvedValue('reset-pw-hash');
+      repo.consumePasswordResetToken.mockResolvedValue('u1');
+
+      await service.resetPassword('tok', 'newpassword');
+
+      // A find-then-mark pair is exactly what let two concurrent requests both
+      // pass the validity check.
+      expect(repo.findPasswordResetToken).not.toHaveBeenCalled();
+      expect(repo.markPasswordResetTokenUsed).not.toHaveBeenCalled();
+      expect(repo.updateUser).not.toHaveBeenCalled();
+    });
+
+    it('lets only one of two concurrent redemptions of the same token succeed', async () => {
+      jest.spyOn(argon2, 'hash').mockResolvedValue('reset-pw-hash');
+      let spent = false;
+      repo.consumePasswordResetToken.mockImplementation(async () => {
+        if (spent) return null;
+        spent = true;
+        return 'u1';
+      });
+
+      const results = await Promise.allSettled([
+        service.resetPassword('tok', 'newpassword'),
+        service.resetPassword('tok', 'otherpassword'),
+      ]);
+
+      expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+      expect(results.filter((r) => r.status === 'rejected')).toHaveLength(1);
+    });
+  });
+
+  describe('acceptInvite', () => {
+    it('consumes the token and marks the account verified', async () => {
+      jest.spyOn(argon2, 'hash').mockResolvedValue('invite-pw-hash');
+      repo.consumePasswordResetToken.mockResolvedValue('u9');
+
+      await service.acceptInvite('invite-tok', 'newpassword');
+
+      expect(repo.consumePasswordResetToken).toHaveBeenCalledWith('reset-hash', {
+        passwordHash: 'invite-pw-hash',
+        markVerified: true,
+      });
+    });
+
+    it('rejects a spent or expired invitation token', async () => {
+      repo.consumePasswordResetToken.mockResolvedValue(null);
+      await expect(service.acceptInvite('tok', 'newpassword')).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -310,7 +368,7 @@ describe('AuthService', () => {
       expect(repo.upsertOAuthAccount).toHaveBeenCalled();
     });
 
-    it('creates a new user with the default role when none exists by email', async () => {
+    it('creates a new user with the default role when the policy allows provisioning', async () => {
       repo.findOAuthAccount.mockResolvedValue(null);
       repo.findUserByEmail.mockResolvedValue(null);
       repo.findDefaultRole.mockResolvedValue({ id: 'role-viewer' });
@@ -348,6 +406,43 @@ describe('AuthService', () => {
       await expect(
         service.oauthCallback('google', buildProfile({ emails: [{ value: 'x@kast.local' }] })),
       ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('refuses to provision an unknown identity the policy rejects', async () => {
+      repo.findOAuthAccount.mockResolvedValue(null);
+      repo.findUserByEmail.mockResolvedValue(null);
+      policy.canProvision.mockReturnValue({ allowed: false, reason: 'signup disabled' });
+
+      await expect(
+        service.oauthCallback('google', buildProfile({ emails: [{ value: 'x@evil.test' }] })),
+      ).rejects.toThrow(ForbiddenException);
+      expect(repo.createUser).not.toHaveBeenCalled();
+      expect(repo.findDefaultRole).not.toHaveBeenCalled();
+    });
+
+    it('still signs in an existing account without consulting the signup policy', async () => {
+      repo.findOAuthAccount.mockResolvedValue(null);
+      repo.findUserByEmail.mockResolvedValue(buildUser());
+      policy.canProvision.mockReturnValue({ allowed: false, reason: 'signup disabled' });
+
+      const result = await service.oauthCallback('google', buildProfile());
+
+      expect(result.accessToken).toBe('access-jwt');
+      expect(policy.canProvision).not.toHaveBeenCalled();
+    });
+
+    it('passes the provider verification claim to the policy', async () => {
+      repo.findOAuthAccount.mockResolvedValue(null);
+      repo.findUserByEmail.mockResolvedValue(null);
+      repo.findDefaultRole.mockResolvedValue({ id: 'role-editor' });
+      repo.createUser.mockResolvedValue(buildUser({ id: 'u3' }));
+
+      await service.oauthCallback(
+        'google',
+        buildProfile({ emails: [{ value: 'new@kast.local', verified: true }] }),
+      );
+
+      expect(policy.canProvision).toHaveBeenCalledWith('new@kast.local', true);
     });
   });
 });

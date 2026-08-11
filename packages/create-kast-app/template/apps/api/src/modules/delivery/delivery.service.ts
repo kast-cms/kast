@@ -15,16 +15,24 @@ export interface DeliveryEntry {
   slug: string;
   publishedAt: string | null;
   data: unknown;
-  seoMeta: {
-    metaTitle: string | null;
-    metaDescription: string | null;
-    ogTitle: string | null;
-    ogDescription: string | null;
-    ogImageUrl: string | null;
-    noIndex: boolean;
-    noFollow: boolean;
-    canonicalUrl: string | null;
-  } | null;
+  seoMeta: DeliverySeoMeta | null;
+}
+
+export interface DeliverySeoMeta {
+  metaTitle: string | null;
+  metaDescription: string | null;
+  ogTitle: string | null;
+  ogDescription: string | null;
+  ogImageUrl: string | null;
+  noIndex: boolean;
+  noFollow: boolean;
+  canonicalUrl: string | null;
+}
+
+/** Site-wide fallbacks an entry inherits when it defines no meta of its own. */
+interface SiteMetaDefaults {
+  defaultMetaTitle: string | null;
+  defaultMetaDescription: string | null;
 }
 
 export interface DeliveryFieldSchema {
@@ -125,6 +133,7 @@ export class DeliveryService {
     row: PublishedEntryRow,
     ct: ContentTypeWithFields,
     mediaUrls: ReadonlyMap<string, string>,
+    siteMeta: SiteMetaDefaults,
   ): DeliveryEntry {
     const locale = row.locales[0];
     return {
@@ -132,18 +141,45 @@ export class DeliveryService {
       slug: locale?.slug ?? '',
       publishedAt: row.publishedAt?.toISOString() ?? null,
       data: this.projectData(ct, locale?.data ?? null, mediaUrls),
-      seoMeta: row.seoMeta
-        ? {
-            metaTitle: row.seoMeta.metaTitle,
-            metaDescription: row.seoMeta.metaDescription,
-            ogTitle: row.seoMeta.ogTitle,
-            ogDescription: row.seoMeta.ogDescription,
-            ogImageUrl: row.seoMeta.ogImage?.url ?? null,
-            noIndex: row.seoMeta.noIndex,
-            noFollow: row.seoMeta.noFollow,
-            canonicalUrl: row.seoMeta.canonicalUrl,
-          }
-        : null,
+      seoMeta: this.toSeoMeta(row, siteMeta),
+    };
+  }
+
+  /**
+   * Applies the site-wide fallback title and description.
+   *
+   * The SEO score is computed against the *effective* meta, so an entry that
+   * inherits the site default scores as having a title. Returning the stored
+   * row verbatim shipped a null title to the front end for that same entry —
+   * the score and the payload disagreed. An entry with no SeoMeta row at all
+   * still gets the defaults, which is the common case for a fresh install.
+   */
+  private toSeoMeta(row: PublishedEntryRow, siteMeta: SiteMetaDefaults): DeliverySeoMeta | null {
+    const meta = row.seoMeta;
+    const metaTitle = meta?.metaTitle ?? siteMeta.defaultMetaTitle;
+    const metaDescription = meta?.metaDescription ?? siteMeta.defaultMetaDescription;
+    if (!meta) {
+      if (metaTitle === null && metaDescription === null) return null;
+      return {
+        metaTitle,
+        metaDescription,
+        ogTitle: null,
+        ogDescription: null,
+        ogImageUrl: null,
+        noIndex: false,
+        noFollow: false,
+        canonicalUrl: null,
+      };
+    }
+    return {
+      metaTitle,
+      metaDescription,
+      ogTitle: meta.ogTitle,
+      ogDescription: meta.ogDescription,
+      ogImageUrl: meta.ogImage?.url ?? null,
+      noIndex: meta.noIndex,
+      noFollow: meta.noFollow,
+      canonicalUrl: meta.canonicalUrl,
     };
   }
 
@@ -189,9 +225,12 @@ export class DeliveryService {
     const hasNextPage = items.length > limit;
     const page = hasNextPage ? items.slice(0, limit) : items;
     const nextCursor = hasNextPage ? (page[page.length - 1]?.id ?? null) : null;
-    const mediaUrls = await this.resolveMediaUrls(ct, page);
+    const [mediaUrls, siteMeta] = await Promise.all([
+      this.resolveMediaUrls(ct, page),
+      this.seo.getSiteMetaDefaults(),
+    ]);
     return {
-      data: page.map((r) => this.toEntry(r, ct, mediaUrls)),
+      data: page.map((r) => this.toEntry(r, ct, mediaUrls, siteMeta)),
       meta: { total, limit, cursor: nextCursor, hasNextPage },
     };
   }
@@ -207,8 +246,11 @@ export class DeliveryService {
     if (!entry) {
       throw new NotFoundException(`No published entry "${slug}" for locale "${locale}"`);
     }
-    const mediaUrls = await this.resolveMediaUrls(ct, [entry]);
-    return { data: this.toEntry(entry, ct, mediaUrls) };
+    const [mediaUrls, siteMeta] = await Promise.all([
+      this.resolveMediaUrls(ct, [entry]),
+      this.seo.getSiteMetaDefaults(),
+    ]);
+    return { data: this.toEntry(entry, ct, mediaUrls, siteMeta) };
   }
 
   async getMenu(slug: string): Promise<{ data: MenuDetail }> {

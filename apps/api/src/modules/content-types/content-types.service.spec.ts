@@ -1,4 +1,4 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { ContentFieldType, Prisma } from '@prisma/client';
 import type { ContentTypesRepository } from './content-types.repository';
 import { ContentTypesService } from './content-types.service';
@@ -155,5 +155,118 @@ describe('ContentTypesService field persistence (CON-01)', () => {
       ).rejects.toBeInstanceOf(NotFoundException);
       expect(repo.updateField).not.toHaveBeenCalled();
     });
+  });
+});
+
+/**
+ * CON-11. ContentType.isLocalized decides whether an entry is created with a row
+ * per active locale, but it was absent from the create/update DTOs, so anything
+ * made through the API or the admin was stuck at false.
+ */
+describe('ContentTypesService localization flag (CON-11)', () => {
+  function build(): { service: ContentTypesService; repo: jest.Mocked<ContentTypesRepository> } {
+    const repo = {
+      findByName: jest.fn().mockResolvedValue(null),
+      create: jest.fn().mockResolvedValue({ id: 'ct1' }),
+      update: jest.fn().mockResolvedValue({ id: 'ct1' }),
+    } as unknown as jest.Mocked<ContentTypesRepository>;
+    return { service: new ContentTypesService(repo), repo };
+  }
+
+  it('persists isLocalized on create', async () => {
+    const { service, repo } = build();
+
+    await service.create({ name: 'blog_post', displayName: 'Blog Post', isLocalized: true });
+
+    expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ isLocalized: true }));
+  });
+
+  it('defaults isLocalized to false when it is omitted', async () => {
+    const { service, repo } = build();
+
+    await service.create({ name: 'blog_post', displayName: 'Blog Post' });
+
+    expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ isLocalized: false }));
+  });
+
+  it('forwards isLocalized on update', async () => {
+    const { service, repo } = build();
+    repo.findByName.mockResolvedValue({ id: 'ct1', name: 'blog_post', fields: [] } as never);
+
+    await service.update('blog_post', { isLocalized: true });
+
+    expect(repo.update).toHaveBeenCalledWith('blog_post', { isLocalized: true });
+  });
+});
+
+/**
+ * CON-02. The SDK and the admin field builder have always called
+ * PATCH /content-types/:name/fields/reorder; there was no such route, so a drag
+ * reverted as soon as the page reloaded.
+ */
+describe('ContentTypesService.reorderFields (CON-02)', () => {
+  const fields = [
+    { id: 'f1', name: 'title', position: 0 },
+    { id: 'f2', name: 'slug', position: 1 },
+    { id: 'f3', name: 'body', position: 2 },
+  ];
+
+  function build(): { service: ContentTypesService; repo: jest.Mocked<ContentTypesRepository> } {
+    const repo = {
+      findByName: jest.fn().mockResolvedValue({ id: 'ct1', name: 'blog_post', fields }),
+      findByNameWithCounts: jest.fn().mockResolvedValue({
+        id: 'ct1',
+        name: 'blog_post',
+        fields,
+        _count: { fields: 3, entries: 0 },
+      }),
+      reorderFields: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<ContentTypesRepository>;
+    return { service: new ContentTypesService(repo), repo };
+  }
+
+  it('rewrites positions in the requested order and returns the refreshed type', async () => {
+    const { service, repo } = build();
+
+    const result = await service.reorderFields('blog_post', { order: ['body', 'title', 'slug'] });
+
+    expect(repo.reorderFields).toHaveBeenCalledWith(['f3', 'f1', 'f2']);
+    expect(result.name).toBe('blog_post');
+  });
+
+  it('rejects an order that names a field the type does not have', async () => {
+    const { service, repo } = build();
+
+    await expect(
+      service.reorderFields('blog_post', { order: ['title', 'slug', 'ghost'] }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(repo.reorderFields).not.toHaveBeenCalled();
+  });
+
+  it('rejects a partial order rather than silently dropping the missing fields', async () => {
+    const { service, repo } = build();
+
+    await expect(
+      service.reorderFields('blog_post', { order: ['title', 'slug'] }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(repo.reorderFields).not.toHaveBeenCalled();
+  });
+
+  it('rejects a repeated field name', async () => {
+    const { service, repo } = build();
+
+    await expect(
+      service.reorderFields('blog_post', { order: ['title', 'title', 'slug'] }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(repo.reorderFields).not.toHaveBeenCalled();
+  });
+
+  it('404s for a content type that does not exist', async () => {
+    const { service, repo } = build();
+    repo.findByName.mockResolvedValue(null);
+
+    await expect(service.reorderFields('ghost', { order: ['title'] })).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
   });
 });

@@ -289,7 +289,8 @@
       "confirmDescription": "سيؤدي هذا إلى استبدال محتوى المسودة الحالية. سيتم ضبط المدخل على مسودة.",
       "confirm": "استرجاع",
       "cancel": "إلغاء"
-    }
+    },
+    "bulkPartial": "تم تطبيق {succeeded}، وفشل {failed}"
   },
   "mediaLibrary": {
     "title": "مكتبة الوسائط",
@@ -383,7 +384,12 @@
     "noUsers": "لا يوجد مستخدمون.",
     "never": "أبداً",
     "errorTitle": "فشل إجراء المستخدم",
-    "loadError": "فشل تحميل المستخدمين."
+    "loadError": "فشل تحميل المستخدمين.",
+    "resendInvite": "إعادة إرسال الدعوة",
+    "revokeInvite": "إلغاء الدعوة",
+    "revokeInviteConfirm": "هل تريد إلغاء هذه الدعوة؟ سيتوقف الرابط المُرسَل عن العمل.",
+    "inviteResent": "تمت إعادة إرسال الدعوة.",
+    "inviteRevoked": "تم إلغاء الدعوة."
   },
   "roles": {
     "title": "الأدوار",
@@ -771,6 +777,8 @@
       "back": "رجوع",
       "exportCsv": "تصدير CSV",
       "view": "عرض",
+      "markRead": "تعليم كمقروء",
+      "markUnread": "تعليم كغير مقروء",
       "deleteConfirm": "حذف هذه الإرسالة؟ لا يمكن التراجع.",
       "prev": "السابق",
       "next": "التالي",
@@ -860,9 +868,11 @@
     "columns": {
       "name": "الاسم",
       "trashedAt": "تاريخ الحذف",
+      "trashedBy": "حذفه",
       "daysUntilDeletion": "ينتهي في",
       "actions": "إجراءات"
-    }
+    },
+    "unknownActor": "غير معروف"
   },
   "auditLog": {
     "title": "سجل التدقيق",

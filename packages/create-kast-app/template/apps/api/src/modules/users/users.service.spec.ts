@@ -5,6 +5,7 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import type { AuthUser } from '../../common/types/auth.types';
+import { hashResetToken } from '../auth/reset-token.util';
 import type { QueueAdapter } from '../queue/queue.adapter';
 import { QUEUE_NAMES } from '../queue/queue.constants';
 import type { UserRow, UsersRepository } from './users.repository';
@@ -45,6 +46,9 @@ describe('UsersService', () => {
       create: jest.fn(),
       update: jest.fn(),
       softDelete: jest.fn(),
+      hasPassword: jest.fn().mockResolvedValue(false),
+      upsertInviteToken: jest.fn().mockResolvedValue(undefined),
+      deleteInviteToken: jest.fn().mockResolvedValue(true),
     } as unknown as Mocked<UsersRepository>;
     queue = { enqueue: jest.fn().mockResolvedValue(undefined) } as unknown as Mocked<QueueAdapter>;
     service = new UsersService(
@@ -133,6 +137,39 @@ describe('UsersService', () => {
         adminActor,
       );
       expect(queue.enqueue).not.toHaveBeenCalled();
+      expect(repo.upsertInviteToken).not.toHaveBeenCalled();
+    });
+
+    it('stores a hashed invite token and mails the raw one', async () => {
+      repo.findByEmail.mockResolvedValue(null);
+      repo.findRolesByNames.mockResolvedValue([{ id: 'r1', name: 'editor', isSystem: true }]);
+      repo.create.mockResolvedValue(buildRow(['editor'], { id: 'invited' }));
+
+      await service.invite({ email: 'new@kast.local', roleNames: ['editor'] }, adminActor);
+
+      const [userId, hash, expiresAt] = repo.upsertInviteToken.mock.calls[0] as [
+        string,
+        string,
+        Date,
+      ];
+      const mailed = queue.enqueue.mock.calls[0]?.[2] as { token: string };
+
+      expect(userId).toBe('invited');
+      expect(mailed.token).toEqual(expect.any(String));
+      expect(hash).not.toBe(mailed.token);
+      expect(hash).toBe(hashResetToken(mailed.token));
+      expect(expiresAt.getTime()).toBeGreaterThan(Date.now());
+    });
+
+    it('never mails an invitation without a token to redeem', async () => {
+      repo.findByEmail.mockResolvedValue(null);
+      repo.findRolesByNames.mockResolvedValue([{ id: 'r1', name: 'editor', isSystem: true }]);
+      repo.create.mockResolvedValue(buildRow(['editor']));
+
+      await service.invite({ email: 'new@kast.local', roleNames: ['editor'] }, adminActor);
+
+      const mailed = queue.enqueue.mock.calls[0]?.[2] as { token?: string };
+      expect(mailed.token).toBeTruthy();
     });
 
     it('allows a SUPER_ADMIN to grant any role', async () => {
@@ -142,6 +179,62 @@ describe('UsersService', () => {
       await expect(
         service.invite({ email: 'new@kast.local', roleNames: ['admin'] }, superActor),
       ).resolves.toBeDefined();
+    });
+  });
+
+  describe('resendInvite', () => {
+    it('issues a fresh token that replaces the previous one', async () => {
+      repo.findById.mockResolvedValue(buildRow(['editor']));
+
+      await service.resendInvite('target', adminActor);
+      await service.resendInvite('target', adminActor);
+
+      const first = repo.upsertInviteToken.mock.calls[0]?.[1] as string;
+      const second = repo.upsertInviteToken.mock.calls[1]?.[1] as string;
+      expect(second).not.toBe(first);
+      expect(queue.enqueue).toHaveBeenCalledTimes(2);
+    });
+
+    it('404s for an unknown user', async () => {
+      repo.findById.mockResolvedValue(null);
+      await expect(service.resendInvite('ghost', adminActor)).rejects.toThrow(NotFoundException);
+    });
+
+    it('refuses once the account already has a password', async () => {
+      repo.findById.mockResolvedValue(buildRow(['editor']));
+      repo.hasPassword.mockResolvedValue(true);
+
+      await expect(service.resendInvite('target', adminActor)).rejects.toThrow(
+        UnprocessableEntityException,
+      );
+      expect(repo.upsertInviteToken).not.toHaveBeenCalled();
+      expect(queue.enqueue).not.toHaveBeenCalled();
+    });
+
+    it('refuses when the actor cannot manage the target', async () => {
+      repo.findById.mockResolvedValue(buildRow(['super_admin']));
+      await expect(service.resendInvite('target', adminActor)).rejects.toThrow(ForbiddenException);
+      expect(repo.upsertInviteToken).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('revokeInvite', () => {
+    it('drops the pending token', async () => {
+      repo.findById.mockResolvedValue(buildRow(['editor']));
+      await service.revokeInvite('target', adminActor);
+      expect(repo.deleteInviteToken).toHaveBeenCalledWith('target');
+    });
+
+    it('404s for an unknown user', async () => {
+      repo.findById.mockResolvedValue(null);
+      await expect(service.revokeInvite('ghost', adminActor)).rejects.toThrow(NotFoundException);
+      expect(repo.deleteInviteToken).not.toHaveBeenCalled();
+    });
+
+    it('refuses when the actor cannot manage the target', async () => {
+      repo.findById.mockResolvedValue(buildRow(['super_admin']));
+      await expect(service.revokeInvite('target', adminActor)).rejects.toThrow(ForbiddenException);
+      expect(repo.deleteInviteToken).not.toHaveBeenCalled();
     });
   });
 

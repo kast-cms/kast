@@ -1,14 +1,14 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
-import { PrismaService } from '../../prisma/prisma.service';
 import { QUEUE_NAMES } from '../queue/queue.constants';
+import { TrashService } from './trash.service';
 
 @Processor(QUEUE_NAMES.TRASH, { concurrency: 1 })
 export class TrashProcessor extends WorkerHost {
   private readonly logger = new Logger(TrashProcessor.name);
 
-  constructor(private readonly prisma: PrismaService) {
+  constructor(private readonly trash: TrashService) {
     super();
   }
 
@@ -21,16 +21,15 @@ export class TrashProcessor extends WorkerHost {
   }
 
   private async runHardDelete(): Promise<void> {
-    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    this.logger.log(`Running hard delete for items trashed before ${cutoff.toISOString()}`);
+    const summary = await this.trash.purgeExpired();
+    const perModel = Object.entries(summary.models)
+      .map(([model, { deleted, failed }]) => `${model}: ${deleted} deleted, ${failed} failed`)
+      .join('; ');
+    this.logger.log(`Purged trash older than ${summary.cutoff.toISOString()} — ${perModel}`);
 
-    const [deletedEntries, deletedMedia] = await Promise.all([
-      this.prisma.contentEntry.deleteMany({ where: { trashedAt: { lte: cutoff } } }),
-      this.prisma.mediaFile.deleteMany({ where: { trashedAt: { lte: cutoff } } }),
-    ]);
-
-    this.logger.log(
-      `Hard deleted ${deletedEntries.count} content entries and ${deletedMedia.count} media files`,
-    );
+    const failures = Object.values(summary.models).reduce((sum, m) => sum + m.failed, 0);
+    if (failures > 0) {
+      this.logger.error(`${failures} trashed record(s) could not be purged; see errors above`);
+    }
   }
 }

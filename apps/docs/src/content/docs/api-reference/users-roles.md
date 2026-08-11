@@ -24,13 +24,38 @@ Authorization: Bearer <token>
 ## Invite user
 
 ```http
-POST /api/v1/users/invite
-Authorization: Bearer <token>
+POST /api/v1/users
+Authorization: Bearer <token>   (ADMIN+)
 
-{ "email": "editor@example.com", "role": "editor" }
+{ "email": "editor@example.com", "roleNames": ["editor"] }
 ```
 
-Sends an invitation email. The user must click the link to complete registration.
+Creates the account with **no password** and emails a single-use invitation link
+valid for 7 days. The invitee completes registration with
+`POST /api/v1/auth/accept-invite`, which sets the password and marks the account
+verified.
+
+While the invitation is unredeemed the user's `hasPendingInvite` is `true`.
+
+### Re-send an invitation
+
+```http
+POST /api/v1/users/:id/invite
+Authorization: Bearer <token>   (ADMIN+)
+```
+
+Issues a fresh token — the previous one stops working — and mails it again.
+Refused with `422` once the account has a password: that would be a silent
+password reset, which is what the forgot-password flow is for.
+
+### Revoke an invitation
+
+```http
+DELETE /api/v1/users/:id/invite
+Authorization: Bearer <token>   (ADMIN+)
+```
+
+Deletes the pending token so the emailed link can no longer be redeemed.
 
 ## Update user
 

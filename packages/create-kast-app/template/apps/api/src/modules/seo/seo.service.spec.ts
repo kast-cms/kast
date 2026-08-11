@@ -1,11 +1,31 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import type { Queue } from 'bullmq';
 import type { PrismaService } from '../../prisma/prisma.service';
+import { EMPTY_SEO_SETTINGS, type SeoSettings } from './seo-settings';
 import type { SeoRepository } from './seo.repository';
 import { SeoService } from './seo.service';
 
 type Mocked<T> = { [K in keyof T]: jest.Mock };
+
+/** A content type with a rich-text body is gated by default (see resolveGatePolicy). */
+const BODY_FIELDS = [
+  { name: 'body', type: 'RICH_TEXT' },
+  { name: 'title', type: 'TEXT' },
+];
+
+function richTextDoc(words: number, withH2: boolean): unknown {
+  const text = Array.from({ length: words }, (_, i) => ({ type: 'text', text: `word${i}` }));
+  return {
+    type: 'doc',
+    content: [
+      ...(withH2
+        ? [{ type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Section' }] }]
+        : []),
+      { type: 'paragraph', content: text },
+    ],
+  };
+}
 
 describe('SeoService', () => {
   let repo: Mocked<SeoRepository>;
@@ -13,9 +33,17 @@ describe('SeoService', () => {
   let queue: Mocked<Queue>;
   let service: SeoService;
 
+  const settings = (over: Partial<SeoSettings> = {}): SeoSettings => ({
+    ...EMPTY_SEO_SETTINGS,
+    ...over,
+  });
+
   beforeEach(() => {
     repo = {
       upsertMeta: jest.fn(),
+      ensureMeta: jest.fn().mockResolvedValue({ id: 'created-meta' }),
+      findSeoSettings: jest.fn().mockResolvedValue(settings()),
+      findRobotsTxt: jest.fn(),
       findMeta: jest.fn(),
       findLatestScore: jest.fn(),
       findScoreHistory: jest.fn(),
@@ -46,12 +74,22 @@ describe('SeoService', () => {
     );
   });
 
+  const cleanMeta = {
+    id: 'meta1',
+    metaTitle: 'A perfectly reasonable SEO title of decent length',
+    metaDescription:
+      'A meta description that comfortably sits within the fifty to one hundred sixty character sweet spot for SEO.',
+    ogImageId: 'img1',
+    canonicalUrl: 'https://kast.example.com/blog/post',
+  };
+
   describe('validateNow (scoring)', () => {
-    it('treats a missing SeoMeta as all-missing issues and does not persist a score', async () => {
+    it('treats a missing SeoMeta as all-missing issues and persists the score against a created meta', async () => {
       repo.findMeta.mockResolvedValue(null);
       prisma.contentEntry.findUnique.mockResolvedValue({
         id: 'e1',
         locales: [{ slug: 'good-slug', data: null }],
+        contentType: { name: 'article', fields: BODY_FIELDS },
       });
 
       const result = await service.validateNow('e1');
@@ -59,6 +97,17 @@ describe('SeoService', () => {
       // title_missing + slug missing? (slug is valid) -> title is an ERROR.
       expect(result.errors.some((i) => i.type === 'title_missing')).toBe(true);
       expect(result.score).toBeLessThan(100);
+      expect(repo.ensureMeta).toHaveBeenCalledWith('e1');
+      expect(repo.saveScore).toHaveBeenCalledWith('created-meta', result.score, result.issues);
+    });
+
+    it('does not create a meta row for an entry that does not exist', async () => {
+      repo.findMeta.mockResolvedValue(null);
+      prisma.contentEntry.findUnique.mockResolvedValue(null);
+
+      await service.validateNow('gone');
+
+      expect(repo.ensureMeta).not.toHaveBeenCalled();
       expect(repo.saveScore).not.toHaveBeenCalled();
     });
 
@@ -67,47 +116,234 @@ describe('SeoService', () => {
       prisma.contentEntry.findUnique.mockResolvedValue({
         id: 'e1',
         locales: [{ slug: 'Bad Slug!', data: null }],
+        contentType: { name: 'article', fields: BODY_FIELDS },
       });
       const result = await service.validateNow('e1');
       expect(result.errors.some((i) => i.type === 'slug_invalid')).toBe(true);
     });
 
     it('persists a score when SeoMeta exists and computes a perfect score for clean meta', async () => {
-      repo.findMeta.mockResolvedValue({
-        id: 'meta1',
-        metaTitle: 'A perfectly reasonable SEO title of decent length',
-        metaDescription:
-          'A meta description that comfortably sits within the fifty to one hundred sixty character sweet spot for SEO.',
-        ogImageId: 'img1',
-        canonicalUrl: 'https://kast.example.com/blog/post',
-      });
-      // Body with > 300 words and an H2 so no body penalties.
-      const words = Array.from({ length: 320 }, (_, i) => ({ type: 'text', text: `word${i}` }));
+      repo.findMeta.mockResolvedValue(cleanMeta);
       prisma.contentEntry.findUnique.mockResolvedValue({
         id: 'e1',
-        locales: [
-          {
-            slug: 'valid-slug',
-            data: {
-              type: 'doc',
-              content: [
-                {
-                  type: 'heading',
-                  attrs: { level: 2 },
-                  content: [{ type: 'text', text: 'Section' }],
-                },
-                { type: 'paragraph', content: words },
-              ],
-            },
-          },
-        ],
+        locales: [{ slug: 'valid-slug', data: { body: richTextDoc(320, true) } }],
+        contentType: { name: 'article', fields: BODY_FIELDS },
       });
 
       const result = await service.validateNow('e1');
 
       expect(result.score).toBe(100);
       expect(result.errors).toHaveLength(0);
+      expect(repo.ensureMeta).not.toHaveBeenCalled();
       expect(repo.saveScore).toHaveBeenCalledWith('meta1', 100, expect.any(Array));
+    });
+  });
+
+  describe('validateNow (body analysis)', () => {
+    it('scores the configured rich-text fields, not the whole field map', async () => {
+      repo.findMeta.mockResolvedValue(cleanMeta);
+      prisma.contentEntry.findUnique.mockResolvedValue({
+        id: 'e1',
+        locales: [
+          {
+            slug: 'valid-slug',
+            // The map itself holds no text nodes: scoring it as one document
+            // used to report an empty body for a 320-word entry.
+            data: { title: 'First', body: richTextDoc(320, true) },
+          },
+        ],
+        contentType: { name: 'article', fields: BODY_FIELDS },
+      });
+
+      const result = await service.validateNow('e1');
+
+      expect(result.issues.map((i) => i.type)).not.toContain('body_short');
+      expect(result.issues.map((i) => i.type)).not.toContain('body_no_h2');
+    });
+
+    it('adds up every rich-text field and accepts HTML-string bodies', async () => {
+      repo.findMeta.mockResolvedValue(cleanMeta);
+      const half = Array.from({ length: 160 }, (_, i) => `word${String(i)}`).join(' ');
+      prisma.contentEntry.findUnique.mockResolvedValue({
+        id: 'e1',
+        locales: [
+          {
+            slug: 'valid-slug',
+            data: { body: `<h2>Intro</h2><p>${half}</p>`, extra: `<p>${half}</p>` },
+          },
+        ],
+        contentType: {
+          name: 'article',
+          fields: [
+            { name: 'body', type: 'RICH_TEXT' },
+            { name: 'extra', type: 'RICH_TEXT' },
+          ],
+        },
+      });
+
+      const result = await service.validateNow('e1');
+
+      expect(result.issues.map((i) => i.type)).not.toContain('body_short');
+      expect(result.issues.map((i) => i.type)).not.toContain('body_no_h2');
+    });
+
+    it('reports a short body when the rich-text field is under the minimum', async () => {
+      repo.findMeta.mockResolvedValue(cleanMeta);
+      prisma.contentEntry.findUnique.mockResolvedValue({
+        id: 'e1',
+        locales: [{ slug: 'valid-slug', data: { body: richTextDoc(10, false) } }],
+        contentType: { name: 'article', fields: BODY_FIELDS },
+      });
+
+      const result = await service.validateNow('e1');
+
+      expect(result.issues.map((i) => i.type)).toEqual(
+        expect.arrayContaining(['body_short', 'body_no_h2']),
+      );
+    });
+
+    it('skips body checks for a content type with no rich-text field', async () => {
+      repo.findMeta.mockResolvedValue(cleanMeta);
+      prisma.contentEntry.findUnique.mockResolvedValue({
+        id: 'e1',
+        locales: [{ slug: 'valid-slug', data: { name: 'Tutorials' } }],
+        contentType: { name: 'blog-category', fields: [{ name: 'name', type: 'TEXT' }] },
+      });
+
+      const result = await service.validateNow('e1');
+
+      expect(result.issues.map((i) => i.type)).not.toContain('body_missing');
+    });
+  });
+
+  describe('validateNow (gate policy)', () => {
+    const taxonomyEntry = {
+      id: 'e1',
+      locales: [{ slug: 'blog-category', data: { name: 'Tutorials' } }],
+      contentType: { name: 'blog-category', fields: [{ name: 'name', type: 'TEXT' }] },
+    };
+
+    it('does not block a body-less content type by default, but still scores it', async () => {
+      repo.findMeta.mockResolvedValue(null);
+      prisma.contentEntry.findUnique.mockResolvedValue(taxonomyEntry);
+
+      const result = await service.validateNow('e1');
+
+      expect(result.policy).toBe('advisory');
+      expect(result.issues.some((i) => i.type === 'title_missing')).toBe(true);
+      expect(result.errors).toEqual([]);
+      expect(result.warnings).toEqual([]);
+      expect(repo.saveScore).toHaveBeenCalled();
+    });
+
+    it('blocks a page-like content type by default', async () => {
+      repo.findMeta.mockResolvedValue(null);
+      prisma.contentEntry.findUnique.mockResolvedValue({
+        id: 'e1',
+        locales: [{ slug: 'valid-slug', data: {} }],
+        contentType: { name: 'article', fields: BODY_FIELDS },
+      });
+
+      const result = await service.validateNow('e1');
+
+      expect(result.policy).toBe('enforce');
+      expect(result.errors.some((i) => i.type === 'title_missing')).toBe(true);
+    });
+
+    it('honours a per-content-type override that enforces a body-less type', async () => {
+      repo.findSeoSettings.mockResolvedValue(
+        settings({ gateByContentType: { 'blog-category': 'enforce' } }),
+      );
+      repo.findMeta.mockResolvedValue(null);
+      prisma.contentEntry.findUnique.mockResolvedValue(taxonomyEntry);
+
+      const result = await service.validateNow('e1');
+
+      expect(result.policy).toBe('enforce');
+      expect(result.errors.some((i) => i.type === 'title_missing')).toBe(true);
+    });
+
+    it('skips analysis entirely for a disabled content type', async () => {
+      repo.findSeoSettings.mockResolvedValue(
+        settings({ gateByContentType: { article: 'disabled' } }),
+      );
+      repo.findMeta.mockResolvedValue(null);
+      prisma.contentEntry.findUnique.mockResolvedValue({
+        id: 'e1',
+        locales: [{ slug: 'valid-slug', data: {} }],
+        contentType: { name: 'article', fields: BODY_FIELDS },
+      });
+
+      const result = await service.validateNow('e1');
+
+      expect(result).toMatchObject({ policy: 'disabled', issues: [], errors: [], warnings: [] });
+      expect(repo.saveScore).not.toHaveBeenCalled();
+    });
+
+    it('applies a configured global default policy to types without an override', async () => {
+      repo.findSeoSettings.mockResolvedValue(settings({ gateDefaultPolicy: 'advisory' }));
+      repo.findMeta.mockResolvedValue(null);
+      prisma.contentEntry.findUnique.mockResolvedValue({
+        id: 'e1',
+        locales: [{ slug: 'valid-slug', data: {} }],
+        contentType: { name: 'article', fields: BODY_FIELDS },
+      });
+
+      const result = await service.validateNow('e1');
+
+      expect(result.policy).toBe('advisory');
+      expect(result.errors).toEqual([]);
+    });
+  });
+
+  describe('validateNow (site defaults)', () => {
+    it('falls back to the saved global title/description and flags the fallback', async () => {
+      repo.findSeoSettings.mockResolvedValue(
+        settings({
+          defaultMetaTitle: 'A perfectly reasonable SEO title of decent length',
+          defaultMetaDescription:
+            'A meta description that comfortably sits within the fifty to one hundred sixty character sweet spot for SEO.',
+        }),
+      );
+      repo.findMeta.mockResolvedValue({
+        id: 'meta1',
+        metaTitle: null,
+        metaDescription: null,
+        ogImageId: 'img1',
+        canonicalUrl: 'https://kast.example.com/blog/post',
+      });
+      prisma.contentEntry.findUnique.mockResolvedValue({
+        id: 'e1',
+        locales: [{ slug: 'valid-slug', data: { body: richTextDoc(320, true) } }],
+        contentType: { name: 'article', fields: BODY_FIELDS },
+      });
+
+      const result = await service.validateNow('e1');
+
+      expect(result.errors).toEqual([]);
+      expect(result.issues.map((i) => i.type)).toEqual(
+        expect.arrayContaining(['title_from_site_default', 'desc_from_site_default']),
+      );
+    });
+
+    it('still reports a missing title when no global default is saved', async () => {
+      repo.findMeta.mockResolvedValue({
+        id: 'meta1',
+        metaTitle: null,
+        metaDescription: null,
+        ogImageId: 'img1',
+        canonicalUrl: 'https://kast.example.com/blog/post',
+      });
+      prisma.contentEntry.findUnique.mockResolvedValue({
+        id: 'e1',
+        locales: [{ slug: 'valid-slug', data: { body: richTextDoc(320, true) } }],
+        contentType: { name: 'article', fields: BODY_FIELDS },
+      });
+
+      const result = await service.validateNow('e1');
+
+      expect(result.errors.map((i) => i.type)).toContain('title_missing');
+      expect(result.issues.map((i) => i.type)).not.toContain('title_from_site_default');
     });
   });
 
@@ -129,6 +365,54 @@ describe('SeoService', () => {
       repo.updateRedirect.mockResolvedValue({ id: 'r1', toPath: '/new' });
       const result = await service.updateRedirect('r1', { toPath: '/new' });
       expect(result.toPath).toBe('/new');
+    });
+  });
+
+  describe('redirect target policy', () => {
+    it('accepts a site-relative target', async () => {
+      repo.createRedirect.mockResolvedValue({ id: 'r1' });
+      await service.createRedirect({ fromPath: '/old', toPath: '/new' }, 'user');
+      expect(repo.createRedirect).toHaveBeenCalled();
+    });
+
+    it('rejects an external target while no host is allow-listed', async () => {
+      await expect(
+        service.createRedirect({ fromPath: '/old', toPath: 'https://evil.example/phish' }, 'user'),
+      ).rejects.toThrow(BadRequestException);
+      expect(repo.createRedirect).not.toHaveBeenCalled();
+    });
+
+    it('rejects a protocol-relative target', async () => {
+      await expect(
+        service.createRedirect({ fromPath: '/old', toPath: '//evil.example' }, 'user'),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('accepts an external target whose host the operator allow-listed', async () => {
+      repo.findSeoSettings.mockResolvedValue(
+        settings({ redirectAllowedHosts: ['docs.example.com'] }),
+      );
+      repo.createRedirect.mockResolvedValue({ id: 'r1' });
+      await service.createRedirect(
+        { fromPath: '/old', toPath: 'https://docs.example.com/guide' },
+        'user',
+      );
+      expect(repo.createRedirect).toHaveBeenCalled();
+    });
+
+    it('rejects an external target on update as well', async () => {
+      repo.findRedirectById.mockResolvedValue({ id: 'r1' });
+      await expect(
+        service.updateRedirect('r1', { toPath: 'https://evil.example' }),
+      ).rejects.toThrow(BadRequestException);
+      expect(repo.updateRedirect).not.toHaveBeenCalled();
+    });
+
+    it('leaves the target untouched when an update does not change it', async () => {
+      repo.findRedirectById.mockResolvedValue({ id: 'r1' });
+      repo.updateRedirect.mockResolvedValue({ id: 'r1', isActive: false });
+      await service.updateRedirect('r1', { isActive: false });
+      expect(repo.updateRedirect).toHaveBeenCalled();
     });
   });
 
@@ -167,6 +451,21 @@ describe('SeoService', () => {
       );
       const inserted = repo.createManyRedirects.mock.calls[0]?.[0] as { fromPath: string }[];
       expect(inserted.map((r) => r.fromPath).sort()).toEqual(['/a', '/c']);
+    });
+
+    it('reports rows whose target the redirect policy refuses', async () => {
+      repo.findExistingFromPaths.mockResolvedValue(new Set());
+      repo.createManyRedirects.mockImplementation((rows: unknown[]) =>
+        Promise.resolve(rows.length),
+      );
+      const csv = ['/a,/a-new,PERMANENT,true', '/b,https://evil.example,PERMANENT,true'].join('\n');
+
+      const result = await service.importRedirects(csv, 'user');
+
+      expect(result.imported).toBe(1);
+      expect(result.errors).toEqual([
+        expect.objectContaining({ row: 2, reason: expect.stringMatching(/evil\.example/) }),
+      ]);
     });
 
     it('rejects an invalid redirect type', async () => {

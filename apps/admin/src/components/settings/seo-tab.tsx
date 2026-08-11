@@ -10,6 +10,14 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { SeparatorWithLabel } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Save } from 'lucide-react';
 import { useState, type JSX } from 'react';
@@ -18,6 +26,15 @@ import type { UseSettingsReturn } from './use-settings';
 
 const TITLE_LIMIT = 60;
 const DESCRIPTION_LIMIT = 160;
+
+const GATE_POLICIES = ['enforce', 'advisory', 'disabled'] as const;
+type GatePolicy = (typeof GATE_POLICIES)[number];
+
+const GATE_POLICY_HINTS: Record<GatePolicy, string> = {
+  enforce: 'Score the entry and refuse to publish while an ERROR-level issue stands.',
+  advisory: 'Score and record issues, but never block a publish.',
+  disabled: 'Skip SEO analysis entirely.',
+};
 
 interface Props {
   s: UseSettingsReturn;
@@ -30,11 +47,29 @@ export function SeoTab({ s }: Props): JSX.Element {
   const [metaDesc, setMetaDesc] = useState<string>(() =>
     String(s.getValue('seo.defaultMetaDescription') ?? ''),
   );
+  // '' means "no override": the API then falls back to its own heuristic —
+  // enforce for a type with a rich-text body, advisory for one without.
+  const [gatePolicy, setGatePolicy] = useState<GatePolicy | ''>(() => {
+    const v = s.getValue('seo.gate.defaultPolicy');
+    return GATE_POLICIES.includes(v as GatePolicy) ? (v as GatePolicy) : '';
+  });
+  const [allowedHosts, setAllowedHosts] = useState<string>(() => {
+    const v = s.getValue('seo.redirects.allowedHosts');
+    return Array.isArray(v) ? (v as string[]).join('\n') : String(v ?? '');
+  });
 
   const save = async (): Promise<void> => {
     await s.patchSettings([
       { key: 'seo.defaultMetaTitle', value: metaTitle },
       { key: 'seo.defaultMetaDescription', value: metaDesc },
+      { key: 'seo.gate.defaultPolicy', value: gatePolicy === '' ? null : gatePolicy },
+      {
+        key: 'seo.redirects.allowedHosts',
+        value: allowedHosts
+          .split('\n')
+          .map((h) => h.trim())
+          .filter(Boolean),
+      },
     ]);
   };
 
@@ -77,6 +112,52 @@ export function SeoTab({ s }: Props): JSX.Element {
               value={metaDesc}
               onChange={(e) => setMetaDesc(e.target.value)}
               placeholder="Brief site description…"
+            />
+          </SettingsField>
+
+          <SeparatorWithLabel>Publish gate</SeparatorWithLabel>
+
+          <SettingsField
+            label="Default gate policy"
+            htmlFor="gate-policy"
+            hint={
+              gatePolicy === ''
+                ? 'Automatic: types with a rich-text body are enforced, the rest are advisory.'
+                : GATE_POLICY_HINTS[gatePolicy]
+            }
+          >
+            <Select
+              value={gatePolicy === '' ? '__auto__' : gatePolicy}
+              onValueChange={(v) => setGatePolicy(v === '__auto__' ? '' : (v as GatePolicy))}
+            >
+              <SelectTrigger id="gate-policy">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__auto__">Automatic (recommended)</SelectItem>
+                {GATE_POLICIES.map((p) => (
+                  <SelectItem key={p} value={p} className="capitalize">
+                    {p}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </SettingsField>
+
+          <SeparatorWithLabel>Redirects</SeparatorWithLabel>
+
+          <SettingsField
+            label="Allowed redirect hosts"
+            htmlFor="redirect-hosts"
+            hint="One hostname per line. Site-relative targets are always allowed; an absolute http(s) target is refused unless its host is listed here. Empty means no off-site redirects."
+          >
+            <Textarea
+              id="redirect-hosts"
+              rows={4}
+              value={allowedHosts}
+              onChange={(e) => setAllowedHosts(e.target.value)}
+              placeholder="shop.example.com"
+              className="font-mono text-sm"
             />
           </SettingsField>
         </CardContent>
