@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ContentStatus } from '@prisma/client';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   ArrayNotEmpty,
@@ -12,6 +12,7 @@ import {
   IsOptional,
   IsString,
 } from 'class-validator';
+import { toBoolean } from '../../../common/dto/to-boolean.transform';
 
 const SLUG_DESCRIPTION =
   'URL slug for this locale. Normalized to lower case with non-alphanumeric runs folded to hyphens, and unique per locale. Falls back to `data.slug`, then to a generated value.';
@@ -75,6 +76,7 @@ export class PublishContentDto {
   })
   @IsOptional()
   @IsBoolean()
+  @Transform(toBoolean)
   force?: boolean;
 }
 

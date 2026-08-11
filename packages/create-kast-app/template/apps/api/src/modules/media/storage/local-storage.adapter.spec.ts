@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import { promises as fs, mkdtempSync } from 'fs';
 import { tmpdir } from 'os';
@@ -43,6 +44,35 @@ describe('LocalStorageAdapter', () => {
 
       const { url } = await adapter.upload('abc.png', Buffer.from('x'), 'image/png');
       expect(url).toBe('https://cdn.example.com/uploads/abc.png');
+    });
+
+    it('warns when a base URL points at /uploads on a host that is not rewritten', () => {
+      // The exact shape render.yaml used to ship: the API's own origin on a
+      // path nothing serves, so every media URL 404s. It cannot be corrected
+      // automatically (a CDN may serve /uploads), so it has to be said aloud.
+      const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+      adapterFor({
+        STORAGE_LOCAL_DIR: dir,
+        STORAGE_LOCAL_URL: 'https://kast-api.onrender.com/uploads',
+      });
+
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('/api/v1/media/files'));
+      warn.mockRestore();
+    });
+
+    it('stays quiet for a base URL that is served', () => {
+      const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+      adapterFor({
+        STORAGE_LOCAL_DIR: dir,
+        STORAGE_LOCAL_URL: 'https://kast-api.onrender.com/api/v1/media/files',
+      });
+      // ...and for the legacy value, which is silently rewritten onto that route.
+      adapterFor({ STORAGE_LOCAL_DIR: dir, STORAGE_LOCAL_URL: 'http://localhost:3000/uploads' });
+
+      expect(warn).not.toHaveBeenCalled();
+      warn.mockRestore();
     });
   });
 

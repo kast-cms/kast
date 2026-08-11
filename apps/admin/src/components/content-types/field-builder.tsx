@@ -34,6 +34,7 @@ import type { AddFieldBody, ContentField, ContentTypeDetail, UpdateFieldBody } f
 import { GripVertical, Pencil, Plus, Rows3, Trash2 } from 'lucide-react';
 import { useCallback, useState, type JSX } from 'react';
 import { FieldDrawer } from './field-drawer';
+import { reorderFieldsForDrag, sortFieldsByPosition } from './field-order';
 
 /**
  * Field type is a categorical dimension, not a status — a URL field is not
@@ -225,25 +226,25 @@ export function FieldBuilder({ contentType, onUpdate }: FieldBuilderProps): JSX.
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
       const { active, over } = event;
-      if (over === null || active.id === over.id) return;
+      if (over === null) return;
 
-      const fields = contentType.fields;
-      const oldIndex = fields.findIndex((f) => f.name === active.id);
-      const newIndex = fields.findIndex((f) => f.name === over.id);
-      if (oldIndex === -1 || newIndex === -1) return;
-
-      const reordered = [...fields];
-      const [moved] = reordered.splice(oldIndex, 1);
-      if (moved === undefined) return;
-      reordered.splice(newIndex, 0, moved);
+      const reordered = reorderFieldsForDrag(
+        contentType.fields,
+        String(active.id),
+        String(over.id),
+      );
+      if (reordered === null) return;
 
       // Optimistic update
       onUpdate({ ...contentType, fields: reordered });
 
       try {
-        await client.contentTypes.reorderFields(contentType.name, {
+        const saved = await client.contentTypes.reorderFields(contentType.name, {
           order: reordered.map((f) => f.name),
         });
+        // The route answers with the refreshed type, so the positions on screen
+        // are the ones the database now holds rather than a local guess.
+        onUpdate(saved.data);
       } catch {
         // Revert on error
         onUpdate(contentType);
@@ -252,7 +253,7 @@ export function FieldBuilder({ contentType, onUpdate }: FieldBuilderProps): JSX.
     [session, contentType, onUpdate, client],
   );
 
-  const sortedFields = [...contentType.fields].sort((a, b) => a.position - b.position);
+  const sortedFields = sortFieldsByPosition(contentType.fields);
 
   return (
     <>

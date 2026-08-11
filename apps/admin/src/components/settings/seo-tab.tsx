@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { SeparatorWithLabel } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
+import { blankToNull } from '@/lib/nullable-field';
 import { Save } from 'lucide-react';
 import { useState, type JSX } from 'react';
 import { SettingsField } from './settings-field';
@@ -59,9 +60,12 @@ export function SeoTab({ s }: Props): JSX.Element {
   });
 
   const save = async (): Promise<void> => {
+    // A cleared default is stored as null, like the gate policy below it: the
+    // API treats a blank string as "no default", so keeping '' in the row would
+    // leave the screen showing an override that does not exist.
     await s.patchSettings([
-      { key: 'seo.defaultMetaTitle', value: metaTitle },
-      { key: 'seo.defaultMetaDescription', value: metaDesc },
+      { key: 'seo.defaultMetaTitle', value: blankToNull(metaTitle) },
+      { key: 'seo.defaultMetaDescription', value: blankToNull(metaDesc) },
       { key: 'seo.gate.defaultPolicy', value: gatePolicy === '' ? null : gatePolicy },
       {
         key: 'seo.redirects.allowedHosts',

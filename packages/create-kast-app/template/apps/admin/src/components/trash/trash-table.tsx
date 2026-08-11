@@ -1,6 +1,10 @@
 'use client';
 
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -31,71 +35,118 @@ function formatDate(iso: string): string {
   });
 }
 
+/** Placeholder rows so the tab does not collapse while a model loads. */
+function TrashTableSkeleton(): JSX.Element {
+  return (
+    <>
+      {Array.from({ length: 4 }, (_, i) => (
+        <TableRow key={i} className="hover:bg-transparent">
+          <TableCell>
+            <Skeleton className="h-3.5 w-48" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="h-3.5 w-24" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="h-3.5 w-28" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="h-4.5 w-20 rounded-md" />
+          </TableCell>
+          <TableCell>
+            <div className="flex justify-end gap-2">
+              <Skeleton className="h-8 w-24 rounded-md" />
+              <Skeleton className="h-8 w-28 rounded-md" />
+            </div>
+          </TableCell>
+        </TableRow>
+      ))}
+    </>
+  );
+}
+
 export function TrashTable({ items, loading, actionId, onRestore, onDelete }: Props): JSX.Element {
   const t = useTranslations('trash');
 
-  if (loading) {
-    return (
-      <p className="py-10 text-center text-sm text-[--color-muted-foreground]">{t('loading')}</p>
-    );
-  }
-
-  if (items.length === 0) {
-    return (
-      <div className="rounded-lg border border-dashed border-[--color-border] p-12 text-center">
-        <p className="text-sm text-[--color-muted-foreground]">{t('empty')}</p>
-      </div>
-    );
-  }
+  const isEmpty = items.length === 0;
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>{t('columns.name')}</TableHead>
-          <TableHead>{t('columns.trashedAt')}</TableHead>
-          <TableHead>{t('columns.daysUntilDeletion')}</TableHead>
-          <TableHead className="text-right">{t('columns.actions')}</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {items.map((item) => (
-          <TableRow key={item.id}>
-            <TableCell className="font-medium">{item.name}</TableCell>
-            <TableCell>{formatDate(item.trashedAt)}</TableCell>
-            <TableCell>
-              <span className={item.daysUntilDeletion <= 3 ? 'text-red-500 font-medium' : ''}>
-                {t('days', { count: item.daysUntilDeletion })}
-              </span>
-            </TableCell>
-            <TableCell className="text-right space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={actionId !== null}
-                onClick={() => {
-                  onRestore(item.id);
-                }}
-              >
-                <RotateCcw className="mr-1 h-3 w-3" />
-                {t('restore')}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={actionId !== null}
-                className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
-                onClick={() => {
-                  onDelete(item.id);
-                }}
-              >
-                <Trash2 className="mr-1 h-3 w-3" />
-                {t('delete')}
-              </Button>
-            </TableCell>
+    <Card className="overflow-hidden">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>{t('columns.name')}</TableHead>
+            <TableHead>{t('columns.trashedAt')}</TableHead>
+            <TableHead>{t('columns.trashedBy')}</TableHead>
+            <TableHead>{t('columns.daysUntilDeletion')}</TableHead>
+            <TableHead className="text-end">
+              <span className="sr-only">{t('columns.actions')}</span>
+            </TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {isEmpty && loading && <TrashTableSkeleton />}
+          {isEmpty && !loading && (
+            <TableRow className="hover:bg-transparent">
+              <TableCell colSpan={5} className="p-0">
+                <EmptyState
+                  Icon={Trash2}
+                  size="sm"
+                  title={t('empty')}
+                  className="rounded-none border-0"
+                />
+              </TableCell>
+            </TableRow>
+          )}
+          {items.map((item) => {
+            // Three days out, the item is about to be gone for good — that is
+            // the point at which the countdown earns a warning tone.
+            const expiringSoon = item.daysUntilDeletion <= 3;
+            return (
+              <TableRow key={item.id}>
+                <TableCell className="font-medium text-foreground">{item.name}</TableCell>
+                <TableCell className="whitespace-nowrap text-muted-foreground">
+                  {formatDate(item.trashedAt)}
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {item.trashedByName ?? t('unknownActor')}
+                </TableCell>
+                <TableCell>
+                  <Badge variant={expiringSoon ? 'warning' : 'muted'} dot={expiringSoon}>
+                    {t('days', { count: item.daysUntilDeletion })}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-end">
+                  <div className="flex items-center justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={actionId !== null}
+                      onClick={() => {
+                        onRestore(item.id);
+                      }}
+                    >
+                      <RotateCcw />
+                      {t('restore')}
+                    </Button>
+                    <Button
+                      variant="ghost-destructive"
+                      size="sm"
+                      disabled={actionId !== null}
+                      onClick={() => {
+                        onDelete(item.id);
+                      }}
+                    >
+                      <Trash2 />
+                      {t('delete')}
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </Card>
   );
 }

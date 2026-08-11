@@ -4,6 +4,7 @@ import type {
   Redirect,
   SeoMeta,
   SeoScore,
+  SitemapEntry,
   UpdateRedirectBody,
   UpsertSeoMetaBody,
 } from './seo-types.js';
@@ -28,8 +29,17 @@ export class SeoResource {
     return this.client.request(`/api/v1/seo/validate/${entryId}`, { method: 'POST' });
   }
 
+  /**
+   * Raw sitemap XML. `request` parses JSON, so this goes through the text
+   * variant — calling it via `request` throws on the leading `<?xml`.
+   */
   getSitemap(): Promise<string> {
-    return this.client.request('/api/v1/seo/sitemap.xml');
+    return this.client.requestText('/api/v1/seo/sitemap.xml');
+  }
+
+  /** The same entries as JSON, for rendering a list in an admin UI. */
+  listSitemapEntries(): Promise<ApiResponse<SitemapEntry[]>> {
+    return this.client.request('/api/v1/seo/sitemap');
   }
 
   listRedirects(params?: { limit?: number; cursor?: string }): Promise<ApiListResponse<Redirect>> {
@@ -52,8 +62,36 @@ export class SeoResource {
     return this.client.request(`/api/v1/seo/redirects/${id}`, { method: 'DELETE' });
   }
 
+  /** Bulk-import redirects from a CSV file (multipart). Returns created/skipped/error counts. */
+  importRedirects(file: Blob): Promise<RedirectImportResult> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.client
+      .request<ApiResponse<RedirectImportResult>>('/api/v1/seo/redirects/import', {
+        method: 'POST',
+        formData: form,
+      })
+      .then((res) => res.data);
+  }
+
+  /** Export all redirects as a CSV blob (for download). */
+  exportRedirects(): Promise<Blob> {
+    return this.client.requestBlob('/api/v1/seo/redirects/export');
+  }
+
+  /** Historical SEO scores for an entry (newest first). */
+  getScores(entryId: string): Promise<ApiListResponse<SeoScore>> {
+    return this.client.request(`/api/v1/seo/scores/${entryId}`);
+  }
+
   /** @alias listRedirects */
   getRedirects(params?: { limit?: number; cursor?: string }): Promise<ApiListResponse<Redirect>> {
     return this.listRedirects(params);
   }
+}
+
+export interface RedirectImportResult {
+  created: number;
+  skipped: number;
+  errors: number;
 }

@@ -73,20 +73,25 @@ const SETTING_CATALOG: Record<string, SettingDefinition> = {
   },
 };
 
+/** Setting keys are caller-supplied, so `constructor` and friends must not resolve. */
+function lookup(key: string): SettingDefinition | undefined {
+  return Object.hasOwn(SETTING_CATALOG, key) ? SETTING_CATALOG[key] : undefined;
+}
+
 export function getSettingDefinition(key: string): SettingDefinition | undefined {
-  return SETTING_CATALOG[key];
+  return lookup(key);
 }
 
 /** True for catalogued keys that no runtime path reads. */
 export function isInertSettingKey(key: string): boolean {
-  return SETTING_CATALOG[key]?.enforcedBy === null;
+  return lookup(key)?.enforcedBy === null;
 }
 
 export function enforcedBy(key: string): string | null {
-  return SETTING_CATALOG[key]?.enforcedBy ?? null;
+  return lookup(key)?.enforcedBy ?? null;
 }
 
 export function describeInertSetting(key: string): string {
-  const source = SETTING_CATALOG[key]?.effectiveSource ?? 'nothing';
+  const source = lookup(key)?.effectiveSource ?? 'nothing';
   return `Setting "${key}" is not read by the runtime; the effective value comes from ${source}.`;
 }

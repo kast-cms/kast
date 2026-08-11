@@ -1,10 +1,5 @@
 import { InjectQueue } from '@nestjs/bullmq';
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-  UnprocessableEntityException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { Queue } from 'bullmq';
 import type { PaginatedResult } from '../../common/types/auth.types';
@@ -16,12 +11,15 @@ import { SeoService } from '../seo/seo.service';
 import { runBulkEntryAction, type BulkEntryOutcome } from './content-bulk.ops';
 import {
   assertApplied,
+  assertNotTrashed,
+  assertSeoPublishable,
+  assertWritableStatus,
   localeData,
   paginate,
   snapshotLocales,
   writeLocale,
 } from './content-entry.helpers';
-import { addEntryLocale } from './content-locale.ops';
+import { addEntryLocale, assertActiveLocale } from './content-locale.ops';
 import { revertEntryToVersion } from './content-revert.ops';
 import { cancelEntrySchedule, scheduleEntryPublish } from './content-schedule.ops';
 import { requireSlug, resolveEntrySlug } from './content-slug';
@@ -64,6 +62,17 @@ export class ContentService {
       : await this.repo.findByIdForType(id, ct.id);
     if (!entry) throw new NotFoundException(`Content entry ${id} not found`);
     return { ct, entry };
+  }
+
+  /** The loader every mutation shares: `requireEntry` plus the trash guard. */
+  private async requireWritableEntry(
+    typeSlug: string,
+    id: string,
+    locale?: string,
+  ): Promise<{ ct: ContentTypeWithFields; entry: EntryWithLocale }> {
+    const loaded = await this.requireEntry(typeSlug, id, locale);
+    assertNotTrashed(loaded.entry, id);
+    return loaded;
   }
 
   private async reload(contentTypeId: string, id: string): Promise<EntryWithLocale> {
@@ -147,8 +156,14 @@ export class ContentService {
     dto: UpdateContentEntryDto,
     userId: string,
   ): Promise<{ data: EntryWithLocale }> {
-    const { ct, entry } = await this.requireEntry(typeSlug, id);
+    const { ct, entry } = await this.requireWritableEntry(typeSlug, id);
+    assertWritableStatus(typeSlug, id, dto.status);
     const locale = writeLocale(entry, dto.locale);
+    // A locale the entry does not have yet is created by this write, so it faces
+    // the same check as POST :id/locale rather than being taken on trust.
+    if (!entry.locales.some((l) => l.localeCode === locale)) {
+      await assertActiveLocale(this.repo, locale);
+    }
     const slug = dto.slug !== undefined ? requireSlug(dto.slug, 'slug') : undefined;
     // The status the entry ends up in, not just the one being asked for: a data-only
     // write to live or scheduled content has to clear the same bar as publishing it.
@@ -192,7 +207,7 @@ export class ContentService {
     id: string,
     dto: UpdateContentEntryDto,
   ): Promise<Record<string, unknown>> {
-    const { ct, entry } = await this.requireEntry(typeSlug, id);
+    const { ct, entry } = await this.requireWritableEntry(typeSlug, id);
     const result = await this.validateUpdate(ct, entry, dto, dto.data ?? {});
     return result.data;
   }
@@ -208,29 +223,10 @@ export class ContentService {
     id: string,
     dto?: PublishContentDto,
   ): Promise<{ data: EntryWithLocale }> {
-    const { ct, entry } = await this.requireEntry(typeSlug, id);
+    const { ct, entry } = await this.requireWritableEntry(typeSlug, id);
 
     await this.gate.assertStoredPublishable(ct, entry);
-
-    // SEO gate: ERROR-severity issues always block; WARNING-severity issues
-    // block unless `force: true` is passed (API spec §4).
-    const validation = await this.seoService.validateNow(id);
-    if (validation.errors.length > 0) {
-      throw new UnprocessableEntityException({
-        message: 'Publish blocked by SEO errors',
-        code: 'SEO_VALIDATION_FAILED',
-        issues: validation.errors,
-        score: validation.score,
-      });
-    }
-    if (validation.warnings.length > 0 && dto?.force !== true) {
-      throw new UnprocessableEntityException({
-        message: 'Publish blocked by SEO warnings. Pass force: true to override.',
-        code: 'SEO_VALIDATION_WARNINGS',
-        issues: validation.warnings,
-        score: validation.score,
-      });
-    }
+    assertSeoPublishable(await this.seoService.validateNow(id), dto?.force);
 
     assertApplied(await this.repo.updateStatus(id, ct.id, 'PUBLISHED', new Date()), id);
     const updated = await this.reload(ct.id, id);
@@ -244,7 +240,7 @@ export class ContentService {
     dto: AddLocaleDto,
     _userId: string,
   ): Promise<{ data: EntryWithLocale }> {
-    const { ct, entry } = await this.requireEntry(typeSlug, id);
+    const { ct, entry } = await this.requireWritableEntry(typeSlug, id);
     await addEntryLocale(this.repo, this.gate, ct, entry, dto);
     const updated = await this.reload(ct.id, id);
     this.eventEmitter.emit('content.updated', { entryId: id, typeSlug, status: updated.status });
@@ -252,7 +248,7 @@ export class ContentService {
   }
 
   async unpublish(typeSlug: string, id: string): Promise<{ data: EntryWithLocale }> {
-    const { ct } = await this.requireEntry(typeSlug, id);
+    const { ct } = await this.requireWritableEntry(typeSlug, id);
     assertApplied(await this.repo.updateStatus(id, ct.id, 'DRAFT'), id);
     const updated = await this.reload(ct.id, id);
     this.eventEmitter.emit('content.unpublished', { entryId: id, typeSlug, status: 'DRAFT' });
@@ -260,7 +256,7 @@ export class ContentService {
   }
 
   async archive(typeSlug: string, id: string): Promise<{ data: EntryWithLocale }> {
-    const { ct } = await this.requireEntry(typeSlug, id);
+    const { ct } = await this.requireWritableEntry(typeSlug, id);
     assertApplied(await this.repo.updateStatus(id, ct.id, 'ARCHIVED'), id);
     return { data: await this.reload(ct.id, id) };
   }
@@ -272,12 +268,7 @@ export class ContentService {
    * row marked DRAFT and still invisible, so it is refused.
    */
   async unarchive(typeSlug: string, id: string): Promise<{ data: EntryWithLocale }> {
-    const { ct, entry } = await this.requireEntry(typeSlug, id);
-    if (entry.trashedAt !== null) {
-      throw new ConflictException(
-        `Content entry ${id} is in the trash; restore it with POST /api/v1/trash/content/${id}/restore`,
-      );
-    }
+    const { ct } = await this.requireWritableEntry(typeSlug, id);
     assertApplied(await this.repo.updateStatus(id, ct.id, 'DRAFT'), id);
     return { data: await this.reload(ct.id, id) };
   }
@@ -313,14 +304,14 @@ export class ContentService {
     id: string,
     dto: SchedulePublishDto,
   ): Promise<{ data: EntryWithLocale }> {
-    const { ct, entry } = await this.requireEntry(typeSlug, id);
+    const { ct, entry } = await this.requireWritableEntry(typeSlug, id);
     const queue = this.publishQueue;
     await scheduleEntryPublish(this.repo, this.gate, queue, ct, entry, typeSlug, dto.publishAt);
     return { data: await this.reload(ct.id, id) };
   }
 
   async cancelSchedule(typeSlug: string, id: string): Promise<{ data: EntryWithLocale }> {
-    const { ct } = await this.requireEntry(typeSlug, id);
+    const { ct } = await this.requireWritableEntry(typeSlug, id);
     await cancelEntrySchedule(this.repo, this.publishQueue, ct.id, id);
     return { data: await this.reload(ct.id, id) };
   }
@@ -353,7 +344,7 @@ export class ContentService {
     versionId: string,
     userId: string,
   ): Promise<{ data: EntryWithLocale }> {
-    const { ct, entry } = await this.requireEntry(typeSlug, id);
+    const { ct, entry } = await this.requireWritableEntry(typeSlug, id);
     const data = await revertEntryToVersion(this.repo, this.gate, ct, entry, versionId, userId);
     return { data };
   }

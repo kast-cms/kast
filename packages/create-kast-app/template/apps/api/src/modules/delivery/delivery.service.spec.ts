@@ -127,6 +127,32 @@ describe('DeliveryService', () => {
       expect(data.seoMeta?.metaDescription).toBe('A site.');
     });
 
+    it('treats a legacy empty-string title as unset, matching how it was scored', async () => {
+      // A row written before SeoService.upsertMeta normalised blanks to null.
+      // The scoring side falls back on any falsy value, so this entry scored as
+      // having a title and passed the enforce publish gate; serving '' verbatim
+      // shipped an empty <title> for a document that scored 92.
+      seo.getSiteMetaDefaults.mockResolvedValue({
+        defaultMetaTitle: 'My Site',
+        defaultMetaDescription: 'A site.',
+      });
+      contentTypes.findByName.mockResolvedValue(buildContentType());
+      repo.findPublishedBySlug.mockResolvedValue(
+        buildRow({
+          seoMeta: {
+            ...buildRow().seoMeta,
+            metaTitle: '',
+            metaDescription: '   ',
+          } as PublishedEntryRow['seoMeta'],
+        }),
+      );
+
+      const { data } = await service.getContentBySlug('blog', 'hello-world', 'en');
+
+      expect(data.seoMeta?.metaTitle).toBe('My Site');
+      expect(data.seoMeta?.metaDescription).toBe('A site.');
+    });
+
     it('never overrides a title the entry set for itself', async () => {
       seo.getSiteMetaDefaults.mockResolvedValue({
         defaultMetaTitle: 'My Site',

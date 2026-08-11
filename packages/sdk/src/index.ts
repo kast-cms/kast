@@ -37,6 +37,7 @@ export type {
   UpdateFormBody,
 } from './form-types.js';
 export { FormsResource } from './forms-resource.js';
+export type { KastApiError } from './http-client.js';
 export type {
   CreateLocaleBody,
   LocaleSummary,

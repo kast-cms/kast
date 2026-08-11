@@ -65,6 +65,7 @@ function version(data: Record<string, unknown>): VersionWithAuthor {
 
 interface RepoMocks {
   findByIdForType: jest.Mock;
+  findActiveLocaleCodes: jest.Mock;
   addLocale: jest.Mock;
   update: jest.Mock;
   createVersion: jest.Mock;
@@ -81,6 +82,7 @@ describe('validation mode comes from the stored entry status', () => {
     clearSchemaCache();
     repo = {
       findByIdForType: jest.fn(),
+      findActiveLocaleCodes: jest.fn().mockResolvedValue(['en', 'ar', 'de', 'fr']),
       addLocale: jest.fn().mockResolvedValue(entry('PUBLISHED')),
       update: jest.fn().mockResolvedValue(entry('PUBLISHED')),
       createVersion: jest.fn().mockResolvedValue(undefined),

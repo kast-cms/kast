@@ -68,6 +68,25 @@ describe('resolveGatePolicy', () => {
     expect(resolveGatePolicy(s, 'page', true)).toBe('disabled');
   });
 
+  it.each(['constructor', 'toString', 'valueOf', '__proto__'])(
+    'does not read %s off Object.prototype as a configured policy',
+    (name) => {
+      expect(resolveGatePolicy(settings(), name, true)).toBe('enforce');
+      expect(resolveGatePolicy(settings({ gateDefaultPolicy: 'advisory' }), name, true)).toBe(
+        'advisory',
+      );
+    },
+  );
+
+  it('keeps the per-type map free of inherited members when it is parsed', () => {
+    const parsed = parseSeoSettings([
+      { key: SEO_SETTING_KEYS.gateContentTypes, value: { article: 'disabled' } },
+    ]);
+
+    expect(resolveGatePolicy(parsed, 'constructor', true)).toBe('enforce');
+    expect(resolveGatePolicy(parsed, 'article', true)).toBe('disabled');
+  });
+
   it('falls back to the built-in default for an unknown content type', () => {
     expect(resolveGatePolicy(settings(), undefined, false)).toBe('advisory');
   });

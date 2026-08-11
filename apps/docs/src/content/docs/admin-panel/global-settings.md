@@ -43,21 +43,28 @@ Click **Send test email** to verify configuration.
 
 ## Storage tab
 
-| Setting            | Key                        | Values                       |
-| ------------------ | -------------------------- | ---------------------------- |
-| Provider           | `storage.provider`         | `LOCAL`, `S3`, `R2`, `MINIO` |
-| Max file size      | `storage.maxFileSizeMb`    | Default: 50                  |
-| Allowed MIME types | `storage.allowedMimeTypes` | Comma-separated              |
+Storage is configured by environment variables, not by these rows. The tab shows
+the effective values read-only; the API rejects a `PATCH` that tries to set them.
 
-Click **Test connection** to verify the storage provider is reachable.
+| Setting            | Environment variable      | Notes               |
+| ------------------ | ------------------------- | ------------------- |
+| Provider           | `STORAGE_PROVIDER`        | `local`, `s3`, `r2` |
+| Max file size      | `UPLOAD_MAX_FILE_SIZE_MB` | Default: 50         |
+| Allowed MIME types | `UPLOAD_ALLOWED_MIME`     | Comma-separated     |
+
+Click **Test connection** to write, read back and delete a probe object through
+the configured provider.
 
 ## Security tab
 
-| Setting              | Key                   |
-| -------------------- | --------------------- |
-| CORS allowed origins | `cors.allowedOrigins` |
+| Setting      | Key            | Editable                                   |
+| ------------ | -------------- | ------------------------------------------ |
+| Robots.txt   | `robots.txt`   | Yes — served by `GET /v1/robots.txt`       |
+| CORS origins | `CORS_ORIGINS` | No — environment variable, shown read-only |
 
-Add origins as a tag input (e.g. `https://my-frontend.com`). The API dynamically applies the CORS policy from this list.
+CORS is applied from the `CORS_ORIGINS` environment variable at boot. It was
+previously presented as an editable setting, but nothing ever read the stored
+row, so changing it had no effect on the running policy.
 
 ## SEO tab
 
@@ -69,12 +76,15 @@ Add origins as a tag input (e.g. `https://my-frontend.com`). The API dynamically
 
 ## Content tab
 
-| Setting                  | Key                        | Notes                  |
-| ------------------------ | -------------------------- | ---------------------- |
-| Default entry status     | `content.defaultStatus`    | `DRAFT` or `PUBLISHED` |
-| Version retention        | `content.versionRetention` | 0 = unlimited          |
-| WebP image quality       | `media.imageQuality`       | 1–100, default 85      |
-| Auto-generate thumbnails | `media.generateThumbnails` | Default: true          |
+These are shown read-only: they describe behaviour fixed in code or set by the
+environment, and the API rejects a `PATCH` that tries to store them.
+
+| Setting                  | Notes                                          |
+| ------------------------ | ---------------------------------------------- |
+| Default entry status     | New entries are created as `DRAFT`             |
+| Version retention        | Versions are retained; no pruning is scheduled |
+| WebP image quality       | Fixed in the media processor                   |
+| Auto-generate thumbnails | Always on for supported image types            |
 
 ## API
 

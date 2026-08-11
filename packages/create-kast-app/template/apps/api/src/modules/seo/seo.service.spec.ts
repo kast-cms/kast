@@ -4,7 +4,7 @@ import type { Queue } from 'bullmq';
 import type { PrismaService } from '../../prisma/prisma.service';
 import { EMPTY_SEO_SETTINGS, type SeoSettings } from './seo-settings';
 import type { SeoRepository } from './seo.repository';
-import { SeoService } from './seo.service';
+import { MAX_REDIRECT_IMPORT_ROWS, SeoService } from './seo.service';
 
 type Mocked<T> = { [K in keyof T]: jest.Mock };
 
@@ -453,6 +453,17 @@ describe('SeoService', () => {
       expect(inserted.map((r) => r.fromPath).sort()).toEqual(['/a', '/c']);
     });
 
+    it('refuses a CSV with more rows than the import cap', async () => {
+      repo.findExistingFromPaths.mockResolvedValue(new Set());
+      const csv = Array.from(
+        { length: MAX_REDIRECT_IMPORT_ROWS + 1 },
+        (_, i) => `/from-${i},/to-${i},PERMANENT,true`,
+      ).join('\n');
+
+      await expect(service.importRedirects(csv, 'user')).rejects.toThrow(BadRequestException);
+      expect(repo.createManyRedirects).not.toHaveBeenCalled();
+    });
+
     it('reports rows whose target the redirect policy refuses', async () => {
       repo.findExistingFromPaths.mockResolvedValue(new Set());
       repo.createManyRedirects.mockImplementation((rows: unknown[]) =>
@@ -530,6 +541,31 @@ describe('SeoService', () => {
     it('throws NotFound when no score exists', async () => {
       repo.findLatestScore.mockResolvedValue(null);
       await expect(service.getScore('e1')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('enqueueValidation (SEO-02: re-validation must not be deduped forever)', () => {
+    it('dedupes by entry id so a burst of requests queues one job', async () => {
+      await service.enqueueValidation('e1');
+
+      expect(queue.add).toHaveBeenCalledWith(
+        'validate',
+        { entryId: 'e1' },
+        expect.objectContaining({ jobId: 'seo-e1' }),
+      );
+    });
+
+    it('does not retain the settled job, so the entry can be validated again', async () => {
+      await service.enqueueValidation('e1');
+
+      // BullMQ refuses an `add` whose jobId already exists in ANY state, and the
+      // queue-wide defaults keep 1000 completed / 5000 failed jobs. A fixed jobId
+      // that outlives its run therefore makes validation once-per-entry: the API
+      // keeps answering 202 while the worker never runs again and GET
+      // /seo/score/:id 404s forever. Both flags must clear the id on settle.
+      const options = queue.add.mock.calls[0]?.[2];
+      expect(options?.removeOnComplete).toBe(true);
+      expect(options?.removeOnFail).toBe(true);
     });
   });
 });

@@ -155,6 +155,71 @@ describe('MediaService', () => {
     });
   });
 
+  describe('remote upload bounds (MED-04)', () => {
+    const REMOTE_URL = 'https://93.184.216.34/photo.png';
+    const originalFetch = global.fetch;
+
+    afterEach(() => {
+      global.fetch = originalFetch;
+    });
+
+    /** A response whose body streams `chunks` and declares `contentLength` when given. */
+    function remoteResponse(chunks: Buffer[], contentLength?: number): Response {
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          for (const chunk of chunks) controller.enqueue(new Uint8Array(chunk));
+          controller.close();
+        },
+      });
+      return new Response(body, {
+        status: 200,
+        headers: {
+          'content-type': 'image/png',
+          ...(contentLength === undefined ? {} : { 'content-length': String(contentLength) }),
+        },
+      });
+    }
+
+    it('refuses a Content-Length over the limit before the body is buffered', async () => {
+      const { service, repo } = makeService();
+      // Small body, enormous declared length: only the header check can catch it.
+      global.fetch = jest.fn(async () =>
+        Promise.resolve(remoteResponse([PNG], 64 * 1024 * 1024)),
+      ) as unknown as typeof fetch;
+
+      await expect(service.uploadFromUrl(REMOTE_URL, 'user-1')).rejects.toBeInstanceOf(
+        UnprocessableEntityException,
+      );
+      expect(repo.create).not.toHaveBeenCalled();
+    });
+
+    it('abandons a body that passes the limit while streaming, even with no Content-Length', async () => {
+      const { service, repo } = makeService();
+      const megabyte = Buffer.alloc(1024 * 1024, 0x61);
+      global.fetch = jest.fn(async () =>
+        Promise.resolve(remoteResponse(Array.from({ length: 12 }, () => megabyte))),
+      ) as unknown as typeof fetch;
+
+      await expect(service.uploadFromUrl(REMOTE_URL, 'user-1')).rejects.toBeInstanceOf(
+        UnprocessableEntityException,
+      );
+      expect(repo.create).not.toHaveBeenCalled();
+    });
+
+    it('still stores a remote file inside the limit', async () => {
+      const { service, repo } = makeService();
+      global.fetch = jest.fn(async () =>
+        Promise.resolve(remoteResponse([PNG], PNG.length)),
+      ) as unknown as typeof fetch;
+
+      await service.uploadFromUrl(REMOTE_URL, 'user-1');
+
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ mimeType: 'image/png', size: PNG.length }),
+      );
+    });
+  });
+
   describe('upload validation (MED-04 / MED-08)', () => {
     it('rejects a file over the configured limit', async () => {
       const { service } = makeService();

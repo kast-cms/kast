@@ -1,7 +1,6 @@
 'use client';
 
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { useApiClient, useSession } from '@/lib/session';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useCallback, useState } from 'react';
@@ -22,6 +21,7 @@ export function useMenuSave(initial?: {
   name: string;
   slug: string;
 }): UseMenuSaveResult {
+  const client = useApiClient();
   const t = useTranslations('menus');
   const { session } = useSession();
   const router = useRouter();
@@ -37,7 +37,6 @@ export function useMenuSave(initial?: {
     setSaving(true);
     setSaveError('');
     try {
-      const client = createApiClient(session.accessToken);
       if (menuId) {
         await client.menus.update(menuId, { name, slug });
       } else {
@@ -50,7 +49,7 @@ export function useMenuSave(initial?: {
     } finally {
       setSaving(false);
     }
-  }, [session, menuId, name, slug, router, t]);
+  }, [session, menuId, name, slug, router, t, client]);
 
   return {
     menuId,

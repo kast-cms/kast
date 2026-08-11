@@ -1,9 +1,13 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import type { GlobalSetting } from '@prisma/client';
+import { promises as fs } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
 import type { AuthUser } from '../../common/types/auth.types';
 import { decryptSecret } from '../../common/utils/secret-crypto.util';
 import type { Env } from '../../config/env.schema';
+import { LocalStorageAdapter } from '../media/storage/local-storage.adapter';
 import type { StorageAdapter } from '../media/storage/storage.adapter';
 import type { SettingPatch, SettingsRepository } from './settings.repository';
 import { SettingsService } from './settings.service';
@@ -378,6 +382,36 @@ describe('SettingsService', () => {
 
       expect(result.provider).toBe('LOCAL');
       expect(result.warning).toContain('gcs');
+    });
+  });
+
+  // The mocked adapter above accepts any key; the local adapter — the default
+  // backend — refuses the ones its own upload path would refuse.
+  describe('testStorage against the real LocalStorageAdapter', () => {
+    let dir: string;
+    let local: SettingsService;
+
+    beforeEach(async () => {
+      dir = await fs.mkdtemp(join(tmpdir(), 'kast-storage-probe-'));
+      const adapter = new LocalStorageAdapter({
+        get: (key: string) => (key === 'STORAGE_LOCAL_DIR' ? dir : ''),
+      } as unknown as ConfigService<Env>);
+      local = new SettingsService(repo as unknown as SettingsRepository, config, adapter);
+    });
+
+    afterEach(async () => {
+      await fs.rm(dir, { recursive: true, force: true });
+    });
+
+    it('writes, reads back and removes a probe the key guard accepts', async () => {
+      const result = await local.testStorage();
+
+      expect(result).toMatchObject({
+        provider: 'LOCAL',
+        status: 'ok',
+        checks: { write: true, read: true, delete: true },
+      });
+      expect(await fs.readdir(join(dir, 'kast-probe'))).toEqual([]);
     });
   });
 });

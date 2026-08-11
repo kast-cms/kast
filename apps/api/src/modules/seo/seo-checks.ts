@@ -174,7 +174,9 @@ export function selectBodyDocuments(
   const map = isPlainObject(data) ? data : {};
   return {
     hasBodyField: true,
-    documents: bodyFields.map((field) => map[field.name]).filter(isPresentDocument),
+    documents: bodyFields
+      .map((field) => (Object.hasOwn(map, field.name) ? map[field.name] : undefined))
+      .filter(isPresentDocument),
   };
 }
 

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { promises as fs } from 'fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'path';
@@ -18,10 +18,20 @@ const UNSERVED_LEGACY_BASE_URLS = new Set([
   'http://localhost:3000/uploads/',
 ]);
 
+/**
+ * A path this app has never served. Pointing a base URL here is not rewritten
+ * (a CDN legitimately may front `/uploads` on its own host) but it IS worth
+ * saying out loud: the repo's own Render blueprint used to set
+ * `https://kast-api.onrender.com/uploads`, the API's own origin, where nothing
+ * answers — so every media URL 404'd with no signal anywhere (MED-01).
+ */
+const UNSERVED_PATHS = new Set(['/uploads', '/uploads/']);
+
 @Injectable()
 export class LocalStorageAdapter implements StorageAdapter {
   readonly provider = 'local' as const;
 
+  private readonly logger = new Logger(LocalStorageAdapter.name);
   private readonly localDir: string;
   private readonly localUrl: string;
   private realRoot: string | null = null;
@@ -29,9 +39,9 @@ export class LocalStorageAdapter implements StorageAdapter {
   constructor(config: ConfigService<Env>) {
     const dir = config.get('STORAGE_LOCAL_DIR', { infer: true }) ?? '/tmp/kast-uploads';
     this.localDir = isAbsolute(dir) ? resolve(dir) : resolve(process.cwd(), dir);
-    this.localUrl = LocalStorageAdapter.resolveBaseUrl(
-      config.get('STORAGE_LOCAL_URL', { infer: true }) ?? '',
-    );
+    const configured = config.get('STORAGE_LOCAL_URL', { infer: true }) ?? '';
+    this.localUrl = LocalStorageAdapter.resolveBaseUrl(configured);
+    LocalStorageAdapter.warnIfUnserved(configured, this.localUrl, this.logger);
   }
 
   private static resolveBaseUrl(configured: string): string {
@@ -47,6 +57,27 @@ export class LocalStorageAdapter implements StorageAdapter {
       return `${origin}${LOCAL_MEDIA_URL_PATH}`;
     }
     return trimmed.replace(/\/$/, '');
+  }
+
+  /**
+   * Warns when the configured base URL points at a path this app does not
+   * serve. It cannot be auto-corrected — the host may be a CDN that does serve
+   * it — so the operator has to decide, and silence was the reason MED-01 shipped.
+   */
+  private static warnIfUnserved(configured: string, resolved: string, logger: Logger): void {
+    const trimmed = configured.trim();
+    // Nothing to warn about when the value was rewritten onto the real route.
+    if (trimmed === '' || resolved.endsWith(LOCAL_MEDIA_URL_PATH)) return;
+    try {
+      if (!UNSERVED_PATHS.has(new URL(trimmed).pathname)) return;
+    } catch {
+      return;
+    }
+    logger.warn(
+      `STORAGE_LOCAL_URL is set to "${trimmed}", but this API serves local media from ` +
+        `${LOCAL_MEDIA_URL_PATH}. Unless a proxy or CDN serves that path, every media URL will 404. ` +
+        `Leave STORAGE_LOCAL_URL unset to use the built-in route.`,
+    );
   }
 
   async upload(

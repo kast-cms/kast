@@ -13,6 +13,7 @@ import {
   IsString,
   Min,
 } from 'class-validator';
+import { toBoolean } from '../../../common/dto/to-boolean.transform';
 
 const LOCALIZED_DESCRIPTION =
   'Entries of a localized type are created with a row for every active locale and are validated per locale.';
@@ -39,6 +40,7 @@ export class CreateContentTypeDto {
   @ApiPropertyOptional({ description: LOCALIZED_DESCRIPTION, default: false })
   @IsOptional()
   @IsBoolean()
+  @Transform(toBoolean)
   isLocalized?: boolean;
 }
 
@@ -61,6 +63,7 @@ export class UpdateContentTypeDto {
   @ApiPropertyOptional({ description: LOCALIZED_DESCRIPTION })
   @IsOptional()
   @IsBoolean()
+  @Transform(toBoolean)
   isLocalized?: boolean;
 }
 
@@ -93,16 +96,19 @@ export class CreateFieldDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
+  @Transform(toBoolean)
   isRequired?: boolean;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
+  @Transform(toBoolean)
   isLocalized?: boolean;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
+  @Transform(toBoolean)
   isUnique?: boolean;
 
   @ApiPropertyOptional({
@@ -110,6 +116,7 @@ export class CreateFieldDto {
   })
   @IsOptional()
   @IsBoolean()
+  @Transform(toBoolean)
   isHidden?: boolean;
 
   @ApiPropertyOptional({
@@ -144,16 +151,19 @@ export class UpdateFieldDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
+  @Transform(toBoolean)
   isRequired?: boolean;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
+  @Transform(toBoolean)
   isLocalized?: boolean;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
+  @Transform(toBoolean)
   isUnique?: boolean;
 
   @ApiPropertyOptional({
@@ -161,6 +171,7 @@ export class UpdateFieldDto {
   })
   @IsOptional()
   @IsBoolean()
+  @Transform(toBoolean)
   isHidden?: boolean;
 
   @ApiPropertyOptional({

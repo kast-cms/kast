@@ -22,6 +22,7 @@ import { QUEUE_NAMES } from '../queue/queue.constants';
 import { ListMediaDto } from './dto/list-media.dto';
 import type { MediaJobData } from './media.processor';
 import { MediaRepository } from './media.repository';
+import { readBoundedBody } from './remote-body.util';
 import { derivedStorageKeys } from './storage/derived-keys.util';
 import { safeExtension } from './storage/storage-key.util';
 import type { StorageAdapter } from './storage/storage.adapter';
@@ -268,12 +269,7 @@ export class MediaService {
       throw new UnprocessableEntityException(`MIME type ${mimeType || 'unknown'} is not allowed`);
     }
 
-    const buffer = Buffer.from(await res.arrayBuffer());
-    if (buffer.length > this.maxBytes) {
-      throw new UnprocessableEntityException(
-        `File exceeds max size of ${this.maxBytes / 1024 / 1024}MB`,
-      );
-    }
+    const buffer = await readBoundedBody(res, this.maxBytes);
     if (!validateMagicBytes(buffer, mimeType)) {
       throw new UnprocessableEntityException(
         'File type mismatch: magic bytes do not match content-type',

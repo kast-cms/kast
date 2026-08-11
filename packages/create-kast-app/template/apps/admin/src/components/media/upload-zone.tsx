@@ -1,8 +1,12 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Spinner } from '@/components/ui/spinner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
 import { Link as LinkIcon, Upload, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useRef, useState, type DragEvent, type JSX } from 'react';
@@ -38,13 +42,18 @@ function DropArea({
     if (files.length > 0) onUpload(files);
   }
 
-  const areaClass = dragging
-    ? 'border-[--color-primary] bg-[--color-primary]/5'
-    : 'border-[--color-border]';
-
   return (
-    <div
-      className={`flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-12 transition-colors ${areaClass}`}
+    <Card
+      variant="dashed"
+      className={cn(
+        'flex flex-col items-center justify-center gap-3 px-6 py-10 text-center',
+        'transition-[background-color,border-color] duration-150 ease-out-quad',
+        // The drop target tints toward the brand on both hover and drag, so the
+        // "you can let go here" state is the same colour story as the hover hint.
+        dragging
+          ? 'border-primary bg-primary-subtle'
+          : 'bg-muted/40 hover:border-primary/60 hover:bg-primary-subtle/60',
+      )}
       onDragOver={(e) => {
         e.preventDefault();
         setDragging(true);
@@ -54,11 +63,22 @@ function DropArea({
       }}
       onDrop={handleDrop}
     >
-      <Upload className="h-10 w-10 text-[--color-muted-foreground]" />
-      <div className="text-center">
-        <p className="text-sm font-medium">{t('uploadZone.dropHere')}</p>
-        <p className="text-xs text-[--color-muted-foreground]">{t('uploadZone.or')}</p>
+      <div
+        className={cn(
+          'grid size-12 place-items-center rounded-xl transition-colors duration-150 ease-out-quad',
+          dragging
+            ? 'bg-primary text-primary-foreground'
+            : 'bg-primary-subtle text-primary-subtle-foreground',
+        )}
+      >
+        <Upload className="size-5" />
       </div>
+
+      <div className="space-y-0.5">
+        <p className="text-sm font-medium text-foreground">{t('uploadZone.dropHere')}</p>
+        <p className="text-xs text-muted-foreground">{t('uploadZone.or')}</p>
+      </div>
+
       <Button
         variant="outline"
         size="sm"
@@ -70,10 +90,14 @@ function DropArea({
         {t('uploadZone.browse')}
       </Button>
       <input ref={inputRef} type="file" multiple className="hidden" onChange={handleFileInput} />
+
       {uploading && (
-        <p className="text-sm text-[--color-muted-foreground]">{t('uploadZone.uploading')}</p>
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Spinner size="sm" label={null} />
+          {t('uploadZone.uploading')}
+        </p>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -93,29 +117,35 @@ export function UploadZone({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-lg rounded-xl bg-[--color-background] shadow-xl">
-        <div className="flex items-center justify-between border-b border-[--color-border] p-4">
-          <h2 className="font-semibold">{t('uploadZone.title')}</h2>
+    <Dialog
+      open
+      onOpenChange={(next) => {
+        // An upload in flight owns the dialog — same guard the close button has.
+        if (!next && !uploading) onClose();
+      }}
+    >
+      <DialogContent showCloseButton={false} className="gap-0 p-0">
+        <DialogHeader className="flex-row items-center justify-between gap-2 border-b border-border py-3 ps-5 pe-3">
+          <DialogTitle className="text-md">{t('uploadZone.title')}</DialogTitle>
           <Button
             variant="ghost"
-            size="icon"
-            className="h-8 w-8"
+            size="icon-sm"
+            aria-label="Close"
             onClick={onClose}
             disabled={uploading}
           >
-            <X className="h-4 w-4" />
+            <X />
           </Button>
-        </div>
+        </DialogHeader>
 
-        <Tabs defaultValue="file" className="p-4">
-          <TabsList className="mb-4">
+        <Tabs defaultValue="file" className="px-5 pt-4 pb-5">
+          <TabsList>
             <TabsTrigger value="file">
-              <Upload className="me-2 h-4 w-4" />
+              <Upload />
               {t('uploadZone.tabFile')}
             </TabsTrigger>
             <TabsTrigger value="url">
-              <LinkIcon className="me-2 h-4 w-4" />
+              <LinkIcon />
               {t('uploadZone.tabUrl')}
             </TabsTrigger>
           </TabsList>
@@ -126,26 +156,32 @@ export function UploadZone({
 
           <TabsContent value="url">
             <div className="space-y-3">
-              <p className="text-sm text-[--color-muted-foreground]">{t('uploadZone.urlHint')}</p>
-              <div className="flex gap-2">
+              <p className="text-sm text-muted-foreground">{t('uploadZone.urlHint')}</p>
+              <div className="flex items-center gap-2">
                 <Input
                   value={url}
                   onChange={(e) => {
                     setUrl(e.target.value);
                   }}
                   placeholder="https://example.com/image.jpg"
+                  startAdornment={<LinkIcon />}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleUrlUpload();
                   }}
                 />
-                <Button onClick={handleUrlUpload} disabled={uploading || !url.trim()}>
+                <Button
+                  className="shrink-0"
+                  onClick={handleUrlUpload}
+                  disabled={!url.trim()}
+                  loading={uploading}
+                >
                   {t('uploadZone.import')}
                 </Button>
               </div>
             </div>
           </TabsContent>
         </Tabs>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

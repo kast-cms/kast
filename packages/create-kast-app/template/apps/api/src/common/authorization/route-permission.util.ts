@@ -14,15 +14,17 @@ export interface RouteTarget {
 // Path segments that are API plumbing rather than resource names.
 const SKIP_SEGMENTS = new Set(['api', 'v1']);
 
-const METHOD_ACTION: Record<string, string> = {
-  GET: 'read',
-  HEAD: 'read',
-  OPTIONS: 'read',
-  POST: 'create',
-  PUT: 'update',
-  PATCH: 'update',
-  DELETE: 'delete',
-};
+// Maps rather than object literals: a lookup key arrives from the request, and
+// an inherited `Object.prototype` member would otherwise answer as a mapping.
+const METHOD_ACTION = new Map<string, string>([
+  ['GET', 'read'],
+  ['HEAD', 'read'],
+  ['OPTIONS', 'read'],
+  ['POST', 'create'],
+  ['PUT', 'update'],
+  ['PATCH', 'update'],
+  ['DELETE', 'delete'],
+]);
 
 // Trailing static segments that name an operation rather than a sub-resource.
 // They override the method-derived action so a grant stays expressible as a
@@ -47,6 +49,21 @@ const ACTION_SUFFIXES = new Set([
   'revoke',
   'permanent-delete',
 ]);
+
+// Sub-actions that perform an operation another route already names, so they
+// have to derive to that route's action: a bulk or aliased route must require
+// exactly the permission its single-entry equivalent requires.
+const SUFFIX_ACTION_ALIASES = new Map<string, string>([
+  // POST .../entries/bulk/trash is DELETE .../entries/:id, batched.
+  ['trash', 'delete'],
+  // POST .../entries/:id/unarchive and its deprecated :id/restore alias.
+  ['unarchive', 'restore'],
+]);
+
+// Segments that exist only to carry a sub-action. A route underneath one whose
+// verb maps to nothing has no derivable permission, so it stays unresolved and
+// every scope check fails closed rather than falling back to the HTTP method.
+const ACTION_ONLY_SEGMENTS = new Set(['bulk']);
 
 const UNRESOLVED: RouteTarget = { resource: '', action: '', isMcp: false, resolved: false };
 
@@ -81,8 +98,13 @@ export function routeTargetFromPath(
 
 function deriveAction(segments: string[], method: string): string | undefined {
   const last = segments[segments.length - 1];
-  if (segments.length > 1 && last && ACTION_SUFFIXES.has(last)) return last;
-  return METHOD_ACTION[method.toUpperCase()];
+  if (segments.length > 1 && last) {
+    const alias = SUFFIX_ACTION_ALIASES.get(last);
+    if (alias) return alias;
+    if (ACTION_SUFFIXES.has(last)) return last;
+    if (segments.some((segment) => ACTION_ONLY_SEGMENTS.has(segment))) return undefined;
+  }
+  return METHOD_ACTION.get(method.toUpperCase());
 }
 
 /**

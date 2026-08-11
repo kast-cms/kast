@@ -23,6 +23,7 @@ import {
   computeScore,
   selectBodyDocuments,
 } from './seo-checks';
+import { blankTextToNull } from './seo-meta.normalize';
 import {
   checkRedirectTarget,
   resolveGatePolicy,
@@ -37,6 +38,9 @@ import {
   type SeoScoreWithIssues,
 } from './seo.repository';
 import type { SitemapEntry } from './sitemap.builder';
+
+/** A redirect table is operator-authored; beyond this an import is a memory sink. */
+export const MAX_REDIRECT_IMPORT_ROWS = 10_000;
 
 export interface SeoValidationResult {
   score: number;
@@ -199,8 +203,21 @@ export class SeoService {
     await this.repo.saveScore(parentId, score, issues);
   }
 
+  /**
+   * Stores a blank text field as NULL, so "cleared" has exactly one
+   * representation (SEO-04).
+   *
+   * Two layers disagreed about what empty means: `withSiteDefault` above falls
+   * back on any falsy value, so a stored `''` scored as though it had a title,
+   * while `DeliveryService.toSeoMeta` used `??` and shipped that `''` verbatim.
+   * An entry whose title was cleared therefore scored 92, passed the `enforce`
+   * publish gate, and then served an empty <title> — the score and the payload
+   * describing different documents. Normalising on the way in collapses both to
+   * the null the "missing" checks already handle, for every client rather than
+   * only the ones that remember to send null.
+   */
   async upsertMeta(entryId: string, dto: UpsertSeoMetaDto): Promise<SeoMeta> {
-    return this.repo.upsertMeta(entryId, dto);
+    return this.repo.upsertMeta(entryId, blankTextToNull(dto));
   }
 
   async getMeta(entryId: string): Promise<SeoMetaFull> {
@@ -228,8 +245,28 @@ export class SeoService {
     return { data, meta: { total: result.total, limit, cursor: nextCursor, hasNextPage } };
   }
 
+  /**
+   * The fixed `jobId` deduplicates validations that are still waiting or
+   * running, so hammering the endpoint for one entry does not queue N jobs.
+   *
+   * It must NOT outlive the run. BullMQ refuses an `add` whose jobId already
+   * exists in ANY state, including completed and failed, and the queue-wide
+   * defaults retain those (removeOnComplete: 1000 / removeOnFail: 5000). With
+   * those defaults a fixed jobId makes validation a once-per-entry operation:
+   * the API keeps answering 202 {queued:true} while the worker never runs
+   * again, so an entry validated while the gate was `disabled` (which returns
+   * before persisting a score) can never obtain one and GET /seo/score/:id
+   * 404s forever. Re-validating after fixing a meta title was equally a no-op.
+   *
+   * Removing the job as soon as it settles frees the id for the next request
+   * while preserving the in-flight dedupe.
+   */
   async enqueueValidation(entryId: string): Promise<{ queued: boolean }> {
-    await this.seoQueue.add('validate', { entryId }, { jobId: `seo-${entryId}` });
+    await this.seoQueue.add(
+      'validate',
+      { entryId },
+      { jobId: `seo-${entryId}`, removeOnComplete: true, removeOnFail: true },
+    );
     return { queued: true };
   }
 
@@ -334,6 +371,11 @@ export class SeoService {
   ): Promise<{ imported: number; skipped: number; errors: { row: number; reason: string }[] }> {
     const rows = parseCsv(csv);
     if (rows.length === 0) return { imported: 0, skipped: 0, errors: [] };
+    if (rows.length > MAX_REDIRECT_IMPORT_ROWS) {
+      throw new BadRequestException(
+        `A redirect import may contain at most ${MAX_REDIRECT_IMPORT_ROWS} rows`,
+      );
+    }
 
     const settings = await this.repo.findSeoSettings();
     const {

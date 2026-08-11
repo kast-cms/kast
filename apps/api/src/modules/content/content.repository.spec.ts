@@ -10,7 +10,9 @@ function buildTx(): Record<string, jest.Mock | Record<string, jest.Mock>> {
     contentEntry: {
       create: jest.fn().mockResolvedValue({ id: 'e1' }),
       update: jest.fn().mockResolvedValue({ id: 'e1' }),
-      findFirstOrThrow: jest.fn().mockResolvedValue({ id: 'e1' }),
+      findFirstOrThrow: jest
+        .fn()
+        .mockResolvedValue({ id: 'e1', locales: [{ slug: 'hello-world' }] }),
     },
     contentEntryVersion: {
       findFirst: jest.fn().mockResolvedValue({ versionNumber: 4 }),
@@ -58,9 +60,15 @@ describe('ContentRepository', () => {
     it.each([
       ['updateStatus', (r: ContentRepository) => r.updateStatus('e1', 'ct1', 'DRAFT')],
       ['updateSchedule', (r: ContentRepository) => r.updateSchedule('e1', 'ct1', null, 'DRAFT')],
-      ['trash', (r: ContentRepository) => r.trash('e1', 'ct1')],
-    ])('%s scopes the write to the content type', async (_name, call) => {
+    ])('%s scopes the write to the content type and skips trashed rows', async (_name, call) => {
       await call(repo);
+      expect(updateMany()).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'e1', contentTypeId: 'ct1', trashedAt: null } }),
+      );
+    });
+
+    it('trash scopes the write to the content type', async () => {
+      await repo.trash('e1', 'ct1');
       expect(updateMany()).toHaveBeenCalledWith(
         expect.objectContaining({ where: { id: 'e1', contentTypeId: 'ct1' } }),
       );
@@ -131,6 +139,27 @@ describe('ContentRepository', () => {
         data: { locales: { upsert: { update: Record<string, unknown> } } };
       };
       expect(args.data.locales.upsert.update).not.toHaveProperty('slug');
+    });
+
+    // (localeCode, slug) is unique across the whole install, so a create branch
+    // defaulting to the locale code gives the first translation the slug "ar"
+    // and 409s every entry translated after it.
+    it('derives the slug of a locale row it creates from the entry, not the locale code', async () => {
+      await repo.update('e1', 'ct1', 'ar', { title: 'مرحبا' });
+      const args = mockOf(tx, 'contentEntry', 'update').mock.calls[0]?.[0] as {
+        data: { locales: { upsert: { create: { slug: string } } } };
+      };
+      expect(args.data.locales.upsert.create.slug).toBe('hello-world-ar');
+    });
+
+    it('generates a unique slug when the entry has no locale to derive from', async () => {
+      mockOf(tx, 'contentEntry', 'findFirstOrThrow').mockResolvedValue({ id: 'e1', locales: [] });
+
+      await repo.update('e1', 'ct1', 'ar', { title: 'مرحبا' });
+      const args = mockOf(tx, 'contentEntry', 'update').mock.calls[0]?.[0] as {
+        data: { locales: { upsert: { create: { slug: string } } } };
+      };
+      expect(args.data.locales.upsert.create.slug).toMatch(/^ar-[0-9a-f]{12}$/);
     });
 
     it('locks in a stable order regardless of the order the checks arrive in', async () => {

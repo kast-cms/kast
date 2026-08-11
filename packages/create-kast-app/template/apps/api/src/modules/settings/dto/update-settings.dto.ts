@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { Allow, IsArray, IsBoolean, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { toBoolean } from '../../../common/dto/to-boolean.transform';
 
 class SettingEntryDto {
   @ApiProperty({ description: 'Setting key (e.g. site.name)' })
@@ -20,6 +21,7 @@ class SettingEntryDto {
   })
   @IsOptional()
   @IsBoolean()
+  @Transform(toBoolean)
   isPublic?: boolean;
 }
 

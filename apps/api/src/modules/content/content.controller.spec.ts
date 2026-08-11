@@ -7,9 +7,16 @@ jest.mock('isomorphic-dompurify', () => {
   return { default: { sanitize }, sanitize };
 });
 
-import { ValidationPipe, VersioningType, type INestApplication } from '@nestjs/common';
-import { HttpAdapterHost } from '@nestjs/core';
+import {
+  ValidationPipe,
+  VersioningType,
+  type ExecutionContext,
+  type INestApplication,
+} from '@nestjs/common';
+import { HttpAdapterHost, Reflector } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
+import type { Request } from 'express';
+import { deriveRouteTarget } from '../../common/authorization/route-permission.util';
 import { GlobalExceptionFilter } from '../../common/filters/global-exception.filter';
 import { ContentTypesService } from '../content-types/content-types.service';
 import { ContentController } from './content.controller';
@@ -143,6 +150,42 @@ describe('ContentController', () => {
     it('keeps :id/restore working as an alias', async () => {
       await request(server()).post(`${base}/e1/restore`).expect(201);
       expect(service['unarchive']).toHaveBeenCalledWith('blog', 'e1');
+    });
+  });
+
+  // The scope guards derive resource:action from this controller's own route
+  // metadata, so the mapping is asserted against the real class rather than a
+  // copy of the paths.
+  describe('permission derived from the real route metadata', () => {
+    const reflector = new Reflector();
+    const contextFor = (handler: string): ExecutionContext =>
+      ({
+        getClass: () => ContentController,
+        getHandler: () =>
+          (ContentController.prototype as unknown as Record<string, unknown>)[handler],
+      }) as unknown as ExecutionContext;
+    const targetOf = (handler: string, method: string): { resource: string; action: string } =>
+      deriveRouteTarget(
+        contextFor(handler),
+        { method, params: {} } as unknown as Request,
+        reflector,
+      );
+
+    it.each([
+      ['bulkTrash', 'POST', 'remove', 'DELETE'],
+      ['bulkPublish', 'POST', 'publish', 'POST'],
+      ['bulkUnpublish', 'POST', 'unpublish', 'POST'],
+      ['restore', 'POST', 'unarchive', 'POST'],
+    ])('%s (%s) needs what %s (%s) needs', (bulk, bulkMethod, single, singleMethod) => {
+      expect(targetOf(bulk, bulkMethod)).toMatchObject(targetOf(single, singleMethod));
+    });
+
+    it('derives content:delete for the bulk trash route', () => {
+      expect(targetOf('bulkTrash', 'POST')).toMatchObject({
+        resource: 'content',
+        action: 'delete',
+        resolved: true,
+      });
     });
   });
 

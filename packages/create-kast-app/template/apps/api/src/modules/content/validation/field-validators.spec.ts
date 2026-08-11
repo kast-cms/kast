@@ -45,6 +45,35 @@ function rejects(f: CompiledField, value: unknown, rule: string): void {
 }
 
 describe('coerceAndValidateField', () => {
+  describe('unstorable text (CON: an editor must not be able to cause a 500)', () => {
+    const NUL = String.fromCharCode(0);
+
+    it('rejects a NUL byte in a TEXT field instead of letting it reach jsonb', () => {
+      // Postgres refuses this in a jsonb column and Prisma raises an
+      // *Unknown*RequestError, which the global filter turns into 500 +
+      // a Sentry event. It has to fail here, as a field-level 400.
+      rejects(field(ContentFieldType.TEXT), `hello${NUL}world`, 'invalid_characters');
+    });
+
+    it('rejects it in RICH_TEXT and in the free-form structured types', () => {
+      rejects(field(ContentFieldType.RICH_TEXT), `<p>bad${NUL}</p>`, 'invalid_characters');
+      rejects(
+        field(ContentFieldType.JSON),
+        { nested: [{ deep: `bad${NUL}` }] },
+        'invalid_characters',
+      );
+    });
+
+    it('rejects an unpaired surrogate, which is not valid UTF-8 either', () => {
+      rejects(field(ContentFieldType.TEXT), 'a\ud800b', 'invalid_characters');
+    });
+
+    it('still accepts newlines, tabs, emoji and non-Latin scripts', () => {
+      expect(accepts(field(ContentFieldType.TEXT), 'line\nline\ttab')).toBe('line\nline\ttab');
+      expect(accepts(field(ContentFieldType.TEXT), 'مرحبا 😀')).toBe('مرحبا 😀');
+    });
+  });
+
   describe('TEXT', () => {
     it('accepts and trims a string', () => {
       expect(accepts(field(ContentFieldType.TEXT), '  hello  ')).toBe('hello');

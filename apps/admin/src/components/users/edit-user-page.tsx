@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
+import { clearable } from '@/lib/nullable-field';
 import { useApiClient, useSession } from '@/lib/session';
 import type { RoleSummary, UpdateUserBody, UserSummary } from '@kast-cms/sdk';
 import { ArrowLeft } from 'lucide-react';
@@ -133,8 +134,8 @@ export function EditUserPageClient({ userId }: Props): JSX.Element {
       try {
         const isSelf = session?.user.id === userId;
         const body: UpdateUserBody = {
-          ...(firstName.trim() ? { firstName: firstName.trim() } : {}),
-          ...(lastName.trim() ? { lastName: lastName.trim() } : {}),
+          firstName: clearable(firstName),
+          lastName: clearable(lastName),
           roleNames: selectedRoles,
           ...(!isSelf ? { isActive } : {}),
         };

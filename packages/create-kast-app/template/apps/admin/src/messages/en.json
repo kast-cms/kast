@@ -76,7 +76,8 @@
     "submit": "Create account",
     "submitting": "Creating account…",
     "passwordMismatch": "Passwords do not match.",
-    "errorGeneric": "Something went wrong. Please try again."
+    "errorGeneric": "Something went wrong. Please try again.",
+    "errorPasswordMismatch": "Passwords do not match."
   },
   "common": {
     "loading": "Loading…",
@@ -100,7 +101,8 @@
   "error": {
     "title": "Something went wrong",
     "description": "An unexpected error occurred. Please try again.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "digest": "Reference: {digest}"
   },
   "contentTypes": {
     "title": "Content Types",
@@ -156,13 +158,17 @@
       "NUMBER": "Number",
       "BOOLEAN": "Boolean",
       "DATE": "Date",
+      "DATETIME": "Date & Time",
       "MEDIA": "Media",
       "RELATION": "Relation",
       "JSON": "JSON",
       "EMAIL": "Email",
       "URL": "URL",
-      "ENUM": "Enum",
-      "UID": "UID"
+      "SELECT": "Select",
+      "MULTI_SELECT": "Multi-select",
+      "COLOR": "Color",
+      "COMPONENT": "Component",
+      "BLOCK": "Block"
     },
     "fieldDrawer": {
       "addTitle": "Add field",
@@ -190,6 +196,13 @@
   "content": {
     "title": "Content",
     "description": "Browse and manage your content entries.",
+    "landing": {
+      "description": "Select a content type to browse and manage its entries.",
+      "entries": "{count, plural, =0 {No entries} one {# entry} other {# entries}}",
+      "emptyTitle": "No content types yet",
+      "emptyDescription": "Create a content type before you can add entries.",
+      "manageTypes": "Manage content types"
+    },
     "newEntry": "New entry",
     "emptyTitle": "No entries yet",
     "emptyDescription": "Create your first entry for this content type.",
@@ -278,6 +291,14 @@
       "confirmDescription": "This will overwrite the current draft content. The entry will be set to Draft.",
       "confirm": "Revert",
       "cancel": "Cancel"
+    },
+    "bulkPartial": "{succeeded} applied, {failed} failed",
+    "seoWarnings": {
+      "title": "Publish with SEO warnings?",
+      "hint": "This entry has SEO warnings. You can publish anyway, or close this and fix them first.",
+      "cancel": "Cancel",
+      "confirm": "Publish anyway",
+      "publishing": "Publishing…"
     }
   },
   "mediaLibrary": {
@@ -370,7 +391,14 @@
       "cannotSelfSuspend": "You cannot suspend your own account."
     },
     "noUsers": "No users found.",
-    "never": "Never"
+    "never": "Never",
+    "errorTitle": "User action failed",
+    "loadError": "Failed to load users.",
+    "resendInvite": "Resend invitation",
+    "revokeInvite": "Revoke invitation",
+    "revokeInviteConfirm": "Revoke this invitation? The emailed link will stop working.",
+    "inviteResent": "Invitation re-sent.",
+    "inviteRevoked": "Invitation revoked."
   },
   "roles": {
     "title": "Roles",
@@ -408,12 +436,23 @@
       },
       "resources": {
         "content": "Content",
+        "content-types": "Content Types",
         "media": "Media",
         "seo": "SEO",
-        "content-types": "Content Types",
+        "menus": "Menus",
+        "forms": "Forms",
+        "search": "Search",
+        "trash": "Trash",
         "users": "Users",
         "roles": "Roles",
-        "tokens": "API Tokens"
+        "tokens": "API Tokens",
+        "agent-tokens": "Agent Tokens",
+        "webhooks": "Webhooks",
+        "plugins": "Plugins",
+        "locales": "Locales",
+        "settings": "Settings",
+        "audit": "Audit Log",
+        "dashboard": "Dashboard"
       },
       "save": "Save permissions",
       "saving": "Saving…",
@@ -421,7 +460,9 @@
       "delete": "Delete",
       "deleteConfirm": "Delete role \"{name}\"? This cannot be undone."
     },
-    "noRoles": "No roles found."
+    "noRoles": "No roles found.",
+    "errorTitle": "Role action failed",
+    "loadError": "Failed to load roles."
   },
   "apiTokens": {
     "title": "API Tokens",
@@ -470,7 +511,9 @@
     "never": "Never",
     "noExpiry": "No expiry",
     "revoke": "Revoke",
-    "revokeConfirm": "Revoke token \"{name}\"? Any services using it will lose access."
+    "revokeConfirm": "Revoke token \"{name}\"? Any services using it will lose access.",
+    "errorTitle": "Token action failed",
+    "loadError": "Failed to load tokens."
   },
   "seo": {
     "title": "SEO",
@@ -496,6 +539,18 @@
       "title": "Redirect Rules",
       "description": "Manage 301/302 redirect rules.",
       "createButton": "Add redirect",
+      "importButton": "Import CSV",
+      "importing": "Importing…",
+      "exportButton": "Export CSV",
+      "exporting": "Exporting…",
+      "loading": "Loading…",
+      "yes": "Yes",
+      "no": "No",
+      "importSuccessTitle": "Import complete",
+      "importSuccessDescription": "{created, plural, =0 {No redirects created} one {# redirect created} other {# redirects created}}, {skipped} skipped, {errors} errors.",
+      "importErrorTitle": "Import failed",
+      "exportErrorTitle": "Export failed",
+      "genericError": "Something went wrong. Please try again.",
       "emptyTitle": "No redirects yet",
       "emptyDescription": "Add your first redirect rule.",
       "table": {
@@ -730,12 +785,25 @@
       "subtitle": "{total, plural, one {# submission} other {# submissions}}",
       "back": "Back",
       "exportCsv": "Export CSV",
+      "view": "View",
+      "markRead": "Mark as read",
+      "markUnread": "Mark as unread",
       "deleteConfirm": "Delete this submission? This cannot be undone.",
       "prev": "Previous",
       "next": "Next",
       "table": {
         "date": "Date",
         "actions": "Actions"
+      },
+      "detail": {
+        "title": "Submission detail",
+        "submittedAt": "Submitted",
+        "ipAddress": "IP address",
+        "userAgent": "User agent",
+        "fields": "Form data",
+        "empty": "No data captured.",
+        "close": "Close",
+        "delete": "Delete"
       }
     }
   },
@@ -809,9 +877,11 @@
     "columns": {
       "name": "Name",
       "trashedAt": "Trashed At",
+      "trashedBy": "Deleted By",
       "daysUntilDeletion": "Expires In",
       "actions": "Actions"
-    }
+    },
+    "unknownActor": "Unknown"
   },
   "auditLog": {
     "title": "Audit Log",

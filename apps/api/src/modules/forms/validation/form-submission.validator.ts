@@ -1,5 +1,5 @@
 import { FormFieldType } from '@prisma/client';
-import { isBlank, issue, validateFormField } from './form-field-validators';
+import { isBlank, issue, unstorableTextIssue, validateFormField } from './form-field-validators';
 import {
   type CompiledFormField,
   type CompiledFormSchema,
@@ -49,6 +49,11 @@ function applyField(
 
   const outcome = validateFormField(field, raw);
   if (outcome.issues.length > 0) return outcome.issues;
+
+  // Checked on the coerced value, so a validator added later cannot skip it.
+  const unstorable = unstorableTextIssue(field, outcome.value);
+  if (unstorable) return [unstorable];
+
   if (field.required && !isSatisfied(field, outcome.value)) {
     return [issue(field, 'required', `${field.name} is required`)];
   }

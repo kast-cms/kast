@@ -1,7 +1,6 @@
 'use client';
 
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { useApiClient } from '@/lib/session';
 import type { AgentTokenCreated, AgentTokenSummary, CreateAgentTokenBody } from '@kast-cms/sdk';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -15,8 +14,7 @@ export interface UseAgentTokensReturn {
 }
 
 export function useAgentTokens(): UseAgentTokensReturn {
-  const { session } = useSession();
-  const client = createApiClient(session?.accessToken);
+  const client = useApiClient();
 
   const [tokens, setTokens] = useState<AgentTokenSummary[]>([]);
   const [loading, setLoading] = useState(false);
@@ -30,7 +28,7 @@ export function useAgentTokens(): UseAgentTokensReturn {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [client]);
 
   useEffect(() => {
     void loadTokens();
@@ -42,7 +40,7 @@ export function useAgentTokens(): UseAgentTokensReturn {
       setCreatedToken(res.data);
       void loadTokens();
     },
-    [loadTokens],
+    [loadTokens, client],
   );
 
   const revoke = useCallback(
@@ -50,7 +48,7 @@ export function useAgentTokens(): UseAgentTokensReturn {
       await client.agentTokens.revoke(id);
       void loadTokens();
     },
-    [loadTokens],
+    [loadTokens, client],
   );
 
   const clearCreatedToken = useCallback((): void => {

@@ -1,5 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import { IsBoolean, IsEnum, IsOptional, IsString } from 'class-validator';
+import { toBoolean } from '../../../common/dto/to-boolean.transform';
 
 export enum RedirectTypeDto {
   PERMANENT = 'PERMANENT',
@@ -40,5 +42,6 @@ export class UpdateRedirectDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
+  @Transform(toBoolean)
   isActive?: boolean;
 }

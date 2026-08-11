@@ -70,11 +70,11 @@ wildcards supported) to allow them anyway.
 
 ## Storage
 
-| Variable            | Default                         | Notes                             |
-| ------------------- | ------------------------------- | --------------------------------- |
-| `STORAGE_PROVIDER`  | `local`                         | One of `local`, `s3`, `r2`, `gcs` |
-| `STORAGE_LOCAL_DIR` | `./uploads`                     | Directory for local storage       |
-| `STORAGE_LOCAL_URL` | `http://localhost:3000/uploads` | Public URL prefix for local files |
+| Variable            | Default                                    | Notes                                                                                                                                   |
+| ------------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `STORAGE_PROVIDER`  | `local`                                    | One of `local`, `s3`, `r2`, `gcs`                                                                                                       |
+| `STORAGE_LOCAL_DIR` | `./uploads`                                | Directory for local storage                                                                                                             |
+| `STORAGE_LOCAL_URL` | `http://localhost:3000/api/v1/media/files` | Public URL prefix for local files. The API serves them from `/api/v1/media/files`; set this only if a CDN or proxy fronts the directory |
 
 ### S3 / R2
 
@@ -104,6 +104,17 @@ Required when `STORAGE_PROVIDER=s3` or `STORAGE_PROVIDER=r2`:
 | `GITHUB_CLIENT_ID`     | GitHub OAuth app client ID                                 |
 | `GITHUB_CLIENT_SECRET` | GitHub OAuth app client secret                             |
 | `SITE_URL`             | Base URL of your deployment — used for OAuth redirect URIs |
+
+## Admin URL
+
+| Variable    | Default                       | Notes                                                |
+| ----------- | ----------------------------- | ---------------------------------------------------- |
+| `ADMIN_URL` | `http://localhost:3001/admin` | Base URL of the admin panel, including its base path |
+
+**Set this in production.** Every link Kast emails — password reset and user
+invitations — is built from `ADMIN_URL`, so leaving it at the default sends
+recipients a `localhost` link they cannot open. Include the `/admin` base path;
+that is where the admin app is mounted.
 
 ## SMTP email (optional)
 

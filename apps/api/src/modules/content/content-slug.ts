@@ -41,6 +41,18 @@ export function generateSlug(typeSlug: string): string {
 }
 
 /**
+ * Slug for a locale row created by a write that supplied none. Mirrors what
+ * `create` gives the extra locales of a localized type (`<slug>-<code>`), and
+ * falls back to a generated slug when the entry has nothing to derive from —
+ * never the bare locale code, which is not unique across the install.
+ */
+export function deriveLocaleSlug(baseSlug: string | undefined, localeCode: string): string {
+  const base = baseSlug === undefined ? '' : normalizeSlug(baseSlug);
+  if (base === '') return generateSlug(localeCode);
+  return normalizeSlug(`${base}-${localeCode}`) || generateSlug(localeCode);
+}
+
+/**
  * Resolves the slug for a write. Precedence: the explicit `slug` field of the
  * request, then a string `slug` inside `data`, then a generated one. An explicit
  * value that normalizes to nothing is rejected instead of being silently replaced.

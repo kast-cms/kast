@@ -1,4 +1,5 @@
 import { FormFieldType } from '@prisma/client';
+import { UNSTORABLE_TEXT } from '../../../common/utils/unstorable-text.util';
 import {
   type CompiledFormField,
   DEFAULT_MAX_LENGTH,
@@ -33,6 +34,15 @@ function failWith(issues: FieldIssue[]): FieldOutcome {
 
 function ok(value: unknown): FieldOutcome {
   return { value, issues: [] };
+}
+
+/** Refuses a coerced value the database could not store, whatever the field type. */
+export function unstorableTextIssue(field: CompiledFormField, value: unknown): FieldIssue | null {
+  const values = Array.isArray(value) ? value : [value];
+  const offends = values.some((item) => typeof item === 'string' && UNSTORABLE_TEXT.test(item));
+  return offends
+    ? issue(field, 'invalid_characters', `${field.name} contains characters that are not allowed`)
+    : null;
 }
 
 /** A value the submitter left blank rather than filled in. */

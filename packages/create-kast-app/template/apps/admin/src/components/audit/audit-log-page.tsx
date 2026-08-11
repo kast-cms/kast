@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/ui/page-header';
 import type { AuditLogEntry, AuditLogListParams } from '@kast-cms/sdk';
 import { Download } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -91,23 +92,22 @@ export function AuditLogPage(): JSX.Element {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">{t('title')}</h1>
-          <p className="mt-1 text-sm text-[--color-muted-foreground]">{t('subtitle')}</p>
-        </div>
-        <Button
-          variant="outline"
-          onClick={() => {
-            exportCsv(s.entries);
-          }}
-          disabled={s.entries.length === 0}
-          className="bg-white text-gray-700 border-gray-300 hover:bg-gray-100 hover:text-gray-900"
-        >
-          <Download className="me-2 h-4 w-4" />
-          {t('export')}
-        </Button>
-      </div>
+      <PageHeader
+        title={t('title')}
+        description={t('subtitle')}
+        actions={
+          <Button
+            variant="outline"
+            onClick={() => {
+              exportCsv(s.entries);
+            }}
+            disabled={s.entries.length === 0}
+          >
+            <Download />
+            {t('export')}
+          </Button>
+        }
+      />
 
       <FilterBar
         draft={draft}

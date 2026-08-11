@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { clearable } from '@/lib/nullable-field';
 import { cn } from '@/lib/utils';
 import type { CreateMenuItemBody, MenuItemSummary, UpdateMenuItemBody } from '@kast-cms/sdk';
 import { Link2 } from 'lucide-react';
@@ -41,7 +42,9 @@ export function MenuItemForm({ initial, onSave, onCancel, saving }: ItemFormProp
   const [url, setUrl] = useState(initial?.url ?? '');
 
   function handleSubmit(): void {
-    onSave({ label, linkType, ...(url ? { url } : {}) });
+    // An emptied URL has to travel as null; omitting it leaves the stored link
+    // on the item, so an anchor edited back to "no link" would keep pointing out.
+    onSave({ label, linkType, url: clearable(url) });
   }
 
   return (

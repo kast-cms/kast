@@ -34,8 +34,9 @@ export interface InviteUserBody {
 }
 
 export interface UpdateUserBody {
-  firstName?: string;
-  lastName?: string;
+  /** `null` clears the stored value; omitting the key leaves it untouched. */
+  firstName?: string | null;
+  lastName?: string | null;
   isActive?: boolean;
   roleNames?: string[];
 }

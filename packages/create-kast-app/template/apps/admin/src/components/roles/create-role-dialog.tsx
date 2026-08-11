@@ -57,16 +57,21 @@ export function CreateRoleDialog({ open, onOpenChange, onCreate }: Props): JSX.E
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="role-name">{t('name')}</Label>
+            <Label htmlFor="role-name" required>
+              {t('name')}
+            </Label>
             <Input
               id="role-name"
+              className="font-mono"
               placeholder={t('namePlaceholder')}
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="role-display">{t('displayName')}</Label>
+            <Label htmlFor="role-display" required>
+              {t('displayName')}
+            </Label>
             <Input
               id="role-display"
               placeholder={t('displayNamePlaceholder')}
@@ -89,7 +94,7 @@ export function CreateRoleDialog({ open, onOpenChange, onCreate }: Props): JSX.E
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             {t('cancel')}
           </Button>
-          <Button onClick={handleSubmit} disabled={!name || !displayName || submitting}>
+          <Button onClick={handleSubmit} disabled={!name || !displayName} loading={submitting}>
             {submitting ? t('submitting') : t('submit')}
           </Button>
         </DialogFooter>

@@ -29,8 +29,9 @@ export class MediaResource {
     return this.client.request(`/api/v1/media/${id}`);
   }
 
+  /** The controller mounts this on the collection itself; /media/upload is a 404. */
   upload(formData: FormData): Promise<ApiResponse<MediaFileSummary>> {
-    return this.client.request('/api/v1/media/upload', { method: 'POST', formData });
+    return this.client.request('/api/v1/media', { method: 'POST', formData });
   }
 
   uploadUrl(body: {

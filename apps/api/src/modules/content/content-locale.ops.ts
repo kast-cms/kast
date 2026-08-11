@@ -37,6 +37,18 @@ export async function resolveLocaleFallbackChain(
 }
 
 /**
+ * A locale row is only writable for a locale the install actually serves:
+ * delivery, the fallback chain and the admin all key off the `Locale` table, so
+ * a row written for an unknown or retired code is content nothing can reach.
+ */
+export async function assertActiveLocale(repo: ContentRepository, code: string): Promise<void> {
+  const active = await repo.findActiveLocaleCodes();
+  if (!active.includes(code)) {
+    throw new BadRequestException(`Locale "${code}" is not an active locale`);
+  }
+}
+
+/**
  * Validates and writes a brand new locale onto an existing entry. A new locale on
  * a live entry is published the moment it is written, so it faces publish rules:
  * the mode comes from the entry, which is the only status this path can reach.
@@ -51,6 +63,7 @@ export async function addEntryLocale(
   if (entry.locales.some((l) => l.localeCode === dto.locale)) {
     throw new ConflictException(`Entry already has locale "${dto.locale}"`);
   }
+  await assertActiveLocale(repo, dto.locale);
 
   // Optionally seed from another locale, then apply the supplied data on top.
   let seed: Record<string, unknown> = {};

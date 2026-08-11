@@ -2,14 +2,28 @@ import { cn } from '@/lib/utils';
 import * as AvatarPrimitive from '@radix-ui/react-avatar';
 import type { ComponentPropsWithoutRef, JSX } from 'react';
 
-type AvatarRootProps = ComponentPropsWithoutRef<typeof AvatarPrimitive.Root>;
+type AvatarRootProps = ComponentPropsWithoutRef<typeof AvatarPrimitive.Root> & {
+  size?: 'xs' | 'sm' | 'default' | 'lg' | 'xl';
+};
 type AvatarImageProps = ComponentPropsWithoutRef<typeof AvatarPrimitive.Image>;
 type AvatarFallbackProps = ComponentPropsWithoutRef<typeof AvatarPrimitive.Fallback>;
 
-export function Avatar({ className, ...props }: AvatarRootProps): JSX.Element {
+const SIZES = {
+  xs: 'size-6 text-2xs',
+  sm: 'size-7 text-2xs',
+  default: 'size-8 text-xs',
+  lg: 'size-10 text-sm',
+  xl: 'size-16 text-lg',
+} as const;
+
+export function Avatar({ className, size = 'default', ...props }: AvatarRootProps): JSX.Element {
   return (
     <AvatarPrimitive.Root
-      className={cn('relative flex h-8 w-8 shrink-0 overflow-hidden rounded-full', className)}
+      className={cn(
+        'relative flex shrink-0 overflow-hidden rounded-full ring-1 ring-border',
+        SIZES[size],
+        className,
+      )}
       {...props}
     />
   );
@@ -17,7 +31,10 @@ export function Avatar({ className, ...props }: AvatarRootProps): JSX.Element {
 
 export function AvatarImage({ className, ...props }: AvatarImageProps): JSX.Element {
   return (
-    <AvatarPrimitive.Image className={cn('aspect-square h-full w-full', className)} {...props} />
+    <AvatarPrimitive.Image
+      className={cn('aspect-square size-full object-cover', className)}
+      {...props}
+    />
   );
 }
 
@@ -25,7 +42,9 @@ export function AvatarFallback({ className, ...props }: AvatarFallbackProps): JS
   return (
     <AvatarPrimitive.Fallback
       className={cn(
-        'flex h-full w-full items-center justify-center rounded-full bg-[--color-muted] text-xs font-medium text-[--color-muted-foreground]',
+        // Tinted rather than grey: initials are often the only identity signal
+        // in a row, so they should carry a little colour.
+        'flex size-full items-center justify-center rounded-full bg-primary-subtle font-semibold text-primary-subtle-foreground uppercase',
         className,
       )}
       {...props}

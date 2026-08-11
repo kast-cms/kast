@@ -57,6 +57,11 @@ export interface DeliveryTypeSchema {
  */
 const RESERVED_PUBLIC_KEYS = ['slug'] as const;
 
+/** A blank or whitespace-only stored value means "unset", the same as null. */
+function blank(value: string | null | undefined): string | null {
+  return value && value.trim() !== '' ? value : null;
+}
+
 function isJsonObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -156,8 +161,12 @@ export class DeliveryService {
    */
   private toSeoMeta(row: PublishedEntryRow, siteMeta: SiteMetaDefaults): DeliverySeoMeta | null {
     const meta = row.seoMeta;
-    const metaTitle = meta?.metaTitle ?? siteMeta.defaultMetaTitle;
-    const metaDescription = meta?.metaDescription ?? siteMeta.defaultMetaDescription;
+    // `blank()`, not `??`: the scoring side treats '' as absent and lets the site
+    // default apply, so using `??` here would serve an empty <title> for an entry
+    // that scored as having one. SeoService.upsertMeta now stores null instead of
+    // '', but rows written before that still exist. Both ends must agree.
+    const metaTitle = blank(meta?.metaTitle) ?? siteMeta.defaultMetaTitle;
+    const metaDescription = blank(meta?.metaDescription) ?? siteMeta.defaultMetaDescription;
     if (!meta) {
       if (metaTitle === null && metaDescription === null) return null;
       return {

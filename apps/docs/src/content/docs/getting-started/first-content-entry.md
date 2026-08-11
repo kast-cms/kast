@@ -93,7 +93,7 @@ Authorization: Bearer <token>
 }
 ```
 
-Every update creates a new version. Previous versions are accessible for 30 days (or the configured `content.versionRetention` count).
+Every update creates a new version, and all of them are retained.
 
 ## Fetching published entries (Delivery API)
 

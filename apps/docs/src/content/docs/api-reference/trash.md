@@ -74,6 +74,18 @@ Returns `200`. Restoring:
 
 Restoring something that is not in the trash is a `404`.
 
+:::caution[Restoring a user is rank-checked]
+Because restoring a user sets `isActive: true` — and `isActive` is the only gate
+on every login path — it re-enables the account. It therefore enforces the same
+rule as `PATCH /api/v1/users/:id` (BR-USR-006): unless you are a `SUPER_ADMIN`,
+restoring a user whose highest role ranks at or above your own is refused with
+`403 "You cannot manage a user with an equal or higher role"`.
+
+The same check applies to `DELETE /api/v1/trash/user/:id` (permanent delete), so
+holding `trash:delete` is not by itself enough to destroy a higher-ranked
+account. The other models carry no privilege and are not rank-checked.
+:::
+
 :::note
 This is distinct from `POST /api/v1/content-types/:typeSlug/entries/:id/unarchive`,
 which returns an _archived_ (not trashed) entry to draft.

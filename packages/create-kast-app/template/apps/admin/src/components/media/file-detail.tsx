@@ -1,13 +1,22 @@
 'use client';
 
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { MediaFileDetail } from '@kast-cms/sdk';
-import { Copy, Trash2, X } from 'lucide-react';
+import { Copy, FileText, Trash2, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import Image from 'next/image';
-import { useState, type JSX } from 'react';
+import { useState, type JSX, type ReactNode } from 'react';
 import { formatBytes } from './media-grid';
 
 interface FileDetailProps {
@@ -15,6 +24,17 @@ interface FileDetailProps {
   onUpdate: (id: string, altText: string) => void;
   onTrash: (id: string) => void;
   onClose: () => void;
+}
+
+function MetaRow({ label, children }: { label: string; children: ReactNode }): JSX.Element {
+  return (
+    <div className="flex items-baseline justify-between gap-3 px-3 py-2">
+      <dt className="shrink-0 text-muted-foreground">{label}</dt>
+      <dd className="min-w-0 truncate text-end font-medium tabular-nums text-foreground">
+        {children}
+      </dd>
+    </div>
+  );
 }
 
 function MetaDl({
@@ -25,27 +45,17 @@ function MetaDl({
   t: ReturnType<typeof useTranslations>;
 }): JSX.Element {
   return (
-    <dl className="space-y-1 text-xs">
-      <div className="flex justify-between">
-        <dt className="text-[--color-muted-foreground]">{t('detail.size')}</dt>
-        <dd>{formatBytes(file.size)}</dd>
-      </div>
-      <div className="flex justify-between">
-        <dt className="text-[--color-muted-foreground]">{t('detail.type')}</dt>
-        <dd className="truncate ps-2">{file.mimeType}</dd>
-      </div>
+    <dl className="divide-y divide-border overflow-hidden rounded-md border border-border text-xs">
+      <MetaRow label={t('detail.size')}>{formatBytes(file.size)}</MetaRow>
+      <MetaRow label={t('detail.type')}>{file.mimeType}</MetaRow>
       {file.width !== null && (
-        <div className="flex justify-between">
-          <dt className="text-[--color-muted-foreground]">{t('detail.dimensions')}</dt>
-          <dd>
-            {file.width}×{file.height}
-          </dd>
-        </div>
+        <MetaRow label={t('detail.dimensions')}>
+          {file.width}×{file.height}
+        </MetaRow>
       )}
-      <div className="flex justify-between">
-        <dt className="text-[--color-muted-foreground]">{t('detail.uploaded')}</dt>
-        <dd>{new Date(file.createdAt).toLocaleDateString()}</dd>
-      </div>
+      <MetaRow label={t('detail.uploaded')}>
+        {new Date(file.createdAt).toLocaleDateString()}
+      </MetaRow>
     </dl>
   );
 }
@@ -64,81 +74,93 @@ export function FileDetail({ file, onUpdate, onTrash, onClose }: FileDetailProps
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-[--color-border] p-3">
-        <span className="truncate text-sm font-medium">{file.filename}</span>
-        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
+    <Card className="overflow-hidden">
+      <CardHeader className="items-center gap-x-2 border-b border-border px-4 py-3">
+        <CardTitle className="min-w-0 truncate text-sm">{file.filename}</CardTitle>
+        <CardAction>
+          <Button variant="ghost" size="icon-sm" aria-label="Close" onClick={onClose}>
+            <X />
+          </Button>
+        </CardAction>
+      </CardHeader>
 
-      <div className="relative aspect-video border-b border-[--color-border] bg-[--color-muted]">
+      <div className="relative aspect-video border-b border-border bg-muted">
         {file.mimeType.startsWith('image/') ? (
           <Image
             src={file.url}
             alt={file.altText ?? file.filename}
             fill
             unoptimized
-            className="object-contain p-2"
+            sizes="20rem"
+            className="object-contain p-3"
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-sm text-[--color-muted-foreground]">
-            {file.mimeType}
+          <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
+            <FileText className="size-8" />
+            <span className="max-w-full truncate px-3 text-xs">{file.mimeType}</span>
           </div>
         )}
       </div>
 
-      <div className="flex-1 space-y-4 overflow-y-auto p-3">
-        <div className="space-y-1">
-          <Label className="text-xs">{t('detail.altText')}</Label>
+      <CardContent className="space-y-5 px-4 py-4">
+        <div className="space-y-2">
+          <Label htmlFor="media-alt-text" className="text-xs">
+            {t('detail.altText')}
+          </Label>
           <Input
+            id="media-alt-text"
             value={altText}
             onChange={(e) => {
               setAltText(e.target.value);
             }}
             placeholder={t('detail.altTextPlaceholder')}
           />
-          <Button size="sm" className="w-full" onClick={handleSave} disabled={saving}>
+          <Button size="sm" className="w-full" onClick={handleSave} loading={saving}>
             {saving ? t('detail.saving') : t('detail.save')}
           </Button>
         </div>
 
         <MetaDl file={file} t={t} />
 
-        <div className="space-y-1">
-          <Label className="text-xs">{t('detail.url')}</Label>
-          <div className="flex gap-1">
-            <Input value={file.url} readOnly className="text-xs" />
+        <div className="space-y-2">
+          <Label htmlFor="media-url" className="text-xs">
+            {t('detail.url')}
+          </Label>
+          <div className="flex items-center gap-2">
+            <Input id="media-url" value={file.url} readOnly className="font-mono text-xs" />
             <Button
               variant="outline"
               size="icon"
-              className="h-9 w-9 shrink-0"
+              className="shrink-0"
+              aria-label={t('detail.url')}
               onClick={() => {
                 void navigator.clipboard.writeText(file.url);
               }}
             >
-              <Copy className="h-3 w-3" />
+              <Copy />
             </Button>
           </div>
         </div>
 
+        {/* Usage is the reason the trash action is locked, so it is stated as a
+            status message rather than a bare list. */}
         {inUse && (
-          <div className="space-y-1">
-            <p className="text-xs font-medium">
-              {t('detail.usedIn', { count: file.usages.length })}
-            </p>
-            <ul className="space-y-1">
-              {file.usages.map((u) => (
-                <li key={u.entryId} className="text-xs text-[--color-muted-foreground]">
-                  {u.entryTitle ?? u.entryId} — {u.fieldName}
-                </li>
-              ))}
-            </ul>
-          </div>
+          <Alert variant="info">
+            <AlertTitle>{t('detail.usedIn', { count: file.usages.length })}</AlertTitle>
+            <AlertDescription>
+              <ul className="space-y-1">
+                {file.usages.map((u) => (
+                  <li key={u.entryId} className="truncate">
+                    {u.entryTitle ?? u.entryId} — {u.fieldName}
+                  </li>
+                ))}
+              </ul>
+            </AlertDescription>
+          </Alert>
         )}
-      </div>
+      </CardContent>
 
-      <div className="border-t border-[--color-border] p-3">
+      <CardFooter className="px-4 py-3">
         <Button
           variant="destructive"
           size="sm"
@@ -148,10 +170,10 @@ export function FileDetail({ file, onUpdate, onTrash, onClose }: FileDetailProps
             onTrash(file.id);
           }}
         >
-          <Trash2 className="me-2 h-4 w-4" />
+          <Trash2 />
           {inUse ? t('detail.trashDisabled') : t('detail.trash')}
         </Button>
-      </div>
-    </div>
+      </CardFooter>
+    </Card>
   );
 }

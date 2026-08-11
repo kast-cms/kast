@@ -62,18 +62,20 @@ export interface FormFieldInput {
 export interface CreateFormBody {
   name: string;
   slug: string;
-  description?: string;
+  description?: string | null;
   isActive?: boolean;
-  notifyEmail?: string;
+  notifyEmail?: string | null;
   fields: FormFieldInput[];
 }
 
 export interface UpdateFormBody {
   name?: string;
   slug?: string;
-  description?: string;
+  /** `null` clears the stored value; omitting the key leaves it untouched. */
+  description?: string | null;
   isActive?: boolean;
-  notifyEmail?: string;
+  /** `null` stops the notification mail. '' is rejected by the API. */
+  notifyEmail?: string | null;
   fields?: FormFieldInput[];
 }
 

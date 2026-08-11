@@ -1,7 +1,6 @@
 'use client';
 
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { useApiClient } from '@/lib/session';
 import type {
   MediaFileDetail,
   MediaFileSummary,
@@ -40,8 +39,7 @@ export interface UseMediaLibraryReturn {
 }
 
 export function useMediaLibrary(): UseMediaLibraryReturn {
-  const { session } = useSession();
-  const client = createApiClient(session?.accessToken);
+  const client = useApiClient();
 
   const [files, setFiles] = useState<MediaFileSummary[]>([]);
   const [folders, setFolders] = useState<MediaFolder[]>([]);
@@ -59,7 +57,7 @@ export function useMediaLibrary(): UseMediaLibraryReturn {
   const loadFolders = useCallback(async () => {
     const res = await client.media.listFolders();
     setFolders(res.data);
-  }, []);
+  }, [client]);
 
   const loadFiles = useCallback(async () => {
     setLoading(true);
@@ -74,7 +72,7 @@ export function useMediaLibrary(): UseMediaLibraryReturn {
     } finally {
       setLoading(false);
     }
-  }, [search, mimeType, sort, selectedFolderId]);
+  }, [search, mimeType, sort, selectedFolderId, client]);
 
   useEffect(() => {
     void loadFolders();

@@ -10,6 +10,7 @@ import type {
 import { PrismaService } from '../../prisma/prisma.service';
 import { resolveLocaleFallbackChain } from './content-locale.ops';
 import { applyVersionRevert } from './content-revert.ops';
+import { deriveLocaleSlug } from './content-slug';
 import { allocateVersionNumber } from './content-version.ops';
 import type { ContentQueryDto } from './dto/content-query.dto';
 import type { UniqueCheck } from './validation/content-validation.types';
@@ -156,9 +157,9 @@ export class ContentRepository {
     slug?: string,
   ): Promise<EntryWithLocale> {
     return this.prisma.$transaction(async (tx) => {
-      await tx.contentEntry.findFirstOrThrow({
+      const existing = await tx.contentEntry.findFirstOrThrow({
         where: { id, contentTypeId },
-        select: { id: true },
+        select: { locales: { select: { slug: true }, take: 1 } },
       });
       await assertUniqueFields(tx, contentTypeId, uniqueChecks, id);
       return tx.contentEntry.update({
@@ -169,7 +170,11 @@ export class ContentRepository {
               where: { entryId_localeCode: { entryId: id, localeCode: locale } },
               create: {
                 localeCode: locale,
-                slug: slug ?? locale,
+                // A write to a locale the entry does not have yet creates the row.
+                // The bare locale code is not a slug: `(localeCode, slug)` is unique
+                // across every content type, so the second entry in the install to
+                // gain an implicit locale row would collide on it.
+                slug: slug ?? deriveLocaleSlug(existing.locales[0]?.slug, locale),
                 data: data as Prisma.InputJsonValue,
               },
               update: {
@@ -232,7 +237,12 @@ export class ContentRepository {
     return result.count > 0;
   }
 
-  /** Returns false when the ID does not belong to the given content type. */
+  /**
+   * Returns false when the ID does not belong to the given content type, or when
+   * the row is in the trash: a status write there would leave an entry marked
+   * live while `trashedAt` still hides it. The services refuse that with a 409
+   * first; this is the writer refusing it on its own.
+   */
   async updateStatus(
     id: string,
     contentTypeId: string,
@@ -240,7 +250,7 @@ export class ContentRepository {
     publishedAt?: Date,
   ): Promise<boolean> {
     const result = await this.prisma.contentEntry.updateMany({
-      where: { id, contentTypeId },
+      where: { id, contentTypeId, trashedAt: null },
       data: { status, publishedAt: publishedAt ?? null },
     });
     return result.count > 0;
@@ -253,7 +263,7 @@ export class ContentRepository {
     status: ContentStatus,
   ): Promise<boolean> {
     const result = await this.prisma.contentEntry.updateMany({
-      where: { id, contentTypeId },
+      where: { id, contentTypeId, trashedAt: null },
       data: { scheduledAt, status },
     });
     return result.count > 0;

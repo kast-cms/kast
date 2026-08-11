@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { ArrayNotEmpty, IsArray, IsBoolean, IsEmail, IsOptional, IsString } from 'class-validator';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
+import { toBoolean } from '../../../common/dto/to-boolean.transform';
 
 export class UserListQueryDto extends PaginationDto {
   @ApiPropertyOptional()
@@ -12,9 +13,8 @@ export class UserListQueryDto extends PaginationDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
-  @Transform(({ value }: { value: unknown }) =>
-    value === 'true' ? true : value === 'false' ? false : value,
-  )
+  // Reads the raw body value, not `value` — implicit conversion has already run.
+  @Transform(toBoolean)
   isActive?: boolean;
 }
 
@@ -42,6 +42,7 @@ export class InviteUserDto {
   @ApiPropertyOptional({ default: true })
   @IsOptional()
   @IsBoolean()
+  @Transform(toBoolean)
   sendInvite?: boolean;
 }
 
@@ -59,6 +60,7 @@ export class UpdateUserDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
+  @Transform(toBoolean)
   isActive?: boolean;
 
   @ApiPropertyOptional({ type: [String] })

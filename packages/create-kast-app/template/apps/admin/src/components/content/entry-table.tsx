@@ -1,6 +1,6 @@
 'use client';
 
-import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Table,
@@ -14,6 +14,7 @@ import type { ContentEntrySummary } from '@kast-cms/sdk';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import type { JSX } from 'react';
+import { StatusBadge } from './status-badge';
 
 interface EntryTableProps {
   typeId: string;
@@ -22,13 +23,6 @@ interface EntryTableProps {
   onToggle: (id: string) => void;
   onToggleAll: (ids: string[]) => void;
 }
-
-const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'destructive'> = {
-  PUBLISHED: 'default',
-  DRAFT: 'secondary',
-  ARCHIVED: 'destructive',
-  SCHEDULED: 'secondary',
-};
 
 export function EntryTable({
   typeId,
@@ -40,14 +34,15 @@ export function EntryTable({
   const t = useTranslations('content');
   const ids = entries.map((e) => e.id);
   const allSelected = ids.length > 0 && ids.every((id) => selected.has(id));
+  const someSelected = !allSelected && ids.some((id) => selected.has(id));
 
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-10">
+          <TableHead>
             <Checkbox
-              checked={allSelected}
+              checked={allSelected ? true : someSelected ? 'indeterminate' : false}
               onCheckedChange={() => {
                 onToggleAll(ids);
               }}
@@ -59,12 +54,16 @@ export function EntryTable({
           <TableHead>{t('table.locale')}</TableHead>
           <TableHead>{t('table.author')}</TableHead>
           <TableHead>{t('table.updated')}</TableHead>
-          <TableHead className="w-10">{t('table.actions')}</TableHead>
+          <TableHead className="w-0 text-end">{t('table.actions')}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {entries.map((entry) => (
-          <TableRow key={entry.id} data-selected={selected.has(entry.id) ? 'true' : undefined}>
+          <TableRow
+            key={entry.id}
+            data-state={selected.has(entry.id) ? 'selected' : undefined}
+            className="group"
+          >
             <TableCell>
               <Checkbox
                 checked={selected.has(entry.id)}
@@ -74,24 +73,37 @@ export function EntryTable({
                 aria-label={`Select entry ${entry.id}`}
               />
             </TableCell>
-            <TableCell>
-              <Link href={`/content/${typeId}/${entry.id}`} className="font-medium hover:underline">
+            <TableCell className="max-w-xs">
+              <Link
+                href={`/content/${typeId}/${entry.id}`}
+                className="block truncate font-medium text-foreground transition-colors duration-150 ease-out-quad hover:text-primary"
+              >
                 {entry.titleField ?? entry.id}
               </Link>
             </TableCell>
             <TableCell>
-              <Badge variant={STATUS_VARIANT[entry.status]}>{t(`status.${entry.status}`)}</Badge>
+              <StatusBadge status={entry.status} />
             </TableCell>
-            <TableCell>{entry.locale || '—'}</TableCell>
-            <TableCell>{entry.authorName ?? '—'}</TableCell>
-            <TableCell>{new Date(entry.updatedAt).toLocaleDateString()}</TableCell>
-            <TableCell>
-              <Link
-                href={`/content/${typeId}/${entry.id}`}
-                className="text-sm text-[--color-muted-foreground] hover:text-[--color-foreground]"
+            <TableCell className="text-muted-foreground">
+              {entry.locale ? (
+                <span className="font-mono text-xs uppercase">{entry.locale}</span>
+              ) : (
+                '—'
+              )}
+            </TableCell>
+            <TableCell className="text-muted-foreground">{entry.authorName ?? '—'}</TableCell>
+            <TableCell className="whitespace-nowrap text-muted-foreground">
+              {new Date(entry.updatedAt).toLocaleDateString()}
+            </TableCell>
+            <TableCell className="text-end">
+              <Button
+                asChild
+                variant="ghost"
+                size="xs"
+                className="text-muted-foreground hover:text-foreground"
               >
-                Edit
-              </Link>
+                <Link href={`/content/${typeId}/${entry.id}`}>Edit</Link>
+              </Button>
             </TableCell>
           </TableRow>
         ))}

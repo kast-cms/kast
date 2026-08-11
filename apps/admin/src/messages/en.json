@@ -76,7 +76,8 @@
     "submit": "Create account",
     "submitting": "Creating account…",
     "passwordMismatch": "Passwords do not match.",
-    "errorGeneric": "Something went wrong. Please try again."
+    "errorGeneric": "Something went wrong. Please try again.",
+    "errorPasswordMismatch": "Passwords do not match."
   },
   "common": {
     "loading": "Loading…",
@@ -100,7 +101,8 @@
   "error": {
     "title": "Something went wrong",
     "description": "An unexpected error occurred. Please try again.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "digest": "Reference: {digest}"
   },
   "contentTypes": {
     "title": "Content Types",
@@ -290,7 +292,14 @@
       "confirm": "Revert",
       "cancel": "Cancel"
     },
-    "bulkPartial": "{succeeded} applied, {failed} failed"
+    "bulkPartial": "{succeeded} applied, {failed} failed",
+    "seoWarnings": {
+      "title": "Publish with SEO warnings?",
+      "hint": "This entry has SEO warnings. You can publish anyway, or close this and fix them first.",
+      "cancel": "Cancel",
+      "confirm": "Publish anyway",
+      "publishing": "Publishing…"
+    }
   },
   "mediaLibrary": {
     "title": "Media Library",

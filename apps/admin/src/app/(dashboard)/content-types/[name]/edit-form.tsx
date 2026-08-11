@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { FieldHint, Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { clearable } from '@/lib/nullable-field';
 import { useApiClient, useSession } from '@/lib/session';
 import type { ContentTypeDetail } from '@kast-cms/sdk';
 import { Lock, Trash2 } from 'lucide-react';
@@ -53,15 +54,17 @@ function SettingsCard({ contentType, onUpdated }: SettingsCardProps): JSX.Elemen
       try {
         const body: {
           displayName: string;
-          description?: string;
-          icon?: string;
+          description?: string | null;
+          icon?: string | null;
           isLocalized: boolean;
         } = {
           displayName: displayName.trim(),
           isLocalized,
+          // Emptied means emptied: a dropped key leaves the old description or
+          // icon on the type, so the screen and the stored row disagree.
+          description: clearable(description),
+          icon: clearable(icon),
         };
-        if (description.trim() !== '') body.description = description.trim();
-        if (icon.trim() !== '') body.icon = icon.trim();
         const result = await client.contentTypes.update(contentType.name, body);
         onUpdated(result.data);
         setSaveSuccess(true);

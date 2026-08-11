@@ -18,6 +18,10 @@ describe('routeTargetFromPath', () => {
     ['/api/v1/content-types/:typeSlug/entries/:id/unpublish', 'POST', 'content', 'unpublish'],
     ['/api/v1/content-types/:typeSlug/entries/:id/archive', 'POST', 'content', 'archive'],
     ['/api/v1/content-types/:typeSlug/entries/:id/restore', 'POST', 'content', 'restore'],
+    ['/api/v1/content-types/:typeSlug/entries/:id/unarchive', 'POST', 'content', 'restore'],
+    ['/api/v1/content-types/:typeSlug/entries/bulk/trash', 'POST', 'content', 'delete'],
+    ['/api/v1/content-types/:typeSlug/entries/bulk/publish', 'POST', 'content', 'publish'],
+    ['/api/v1/content-types/:typeSlug/entries/bulk/unpublish', 'POST', 'content', 'unpublish'],
     ['/api/v1/content-types/:typeSlug/entries/:id/schedule', 'POST', 'content', 'schedule'],
     ['/api/v1/content-types/:typeSlug/entries/:id/schedule', 'DELETE', 'content', 'schedule'],
     ['/api/v1/content-types/:typeSlug/entries/:id/locale', 'POST', 'content', 'locale'],
@@ -58,6 +62,11 @@ describe('routeTargetFromPath', () => {
     ['/api/v1/forms/:id/submissions', 'GET', 'forms', 'read'],
     ['/api/v1/forms/:id/submissions/export', 'GET', 'forms', 'export'],
     ['/api/v1/forms/:id/submit', 'POST', 'forms', 'create'],
+    // Not `forms:read`: the trailing segment names the state being written, so a
+    // read-scoped grant must not reach it.
+    ['/api/v1/forms/:id/submissions/:subId/read', 'PATCH', 'forms', 'update'],
+    ['/api/v1/users/:id/invite', 'POST', 'users', 'create'],
+    ['/api/v1/users/:id/invite', 'DELETE', 'users', 'delete'],
     ['/api/v1/menus/:id/items/reorder', 'POST', 'menus', 'create'],
     ['/api/v1/menus/:id/items/:itemId', 'DELETE', 'menus', 'delete'],
     ['/api/v1/trash', 'GET', 'trash', 'read'],
@@ -114,6 +123,26 @@ describe('routeTargetFromPath', () => {
 
   it('is unresolved for an unmapped HTTP method', () => {
     expect(routeTargetFromPath('/api/v1/media', 'TRACE').resolved).toBe(false);
+  });
+
+  it('gives a bulk route the action its single-entry equivalent has', () => {
+    const single = routeTargetFromPath('/api/v1/content-types/:typeSlug/entries/:id', 'DELETE');
+    const bulk = routeTargetFromPath('/api/v1/content-types/:typeSlug/entries/bulk/trash', 'POST');
+    expect(bulk.resource).toBe(single.resource);
+    expect(bulk.action).toBe(single.action);
+  });
+
+  it('is unresolved for a bulk sub-action that maps to no action', () => {
+    const target = routeTargetFromPath(
+      '/api/v1/content-types/:typeSlug/entries/bulk/rewrite',
+      'POST',
+    );
+    expect(target.resolved).toBe(false);
+  });
+
+  it('does not answer with an inherited object member', () => {
+    expect(routeTargetFromPath('/api/v1/media', 'constructor').resolved).toBe(false);
+    expect(routeTargetFromPath('/api/v1/media/constructor', 'POST').action).toBe('create');
   });
 
   it('does not treat a leading action verb as a sub-action', () => {

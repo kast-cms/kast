@@ -1,9 +1,11 @@
 'use client';
 
+import { KastLogo } from '@/components/layout/kast-logo';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Spinner } from '@/components/ui/spinner';
 import { env } from '@/config/env';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
@@ -32,7 +34,7 @@ export default function SetupPage(): JSX.Element {
     setError(null);
 
     if (form.password !== form.confirmPassword) {
-      setError(t('passwordMismatch'));
+      setError(t('errorPasswordMismatch'));
       return;
     }
 
@@ -65,102 +67,105 @@ export default function SetupPage(): JSX.Element {
   };
 
   return (
-    <div className="grid min-h-screen place-items-center bg-[--color-background] p-4">
-      <div className="w-full max-w-sm rounded-xl border border-[--color-border] bg-[--color-card] p-8 shadow-sm">
-        <div className="mb-6 text-center">
-          <h1 className="text-2xl font-bold tracking-tight text-[--color-foreground]">
-            {t('title')}
-          </h1>
-          <p className="mt-1 text-sm text-[--color-muted-foreground]">{t('subtitle')}</p>
+    <div className="surface-gradient flex min-h-screen flex-col items-center justify-center bg-background px-4 py-10">
+      <div className="flex w-full max-w-md flex-col items-center gap-6">
+        <div className="flex flex-col items-center gap-2.5">
+          <KastLogo className="size-10" />
+          <span className="text-2xs font-medium tracking-[0.2em] text-muted-foreground uppercase">
+            Kast CMS
+          </span>
         </div>
 
-        <form onSubmit={(e) => void handleSubmit(e)} noValidate className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="firstName">{t('firstNameLabel')}</Label>
-              <Input
-                id="firstName"
-                name="firstName"
-                autoComplete="given-name"
-                value={form.firstName}
-                onChange={handleChange}
-                required
-                disabled={isPending}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="lastName">{t('lastNameLabel')}</Label>
-              <Input
-                id="lastName"
-                name="lastName"
-                autoComplete="family-name"
-                value={form.lastName}
-                onChange={handleChange}
-                required
-                disabled={isPending}
-              />
-            </div>
-          </div>
+        <Card variant="elevated" className="w-full">
+          <CardHeader className="px-6 pt-6 text-center">
+            <CardTitle className="text-lg">{t('title')}</CardTitle>
+            <CardDescription>{t('subtitle')}</CardDescription>
+          </CardHeader>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="email">{t('emailLabel')}</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              value={form.email}
-              onChange={handleChange}
-              required
-              disabled={isPending}
-            />
-          </div>
+          <CardContent className="px-6 pt-5 pb-6">
+            <form onSubmit={(e) => void handleSubmit(e)} noValidate className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="firstName">{t('firstNameLabel')}</Label>
+                  <Input
+                    id="firstName"
+                    name="firstName"
+                    autoComplete="given-name"
+                    value={form.firstName}
+                    onChange={handleChange}
+                    required
+                    disabled={isPending}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="lastName">{t('lastNameLabel')}</Label>
+                  <Input
+                    id="lastName"
+                    name="lastName"
+                    autoComplete="family-name"
+                    value={form.lastName}
+                    onChange={handleChange}
+                    required
+                    disabled={isPending}
+                  />
+                </div>
+              </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="password">{t('passwordLabel')}</Label>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              value={form.password}
-              onChange={handleChange}
-              required
-              disabled={isPending}
-            />
-          </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="email">{t('emailLabel')}</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  value={form.email}
+                  onChange={handleChange}
+                  required
+                  disabled={isPending}
+                />
+              </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="confirmPassword">{t('confirmPasswordLabel')}</Label>
-            <Input
-              id="confirmPassword"
-              name="confirmPassword"
-              type="password"
-              autoComplete="new-password"
-              value={form.confirmPassword}
-              onChange={handleChange}
-              required
-              disabled={isPending}
-            />
-          </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="password">{t('passwordLabel')}</Label>
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    autoComplete="new-password"
+                    value={form.password}
+                    onChange={handleChange}
+                    required
+                    disabled={isPending}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="confirmPassword">{t('confirmPasswordLabel')}</Label>
+                  <Input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type="password"
+                    autoComplete="new-password"
+                    value={form.confirmPassword}
+                    onChange={handleChange}
+                    required
+                    disabled={isPending}
+                  />
+                </div>
+              </div>
 
-          {error && (
-            <p role="alert" className="text-sm text-[--color-destructive]">
-              {error}
-            </p>
-          )}
+              {error !== null && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
 
-          <Button type="submit" className="w-full" disabled={isPending}>
-            {isPending ? (
-              <>
-                <Spinner size="sm" />
-                {t('submitting')}
-              </>
-            ) : (
-              t('submit')
-            )}
-          </Button>
-        </form>
+              <Button type="submit" className="w-full" loading={isPending}>
+                {isPending ? t('submitting') : t('submit')}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

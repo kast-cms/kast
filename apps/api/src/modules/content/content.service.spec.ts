@@ -83,7 +83,7 @@ describe('ContentService', () => {
       findAll: jest.fn(),
       findByIdForType: jest.fn(),
       findByIdWithFallbackForType: jest.fn(),
-      findActiveLocaleCodes: jest.fn().mockResolvedValue([]),
+      findActiveLocaleCodes: jest.fn().mockResolvedValue(['en', 'ar', 'fr']),
       create: jest.fn(),
       update: jest.fn(),
       addLocale: jest.fn(),
@@ -766,6 +766,103 @@ describe('ContentService', () => {
       );
 
       await expect(service.restore('blog', 'e1')).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('a trashed entry is not writable through a content route (CON-08)', () => {
+    beforeEach(() => {
+      contentTypes.findByName.mockResolvedValue(buildContentType());
+      repo.findByIdForType.mockResolvedValue(
+        buildEntry({ status: 'TRASHED', trashedAt: new Date() }),
+      );
+      seo.validateNow.mockResolvedValue(validation());
+    });
+
+    it.each([
+      ['unpublish', (s: ContentService) => s.unpublish('blog', 'e1')],
+      ['archive', (s: ContentService) => s.archive('blog', 'e1')],
+      ['publish', (s: ContentService) => s.publish('blog', 'e1')],
+      [
+        'schedulePublish',
+        (s: ContentService) =>
+          s.schedulePublish('blog', 'e1', {
+            publishAt: new Date(Date.now() + 3600_000).toISOString(),
+          }),
+      ],
+      ['cancelSchedule', (s: ContentService) => s.cancelSchedule('blog', 'e1')],
+      [
+        'update (status only)',
+        (s: ContentService) => s.update('blog', 'e1', { status: 'DRAFT' }, 'u1'),
+      ],
+      [
+        'update (data)',
+        (s: ContentService) => s.update('blog', 'e1', { data: { title: 'x' } }, 'u1'),
+      ],
+      [
+        'addLocale',
+        (s: ContentService) =>
+          s.addLocale('blog', 'e1', { locale: 'ar', slug: 's', data: {} }, 'u1'),
+      ],
+      ['revertToVersion', (s: ContentService) => s.revertToVersion('blog', 'e1', 'v1', 'u1')],
+    ])('refuses %s', async (_name, call) => {
+      await expect(call(service)).rejects.toThrow(ConflictException);
+      expect(repo.updateStatus).not.toHaveBeenCalled();
+      expect(repo.update).not.toHaveBeenCalled();
+      expect(repo.updateSchedule).not.toHaveBeenCalled();
+    });
+
+    it('does not emit a published webhook for an entry sitting in the trash', async () => {
+      await expect(service.publish('blog', 'e1')).rejects.toThrow(ConflictException);
+
+      expect(emitter.emit).not.toHaveBeenCalled();
+    });
+
+    it('reports every trashed id in a bulk batch as failed instead of writing', async () => {
+      const { data } = await service.bulkUnpublish('blog', ['a', 'b']);
+
+      expect(data).toMatchObject({ succeeded: 0, failed: 2 });
+      expect(repo.updateStatus).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('status and locale a write may not invent', () => {
+    beforeEach(() => {
+      contentTypes.findByName.mockResolvedValue(buildContentType());
+      repo.findByIdForType.mockResolvedValue(buildEntry());
+    });
+
+    it('refuses PATCH status TRASHED, which would set neither trashedAt nor the trash listing', async () => {
+      await expect(service.update('blog', 'e1', { status: 'TRASHED' }, 'u1')).rejects.toThrow(
+        UnprocessableEntityException,
+      );
+      expect(repo.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('refuses to create a locale row for a locale the install does not serve', async () => {
+      repo.findActiveLocaleCodes.mockResolvedValue(['en', 'ar']);
+
+      await expect(
+        service.update('blog', 'e1', { locale: 'zz', data: { title: 'x' } }, 'u1'),
+      ).rejects.toThrow(BadRequestException);
+      expect(repo.update).not.toHaveBeenCalled();
+    });
+
+    it('still writes a locale the entry already has', async () => {
+      repo.findActiveLocaleCodes.mockResolvedValue([]);
+      repo.update.mockResolvedValue(buildEntry());
+
+      await service.update('blog', 'e1', { locale: 'en', data: { title: 'x' } }, 'u1');
+
+      expect(repo.update).toHaveBeenCalled();
+    });
+
+    it('refuses POST :id/locale for an inactive locale', async () => {
+      repo.findActiveLocaleCodes.mockResolvedValue(['en']);
+
+      await expect(
+        service.addLocale('blog', 'e1', { locale: 'zz', slug: 'x', data: {} }, 'u1'),
+      ).rejects.toThrow(BadRequestException);
+      expect(repo.addLocale).not.toHaveBeenCalled();
     });
   });
 

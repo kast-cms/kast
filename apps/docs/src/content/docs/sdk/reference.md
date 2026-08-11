@@ -67,7 +67,7 @@ kast.content.list(typeSlug, params?)           → ApiListResponse<ContentEntryS
 kast.content.get(typeSlug, id, locale?)        → ApiResponse<ContentEntryDetail>
 kast.content.create(typeSlug, body)            → ApiResponse<ContentEntryDetail>
 kast.content.update(typeSlug, id, body)        → ApiResponse<ContentEntryDetail>
-kast.content.publish(typeSlug, id)             → ApiResponse<ContentEntryDetail>
+kast.content.publish(typeSlug, id, body?)      → ApiResponse<ContentEntryDetail>
 kast.content.unpublish(typeSlug, id)           → ApiResponse<ContentEntryDetail>
 kast.content.archive(typeSlug, id)             → ApiResponse<ContentEntryDetail>
 kast.content.restore(typeSlug, id)             → ApiResponse<ContentEntryDetail>

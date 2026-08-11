@@ -17,6 +17,8 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
+    "sync:template": "node scripts/sync-template.mjs",
+    "sync:template:check": "node scripts/sync-template.mjs --check",
     "test": "node --test test/template-parity.test.mjs",
     "test:e2e": "node --test test/cli.e2e.mjs"
   },

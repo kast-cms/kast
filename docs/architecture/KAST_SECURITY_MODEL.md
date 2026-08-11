@@ -235,6 +235,16 @@ The policy is **fail-closed**, with consequences worth stating explicitly:
 - **Sub-action verbs override the method-derived action.** `POST
 /content-types/:slug/entries/:id/publish` is `content:publish`, not
   `content:create` — a token granted `content: ["create"]` cannot publish.
+- **A batched route requires what its single-entry equivalent requires.** `POST
+/content-types/:slug/entries/bulk/trash` is `content:delete` — the same
+  permission as `DELETE /content-types/:slug/entries/:id` — because the verb is
+  aliased to the action it performs, not to the HTTP method. Without that
+  aliasing it derived `content:create`, so a token granted `content: ["create"]`
+  could soft-delete up to 100 entries per request while being refused the
+  single-entry delete. Likewise `POST /content-types/:slug/entries/:id/unarchive`
+  is `content:restore`, matching its deprecated `:id/restore` alias.
+- A `bulk/<verb>` route whose verb maps to no known action is denied
+  (`403 TOKEN_SCOPE_UNRESOLVED`) rather than falling back to the method.
 - The MCP transport is itself a resource: a `SCOPED` token needs
   `mcp: ["create"]` to `POST /api/v1/mcp`.
 - **Expired tokens are rejected with 401.** Expiry is enforced both in the

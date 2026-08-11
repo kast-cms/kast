@@ -1,4 +1,5 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import type { AuthUser } from '../../common/types/auth.types';
 import type { PrismaService } from '../../prisma/prisma.service';
 import type { AuditService } from '../audit/audit.service';
 import type { MediaService } from '../media/media.service';
@@ -19,13 +20,29 @@ function delegate(): Delegate {
   return {
     findMany: jest.fn().mockResolvedValue([]),
     count: jest.fn().mockResolvedValue(0),
-    findFirst: jest.fn().mockResolvedValue({ id: 'x' }),
+    findFirst: jest.fn().mockResolvedValue({ id: 'x', roles: [] }),
     update: jest.fn().mockResolvedValue({}),
     delete: jest.fn().mockResolvedValue({}),
   };
 }
 
 const T = (iso: string): Date => new Date(iso);
+
+const actor = (id: string, ...roles: string[]): AuthUser => ({
+  id,
+  email: `${id}@kast.local`,
+  roles,
+});
+
+const SUPER_ADMIN = actor('root1', 'super_admin');
+const ADMIN = actor('admin1', 'admin');
+/** A custom role carrying only `trash:restore`, which RolesGuard also lets through. */
+const CUSTOM = actor('bot1', 'recovery-bot');
+
+const withRoles = (...names: string[]): { id: string; roles: { role: { name: string } }[] } => ({
+  id: 'u1',
+  roles: names.map((name) => ({ role: { name } })),
+});
 
 describe('TrashService', () => {
   let prisma: {
@@ -202,7 +219,7 @@ describe('TrashService', () => {
 
   describe('restore', () => {
     it('reactivates a restored user, because trashing deactivated it', async () => {
-      await service.restore('user', 'u1', 'admin1');
+      await service.restore('user', 'u1', SUPER_ADMIN);
 
       expect(prisma.user.update).toHaveBeenCalledWith({
         where: { id: 'u1' },
@@ -211,7 +228,7 @@ describe('TrashService', () => {
     });
 
     it('does not touch isActive for models that do not have it deactivated', async () => {
-      await service.restore('content', 'c1', 'admin1');
+      await service.restore('content', 'c1', ADMIN);
 
       expect(prisma.contentEntry.update).toHaveBeenCalledWith({
         where: { id: 'c1' },
@@ -222,8 +239,60 @@ describe('TrashService', () => {
     it('refuses to restore something that is not in the trash', async () => {
       prisma.user.findFirst.mockResolvedValue(null);
 
-      await expect(service.restore('user', 'u1', 'admin1')).rejects.toThrow(NotFoundException);
+      await expect(service.restore('user', 'u1', SUPER_ADMIN)).rejects.toThrow(NotFoundException);
       expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('refuses to reactivate an account ranked at or above the caller (BR-USR-006)', async () => {
+      prisma.user.findFirst.mockResolvedValue(withRoles('admin'));
+
+      await expect(service.restore('user', 'u1', ADMIN)).rejects.toThrow(ForbiddenException);
+      expect(prisma.user.update).not.toHaveBeenCalled();
+      expect(audit.logAction).not.toHaveBeenCalled();
+    });
+
+    it('lets a super admin restore the admin they trashed', async () => {
+      prisma.user.findFirst.mockResolvedValue(withRoles('admin'));
+
+      await service.restore('user', 'u1', SUPER_ADMIN);
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'u1' },
+        data: { trashedAt: null, trashedByUserId: null, isActive: true },
+      });
+    });
+
+    it('refuses a caller holding trash:restore but no system rank', async () => {
+      prisma.user.findFirst.mockResolvedValue(withRoles('viewer'));
+
+      await expect(service.restore('user', 'u1', CUSTOM)).rejects.toThrow(ForbiddenException);
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('does not rank-check the models that carry no privilege', async () => {
+      await service.restore('form', 'f1', ADMIN);
+
+      expect(prisma.form.update).toHaveBeenCalled();
+      expect(prisma.user.findFirst).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('permanentDelete', () => {
+    it('refuses to destroy an account ranked at or above the caller', async () => {
+      prisma.user.findFirst.mockResolvedValue(withRoles('super_admin'));
+
+      await expect(service.permanentDelete('user', 'u1', ADMIN)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(prisma.user.delete).not.toHaveBeenCalled();
+    });
+
+    it('lets a super admin destroy a trashed account', async () => {
+      prisma.user.findFirst.mockResolvedValue(withRoles('admin'));
+
+      await service.permanentDelete('user', 'u1', SUPER_ADMIN);
+
+      expect(prisma.user.delete).toHaveBeenCalledWith({ where: { id: 'u1' } });
     });
   });
 

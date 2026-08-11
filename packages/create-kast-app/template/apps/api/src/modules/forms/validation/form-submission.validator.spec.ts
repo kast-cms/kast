@@ -87,6 +87,62 @@ describe('validateSubmission', () => {
     expect(result.data).toEqual({});
   });
 
+  describe('control characters (FORM-01 refutation)', () => {
+    it('rejects a NUL byte the jsonb column cannot store', () => {
+      const schema = schemaOf({ name: 'message', type: FormFieldType.TEXTAREA });
+
+      const result = validateSubmission(
+        schema,
+        JSON.parse('{"message":"hello\\u0000world"}') as Record<string, unknown>,
+      );
+
+      expect(result.issues).toEqual([
+        {
+          field: 'message',
+          rule: 'invalid_characters',
+          message: 'message contains characters that are not allowed',
+        },
+      ]);
+      expect(result.data).toEqual({});
+    });
+
+    it('rejects a lone surrogate and other C0 controls, on every text-bearing type', () => {
+      const schema = schemaOf(
+        { name: 'message', type: FormFieldType.TEXTAREA },
+        { name: 'email', type: FormFieldType.EMAIL },
+        { name: 'topic', type: FormFieldType.SELECT },
+        { name: 'tags', type: FormFieldType.MULTI_SELECT },
+        { name: 'doc', type: FormFieldType.FILE },
+      );
+
+      const result = validateSubmission(schema, {
+        message: 'a\ud800b',
+        email: 'a\u0001b@x.com',
+        topic: 'sal\u0000es',
+        tags: ['ok', 'b\u001fad'],
+        doc: 'media\u0000-1',
+      });
+
+      expect(result.issues.map((i) => i.field).sort()).toEqual([
+        'doc',
+        'email',
+        'message',
+        'tags',
+        'topic',
+      ]);
+      expect(result.data).toEqual({});
+    });
+
+    it('keeps tabs, newlines and carriage returns, which a textarea legitimately carries', () => {
+      const schema = schemaOf({ name: 'message', type: FormFieldType.TEXTAREA });
+
+      const result = validateSubmission(schema, { message: 'line one\n\tline\r\ntwo' });
+
+      expect(result.issues).toEqual([]);
+      expect(result.data).toEqual({ message: 'line one\n\tline\r\ntwo' });
+    });
+  });
+
   it('never echoes the form name or its configuration in a message', () => {
     const schema = schemaOf({
       name: 'topic',

@@ -61,12 +61,9 @@ This creates a **new version** (preserving history) with the data from the targe
 
 ## Version retention
 
-By default, Kast retains all versions. You can cap the number in **Global Settings → Content**:
-
-- `content.versionRetention = 10` — keep only the 10 most recent versions per entry
-- `content.versionRetention = 0` — retain indefinitely (default)
-
-When the cap is exceeded, the oldest version is deleted on the next save.
+Kast retains every version. Nothing prunes them today: the Content tab shows a
+retention row read-only, and the API rejects an attempt to store
+`content.versionRetention`, because no code path reads it.
 
 ## Admin panel
 

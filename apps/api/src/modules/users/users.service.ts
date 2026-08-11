@@ -6,11 +6,8 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import {
-  ROLE_HIERARCHY,
-  SYSTEM_ROLES,
-  type SystemRole,
-} from '../../common/constants/roles.constants';
+import { assertCanManageUser, highestRoleRank } from '../../common/authorization/role-rank.util';
+import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
 import type { AuthUser, PaginatedResult } from '../../common/types/auth.types';
 import { generateResetToken } from '../auth/reset-token.util';
 import { QueueAdapter } from '../queue/queue.adapter';
@@ -52,18 +49,6 @@ export class UsersService {
     };
   }
 
-  /** Highest role rank a set of role names maps to (0 if none are system roles). */
-  private highestRank(roleNames: string[]): number {
-    return roleNames.reduce((max, name) => {
-      const rank = ROLE_HIERARCHY[name as SystemRole];
-      return rank && rank > max ? rank : max;
-    }, 0);
-  }
-
-  private actorRank(actor: AuthUser): number {
-    return this.highestRank(actor.roles);
-  }
-
   /**
    * Throws if the actor is not a SUPER_ADMIN and the proposed role set contains
    * a role ranked at or above the actor's own — prevents privilege escalation
@@ -71,9 +56,7 @@ export class UsersService {
    */
   private assertNoEscalation(actor: AuthUser, targetRoleNames: string[]): void {
     if (actor.roles.includes(SYSTEM_ROLES.SUPER_ADMIN)) return;
-    const actorRank = this.actorRank(actor);
-    const targetRank = this.highestRank(targetRoleNames);
-    if (targetRank >= actorRank) {
+    if (highestRoleRank(targetRoleNames) >= highestRoleRank(actor.roles)) {
       throw new ForbiddenException('Cannot grant a role equal to or above your own');
     }
   }
@@ -81,14 +64,14 @@ export class UsersService {
   /**
    * Throws if the actor is not a SUPER_ADMIN and the target user holds a role
    * ranked at or above the actor's own (BR-USR-006: ADMIN cannot touch ADMIN
-   * or SUPER_ADMIN accounts).
+   * or SUPER_ADMIN accounts). Shared with the trash routes, which can re-enable
+   * an account and so enforce the identical rule — see role-rank.util.ts.
    */
   private assertCanManageTarget(actor: AuthUser, target: UserRow): void {
-    if (actor.roles.includes(SYSTEM_ROLES.SUPER_ADMIN)) return;
-    const targetRank = this.highestRank(target.roles.map((r) => r.role.name));
-    if (targetRank >= this.actorRank(actor)) {
-      throw new ForbiddenException('You cannot manage a user with an equal or higher role');
-    }
+    assertCanManageUser(
+      actor.roles,
+      target.roles.map((r) => r.role.name),
+    );
   }
 
   async findAll(query: UserListQueryDto): Promise<PaginatedResult<UserSummaryResponse>> {

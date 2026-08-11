@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PageHeader } from '@/components/ui/page-header';
 import { Switch } from '@/components/ui/switch';
+import { clearable } from '@/lib/nullable-field';
 import { useApiClient, useSession } from '@/lib/session';
 import type { FormDetail, FormFieldInput } from '@kast-cms/sdk';
 import { useTranslations } from 'next-intl';
@@ -186,13 +187,16 @@ export function FormBuilder({ initial }: FormBuilderProps): JSX.Element {
         position: i,
         config: f.config ?? {},
       }));
+      // Blank means "no notification/description", which only reaches the API as
+      // an explicit null — an omitted key leaves the stored value in place, so
+      // the form would keep mailing submissions to the removed address.
       const body = {
         name,
         slug,
         isActive,
         fields: fieldInputs,
-        ...(description ? { description } : {}),
-        ...(notifyEmail ? { notifyEmail } : {}),
+        description: clearable(description),
+        notifyEmail: clearable(notifyEmail),
       };
       if (initial) {
         await client.forms.update(initial.id, body);

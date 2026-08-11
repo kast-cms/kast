@@ -2,6 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import type { ContentTypeWithFields } from '../content-types/content-types.repository';
 import { writeLocale } from './content-entry.helpers';
+import { deriveLocaleSlug } from './content-slug';
 import { allocateVersionNumber } from './content-version.ops';
 import type { ContentRepository, EntryWithLocale, VersionWithAuthor } from './content.repository';
 import type { UniqueCheck } from './validation/content-validation.types';
@@ -45,6 +46,7 @@ export function buildRevertLocaleOps(
   entryId: string,
   version: VersionWithAuthor,
   primaryLocale: string,
+  primarySlug?: string,
 ): Prisma.PrismaPromise<unknown>[] {
   const snapshot = parseLocalesData(version.localesData);
   if (snapshot && Object.keys(snapshot).length > 0) {
@@ -54,7 +56,7 @@ export function buildRevertLocaleOps(
         create: {
           entryId,
           localeCode: code,
-          slug: payload.slug ?? code,
+          slug: payload.slug ?? deriveLocaleSlug(primarySlug, code),
           data: payload.data as Prisma.InputJsonValue,
         },
         update: {
@@ -71,7 +73,7 @@ export function buildRevertLocaleOps(
       create: {
         entryId,
         localeCode: primaryLocale,
-        slug: primaryLocale,
+        slug: deriveLocaleSlug(primarySlug, primaryLocale),
         data: version.data as Prisma.InputJsonValue,
       },
       update: { data: version.data as Prisma.InputJsonValue },
@@ -102,8 +104,9 @@ export async function applyVersionRevert(
   });
   await assertUniqueFields(tx, contentTypeId, uniqueChecks, entryId);
   const primaryLocale = entry.locales[0]?.localeCode ?? 'en';
+  const primarySlug = entry.locales[0]?.slug;
 
-  for (const op of buildRevertLocaleOps(tx, entryId, version, primaryLocale)) {
+  for (const op of buildRevertLocaleOps(tx, entryId, version, primaryLocale, primarySlug)) {
     await op;
   }
   await tx.contentEntry.update({ where: { id: entryId }, data: { status: 'DRAFT' } });

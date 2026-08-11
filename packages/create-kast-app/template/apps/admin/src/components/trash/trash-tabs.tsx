@@ -1,8 +1,7 @@
 'use client';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { createApiClient } from '@/lib/api';
-import { useSession } from '@/lib/session';
+import { useApiClient, useSession } from '@/lib/session';
 import type { TrashedItem, TrashModel } from '@kast-cms/sdk';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState, type JSX } from 'react';
@@ -17,6 +16,7 @@ const emptyItems = (): ItemMap => ({ content: [], media: [], user: [], form: [] 
 const allLoading = (): LoadingMap => ({ content: true, media: true, user: true, form: true });
 
 export function TrashTabs(): JSX.Element {
+  const client = useApiClient();
   const t = useTranslations('trash');
   const { session } = useSession();
   const [items, setItems] = useState<ItemMap>(emptyItems);
@@ -28,14 +28,13 @@ export function TrashTabs(): JSX.Element {
       if (!session) return;
       setLoading((prev) => ({ ...prev, [model]: true }));
       try {
-        const client = createApiClient(session.accessToken);
         const res = await client.trash.list({ model });
         setItems((prev) => ({ ...prev, [model]: res.items }));
       } finally {
         setLoading((prev) => ({ ...prev, [model]: false }));
       }
     },
-    [session],
+    [session, client],
   );
 
   useEffect(() => {
@@ -50,14 +49,13 @@ export function TrashTabs(): JSX.Element {
         if (!session) return;
         setActionId(id);
         try {
-          const client = createApiClient(session.accessToken);
           await client.trash.restore(model, id);
           await loadModel(model);
         } finally {
           setActionId(null);
         }
       },
-    [session, loadModel],
+    [session, loadModel, client],
   );
 
   const handleDelete = useCallback(
@@ -67,14 +65,13 @@ export function TrashTabs(): JSX.Element {
         if (!window.confirm(t('deleteConfirm'))) return;
         setActionId(id);
         try {
-          const client = createApiClient(session.accessToken);
           await client.trash.permanentDelete(model, id);
           await loadModel(model);
         } finally {
           setActionId(null);
         }
       },
-    [session, loadModel, t],
+    [session, loadModel, t, client],
   );
 
   return (
@@ -87,7 +84,7 @@ export function TrashTabs(): JSX.Element {
         ))}
       </TabsList>
       {MODELS.map((m) => (
-        <TabsContent key={m} value={m} className="mt-4">
+        <TabsContent key={m} value={m}>
           <TrashTable
             model={m}
             items={items[m]}

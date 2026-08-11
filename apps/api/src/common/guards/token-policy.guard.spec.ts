@@ -33,6 +33,26 @@ class EntriesController {
 
   @Post(':id/publish')
   publish(): void {}
+
+  @Post(':id/unarchive')
+  unarchive(): void {}
+
+  @Post(':id/restore')
+  restore(): void {}
+
+  @Post('bulk/trash')
+  bulkTrash(): void {}
+
+  @Post('bulk/publish')
+  bulkPublish(): void {}
+
+  @Post('bulk/unpublish')
+  bulkUnpublish(): void {}
+
+  // Not a real route: stands in for the next bulk sub-action someone adds
+  // without teaching the derivation what permission it needs.
+  @Post('bulk/rewrite')
+  bulkRewrite(): void {}
 }
 
 @Controller({ path: 'settings', version: '1' })
@@ -263,6 +283,57 @@ describe('TokenPolicyGuard', () => {
     it('rejects when the route cannot be resolved', () => {
       expect(() =>
         guard.canActivate(makeContext(UnresolvableController, 'root', 'GET', contentReader)),
+      ).toThrow(ForbiddenException);
+    });
+  });
+
+  // A bulk route is the single-entry route repeated, so it must demand the same
+  // grant. Deriving it from the HTTP method let `content: ["create"]` trash.
+  describe('bulk routes require what the single-entry route requires', () => {
+    const creator = apiTokenUser(TokenScope.SCOPED, { content: ['create'] });
+    const deleter = apiTokenUser(TokenScope.SCOPED, { content: ['delete'] });
+    const restorer = apiTokenUser(TokenScope.SCOPED, { content: ['restore'] });
+
+    it('refuses bulk trash to a create-only token, exactly as it refuses DELETE :id', () => {
+      expect(() =>
+        guard.canActivate(makeContext(EntriesController, 'remove', 'DELETE', creator)),
+      ).toThrow(ForbiddenException);
+      expect(() =>
+        guard.canActivate(makeContext(EntriesController, 'bulkTrash', 'POST', creator)),
+      ).toThrow(ForbiddenException);
+    });
+
+    it('allows bulk trash to a delete-scoped token', () => {
+      expect(guard.canActivate(makeContext(EntriesController, 'bulkTrash', 'POST', deleter))).toBe(
+        true,
+      );
+    });
+
+    it.each([
+      ['bulkPublish', 'publish'],
+      ['bulkUnpublish', 'unpublish'],
+    ])('refuses %s to a create-only token', (handler) => {
+      expect(() =>
+        guard.canActivate(makeContext(EntriesController, handler, 'POST', creator)),
+      ).toThrow(ForbiddenException);
+    });
+
+    it('holds unarchive to the same grant as its deprecated :id/restore alias', () => {
+      expect(() =>
+        guard.canActivate(makeContext(EntriesController, 'unarchive', 'POST', creator)),
+      ).toThrow(ForbiddenException);
+      expect(guard.canActivate(makeContext(EntriesController, 'unarchive', 'POST', restorer))).toBe(
+        true,
+      );
+      expect(guard.canActivate(makeContext(EntriesController, 'restore', 'POST', restorer))).toBe(
+        true,
+      );
+    });
+
+    it('fails closed on a bulk sub-action with no derivable permission', () => {
+      const wildcard = apiTokenUser(TokenScope.SCOPED, { content: ['*'] });
+      expect(() =>
+        guard.canActivate(makeContext(EntriesController, 'bulkRewrite', 'POST', wildcard)),
       ).toThrow(ForbiddenException);
     });
   });

@@ -1,7 +1,5 @@
 import { EntryListClient } from '@/components/content/entry-list';
-import { createServerApiClient } from '@/lib/api';
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
 import type { JSX } from 'react';
 
 interface PageProps {
@@ -15,12 +13,5 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ContentListPage({ params }: PageProps): Promise<JSX.Element> {
   const { typeId } = await params;
-  let displayName = typeId;
-  try {
-    const res = await createServerApiClient().contentTypes.get(typeId);
-    displayName = res.data.displayName;
-  } catch {
-    notFound();
-  }
-  return <EntryListClient typeId={typeId} displayName={displayName} />;
+  return <EntryListClient typeId={typeId} />;
 }

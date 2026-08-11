@@ -2,8 +2,11 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -13,7 +16,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { AuditLogEntry, AuditLogMeta } from '@kast-cms/sdk';
-import { Search, X } from 'lucide-react';
+import { Bot, ChevronLeft, ChevronRight, ScrollText, Search, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { type ChangeEvent, type JSX } from 'react';
 
@@ -25,14 +28,25 @@ export interface FilterDraft {
   to: string;
 }
 
-export function ActionBadge({ action }: { action: string }): JSX.Element {
+/**
+ * Destructive actions are the ones you scan a log for, so they get the loudest
+ * treatment; creations read as positive, everything else stays neutral.
+ */
+type ActionTone = 'destructive' | 'success' | 'info' | 'muted';
+
+function actionTone(action: string): ActionTone {
   const lower = action.toLowerCase();
-  const isDelete = lower.includes('delete') || lower.includes('remove');
-  const isCreate = lower.includes('create');
-  const variant = isDelete ? 'outline' : isCreate ? 'default' : 'secondary';
-  const cls = isDelete ? 'border-destructive text-destructive' : '';
+  if (lower.includes('delete') || lower.includes('remove') || lower.includes('revoke')) {
+    return 'destructive';
+  }
+  if (lower.includes('create')) return 'success';
+  if (lower.includes('update') || lower.includes('publish')) return 'info';
+  return 'muted';
+}
+
+export function ActionBadge({ action }: { action: string }): JSX.Element {
   return (
-    <Badge variant={variant} className={cls}>
+    <Badge variant={actionTone(action)} className="font-mono">
       {action}
     </Badge>
   );
@@ -53,52 +67,58 @@ export function FilterBar({ draft, onDraftChange, onApply, onClear }: FilterBarP
       onDraftChange({ ...draft, [key]: e.target.value });
     };
   return (
-    <div className="rounded-lg border border-[--color-border] bg-[--color-card] p-4">
+    <Card className="p-4">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <div className="space-y-1">
-          <Label>{t('action')}</Label>
+        <div className="space-y-1.5">
+          <Label htmlFor="audit-action">{t('action')}</Label>
           <Input
+            id="audit-action"
+            startAdornment={<Search />}
             placeholder={t('actionPlaceholder')}
             value={draft.action}
             onChange={set('action')}
           />
         </div>
-        <div className="space-y-1">
-          <Label>{t('resource')}</Label>
+        <div className="space-y-1.5">
+          <Label htmlFor="audit-resource">{t('resource')}</Label>
           <Input
+            id="audit-resource"
+            startAdornment={<Search />}
             placeholder={t('resourcePlaceholder')}
             value={draft.resource}
             onChange={set('resource')}
           />
         </div>
-        <div className="space-y-1">
-          <Label>{t('userId')}</Label>
+        <div className="space-y-1.5">
+          <Label htmlFor="audit-user">{t('userId')}</Label>
           <Input
+            id="audit-user"
             placeholder={t('userIdPlaceholder')}
             value={draft.userId}
             onChange={set('userId')}
+            className="font-mono"
           />
         </div>
-        <div className="space-y-1">
-          <Label>{t('from')}</Label>
-          <Input type="date" value={draft.from} onChange={set('from')} />
+        <div className="space-y-1.5">
+          <Label htmlFor="audit-from">{t('from')}</Label>
+          <Input id="audit-from" type="date" value={draft.from} onChange={set('from')} />
         </div>
-        <div className="space-y-1">
-          <Label>{t('to')}</Label>
-          <Input type="date" value={draft.to} onChange={set('to')} />
+        <div className="space-y-1.5">
+          <Label htmlFor="audit-to">{t('to')}</Label>
+          <Input id="audit-to" type="date" value={draft.to} onChange={set('to')} />
         </div>
       </div>
       <div className="mt-4 flex gap-2">
         <Button size="sm" onClick={onApply}>
-          <Search className="me-2 h-3.5 w-3.5" />
+          <Search />
           {t('apply')}
         </Button>
         <Button size="sm" variant="ghost" onClick={onClear}>
-          <X className="me-2 h-3.5 w-3.5" />
+          <X />
           {t('clear')}
         </Button>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -107,10 +127,42 @@ interface AuditTableProps {
   loading: boolean;
 }
 
+/** Placeholder rows that hold the log's shape between pages. */
+function AuditTableSkeleton(): JSX.Element {
+  return (
+    <>
+      {Array.from({ length: 8 }, (_, i) => (
+        <TableRow key={i} className="hover:bg-transparent">
+          <TableCell>
+            <Skeleton className="h-4.5 w-28 rounded-md" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="h-3 w-20" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="h-3 w-24" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="h-3 w-20" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="h-3 w-24" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="h-3 w-32" />
+          </TableCell>
+        </TableRow>
+      ))}
+    </>
+  );
+}
+
 export function AuditTable({ entries, loading }: AuditTableProps): JSX.Element {
   const t = useTranslations('auditLog');
+  const isEmpty = entries.length === 0;
+
   return (
-    <div className="rounded-lg border border-[--color-border]">
+    <Card className="overflow-hidden" aria-busy={loading}>
       <Table>
         <TableHeader>
           <TableRow>
@@ -119,51 +171,65 @@ export function AuditTable({ entries, loading }: AuditTableProps): JSX.Element {
             <TableHead>{t('table.resourceId')}</TableHead>
             <TableHead>{t('table.actor')}</TableHead>
             <TableHead>{t('table.ip')}</TableHead>
-            <TableHead>{t('table.timestamp')}</TableHead>
+            <TableHead className="text-end">{t('table.timestamp')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {entries.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={6} className="py-10 text-center text-[--color-muted-foreground]">
-                {loading ? t('loading') : t('noEntries')}
+          {isEmpty && loading && <AuditTableSkeleton />}
+          {isEmpty && !loading && (
+            <TableRow className="hover:bg-transparent">
+              <TableCell colSpan={6} className="p-0">
+                <EmptyState
+                  Icon={ScrollText}
+                  size="sm"
+                  title={t('noEntries')}
+                  description={t('subtitle')}
+                  className="rounded-none border-0"
+                />
               </TableCell>
             </TableRow>
           )}
           {entries.map((entry) => (
             <TableRow key={entry.id}>
-              <TableCell>
-                <ActionBadge action={entry.action} />
-                {entry.isDryRun && (
-                  <Badge variant="outline" className="ms-1 text-xs">
-                    dry-run
-                  </Badge>
-                )}
+              <TableCell className="py-2.5">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <ActionBadge action={entry.action} />
+                  {entry.isDryRun && (
+                    <Badge variant="outline" size="sm">
+                      dry-run
+                    </Badge>
+                  )}
+                </div>
               </TableCell>
-              <TableCell className="font-mono text-xs">{entry.resource}</TableCell>
-              <TableCell className="font-mono text-xs text-[--color-muted-foreground]">
+              <TableCell className="py-2.5 font-mono text-xs text-foreground">
+                {entry.resource}
+              </TableCell>
+              <TableCell className="py-2.5 font-mono text-xs text-muted-foreground">
                 {entry.resourceId ?? '—'}
               </TableCell>
-              <TableCell className="text-xs">
+              <TableCell className="py-2.5 text-xs">
                 {entry.agentName !== null ? (
-                  <span className="text-[--color-muted-foreground]">🤖 {entry.agentName}</span>
+                  <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                    <Bot className="size-3.5 shrink-0 text-info" aria-hidden="true" />
+                    {entry.agentName}
+                  </span>
                 ) : entry.userId !== null ? (
-                  <span className="font-mono">{entry.userId.slice(0, 8)}…</span>
+                  <span className="font-mono text-foreground">{entry.userId.slice(0, 8)}…</span>
                 ) : (
-                  '—'
+                  <span className="text-muted-foreground">—</span>
                 )}
               </TableCell>
-              <TableCell className="font-mono text-xs text-[--color-muted-foreground]">
+              <TableCell className="py-2.5 font-mono text-xs text-muted-foreground">
                 {entry.ipAddress ?? '—'}
               </TableCell>
-              <TableCell className="text-xs text-[--color-muted-foreground]">
+              <TableCell className="py-2.5 text-end text-xs whitespace-nowrap text-muted-foreground">
                 {new Date(entry.createdAt).toLocaleString()}
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
-    </div>
+    </Card>
   );
 }
 
@@ -182,26 +248,16 @@ export function PaginationBar({
 }: PaginationBarProps): JSX.Element {
   const t = useTranslations('auditLog');
   return (
-    <div className="flex items-center justify-between text-sm text-[--color-muted-foreground]">
-      <span>{t('total', { count: meta.total })}</span>
+    <div className="flex items-center justify-between gap-4 text-sm text-muted-foreground">
+      <span className="tabular-nums">{t('total', { count: meta.total })}</span>
       <div className="flex gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={cursorStack.length === 0}
-          onClick={onPrev}
-          className="bg-white text-gray-700 border-gray-300 hover:bg-gray-100 hover:text-gray-900"
-        >
+        <Button variant="outline" size="sm" disabled={cursorStack.length === 0} onClick={onPrev}>
+          <ChevronLeft className="rtl:rotate-180" />
           {t('prev')}
         </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={!meta.hasNextPage}
-          onClick={onNext}
-          className="bg-white text-gray-700 border-gray-300 hover:bg-gray-100 hover:text-gray-900"
-        >
+        <Button variant="outline" size="sm" disabled={!meta.hasNextPage} onClick={onNext}>
           {t('next')}
+          <ChevronRight className="rtl:rotate-180" />
         </Button>
       </div>
     </div>

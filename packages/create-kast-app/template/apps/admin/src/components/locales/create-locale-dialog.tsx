@@ -62,31 +62,20 @@ export function CreateLocaleDialog({ open, onOpenChange, onCreate }: Props): JSX
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>{t('title')}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="locale-code">{t('code')}</Label>
             <Input
               id="locale-code"
+              className="font-mono"
               placeholder="en, ar, fr-FR"
               value={code}
               onChange={(e) => setCode(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="locale-name">{t('name')}</Label>
-            <Input id="locale-name" value={name} onChange={(e) => setName(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="locale-native">{t('nativeName')}</Label>
-            <Input
-              id="locale-native"
-              value={nativeName}
-              onChange={(e) => setNativeName(e.target.value)}
             />
           </div>
           <div className="space-y-1.5">
@@ -102,9 +91,22 @@ export function CreateLocaleDialog({ open, onOpenChange, onCreate }: Props): JSX
             </Select>
           </div>
           <div className="space-y-1.5">
+            <Label htmlFor="locale-name">{t('name')}</Label>
+            <Input id="locale-name" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="locale-native">{t('nativeName')}</Label>
+            <Input
+              id="locale-native"
+              value={nativeName}
+              onChange={(e) => setNativeName(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5 sm:col-span-2">
             <Label htmlFor="locale-fallback">{t('fallbackCode')}</Label>
             <Input
               id="locale-fallback"
+              className="font-mono sm:w-1/2"
               placeholder="en"
               value={fallbackCode}
               onChange={(e) => setFallbackCode(e.target.value)}
@@ -116,7 +118,11 @@ export function CreateLocaleDialog({ open, onOpenChange, onCreate }: Props): JSX
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             {t('cancel')}
           </Button>
-          <Button onClick={handleSubmit} disabled={submitting || !code || !name || !nativeName}>
+          <Button
+            onClick={handleSubmit}
+            loading={submitting}
+            disabled={!code || !name || !nativeName}
+          >
             {submitting ? t('saving') : t('save')}
           </Button>
         </DialogFooter>

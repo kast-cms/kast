@@ -43,8 +43,15 @@ describe('ContentTypesController', () => {
     app = moduleRef.createNestApplication();
     app.setGlobalPrefix('api');
     app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
+    // Mirrors main.ts exactly, including the implicit conversion that turns a
+    // bare string into whatever the property is declared as.
     app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+        transformOptions: { enableImplicitConversion: true },
+      }),
     );
     app.useGlobalFilters(new GlobalExceptionFilter(app.get(HttpAdapterHost)));
     await app.init();
@@ -106,6 +113,54 @@ describe('ContentTypesController', () => {
       const res = await request(server()).get('/api/v1/content-types').expect(200);
 
       expect(res.body.data[0]).toMatchObject({ fieldsCount: 3, entriesCount: 42 });
+    });
+
+    it('reads a string boolean as the operator wrote it, not as truthiness', async () => {
+      await request(server())
+        .post('/api/v1/content-types')
+        .send({ name: 'post', displayName: 'Post', isLocalized: 'false' })
+        .expect(201);
+
+      expect(service['create']).toHaveBeenCalledWith(
+        expect.objectContaining({ isLocalized: false }),
+      );
+    });
+
+    it('does not flip an existing type to localized on PATCH isLocalized="false"', async () => {
+      service['update'] = jest.fn().mockResolvedValue(CONTENT_TYPE);
+
+      await request(server())
+        .patch('/api/v1/content-types/blog_post')
+        .send({ isLocalized: 'false' })
+        .expect(200);
+
+      expect(service['update']).toHaveBeenCalledWith(
+        'blog_post',
+        expect.objectContaining({ isLocalized: false }),
+      );
+    });
+
+    it('rejects a boolean flag that is neither a boolean nor "true"/"false"', async () => {
+      await request(server())
+        .post('/api/v1/content-types')
+        .send({ name: 'post', displayName: 'Post', isLocalized: 'maybe' })
+        .expect(400);
+
+      expect(service['create']).not.toHaveBeenCalled();
+    });
+
+    it('applies the same reading to the field flags', async () => {
+      await request(server())
+        .patch('/api/v1/content-types/blog_post/fields/title')
+        .send({ isRequired: 'false', isUnique: 'false', isHidden: 'false', isLocalized: 'false' })
+        .expect(200);
+
+      expect(service['updateField']).toHaveBeenCalledWith('blog_post', 'title', {
+        isRequired: false,
+        isUnique: false,
+        isHidden: false,
+        isLocalized: false,
+      });
     });
 
     it('accepts isLocalized on create (CON-11)', async () => {

@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
+import type { AuthUser } from '../../common/types/auth.types';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { MediaService } from '../media/media.service';
@@ -11,6 +12,7 @@ import {
   type TrashQueryDto,
   type TrashedItemDto,
 } from './dto/trash-query.dto';
+import { assertActorOutranksTarget } from './trash-actor.guard';
 import { decodeTrashCursor, encodeTrashCursor, type TrashCursor } from './trash-cursor.util';
 import { TRASH_RETENTION_MS } from './trash.constants';
 
@@ -82,23 +84,25 @@ export class TrashService {
     };
   }
 
-  async restore(model: TrashModel, id: string, userId: string): Promise<void> {
+  async restore(model: TrashModel, id: string, actor: AuthUser): Promise<void> {
     await this.assertTrashed(model, id);
+    await assertActorOutranksTarget(this.prisma, model, id, actor);
     await this.applyRestore(model, id);
-    this.audit.logAction({ action: 'RESTORE', resource: model, resourceId: id, userId });
-    this.logger.log(`Restored ${model}:${id} by user ${userId}`);
+    this.audit.logAction({ action: 'RESTORE', resource: model, resourceId: id, userId: actor.id });
+    this.logger.log(`Restored ${model}:${id} by user ${actor.id}`);
   }
 
-  async permanentDelete(model: TrashModel, id: string, userId: string): Promise<void> {
+  async permanentDelete(model: TrashModel, id: string, actor: AuthUser): Promise<void> {
     await this.assertTrashed(model, id);
+    await assertActorOutranksTarget(this.prisma, model, id, actor);
     await this.applyHardDelete(model, id);
     this.audit.logAction({
       action: 'PERMANENT_DELETE',
       resource: model,
       resourceId: id,
-      userId,
+      userId: actor.id,
     });
-    this.logger.log(`Permanently deleted ${model}:${id} by user ${userId}`);
+    this.logger.log(`Permanently deleted ${model}:${id} by user ${actor.id}`);
   }
 
   /**

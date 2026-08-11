@@ -8,6 +8,7 @@ import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { assertNoKnownWeakCredentials } from './common/utils/weak-credential.util';
 import { originOf, parseTrustProxy } from './config/bootstrap.util';
+import { CORS_METHODS } from './config/cors-methods';
 import type { Env } from './config/env.schema';
 import { PrismaService } from './prisma/prisma.service';
 
@@ -105,7 +106,7 @@ async function bootstrap(): Promise<void> {
   const corsOrigins = configService.get<string>('CORS_ORIGINS', { infer: true }) ?? '*';
   app.enableCors({
     origin: corsOrigins === '*' ? '*' : corsOrigins.split(','),
-    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    methods: [...CORS_METHODS],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Kast-Key'],
     credentials: true,
   });

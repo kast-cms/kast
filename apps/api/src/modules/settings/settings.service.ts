@@ -133,7 +133,9 @@ export class SettingsService {
   async testStorage(): Promise<StorageProbeResult> {
     const configured = this.config.get('STORAGE_PROVIDER', { infer: true }) ?? 'local';
     const effective = configured === 'gcs' ? 'local' : configured;
-    const key = `.kast-probe/${randomUUID()}.txt`;
+    // The probe travels the upload path, so the key has to satisfy the same
+    // object-key rules a real upload does — no leading dot on any segment.
+    const key = `kast-probe/${randomUUID()}.txt`;
     const payload = Buffer.from(`kast storage probe ${new Date().toISOString()}`, 'utf8');
 
     try {

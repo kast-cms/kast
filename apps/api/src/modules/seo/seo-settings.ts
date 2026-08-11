@@ -43,7 +43,7 @@ export const EMPTY_SEO_SETTINGS: SeoSettings = {
   defaultMetaTitle: null,
   defaultMetaDescription: null,
   gateDefaultPolicy: null,
-  gateByContentType: {},
+  gateByContentType: Object.create(null) as Record<string, SeoGatePolicy>,
   redirectAllowedHosts: [],
 };
 
@@ -55,9 +55,14 @@ function asPolicy(value: unknown): SeoGatePolicy | null {
   return typeof value === 'string' && GATE_POLICIES.has(value) ? (value as SeoGatePolicy) : null;
 }
 
+/**
+ * Content-type names are caller-supplied, so the map is keyed on a null
+ * prototype: on a plain object a type named `constructor` or `toString` would
+ * resolve to an inherited member and be read as a configured policy.
+ */
 function asPolicyMap(value: unknown): Record<string, SeoGatePolicy> {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) return {};
-  const out: Record<string, SeoGatePolicy> = {};
+  const out: Record<string, SeoGatePolicy> = Object.create(null) as Record<string, SeoGatePolicy>;
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return out;
   for (const [name, raw] of Object.entries(value as Record<string, unknown>)) {
     const policy = asPolicy(raw);
     if (policy) out[name] = policy;
@@ -96,7 +101,11 @@ export function resolveGatePolicy(
   contentTypeName: string | undefined,
   hasBodyField: boolean,
 ): SeoGatePolicy {
-  const configured = contentTypeName ? settings.gateByContentType[contentTypeName] : undefined;
+  const map = settings.gateByContentType;
+  const configured =
+    contentTypeName && Object.prototype.hasOwnProperty.call(map, contentTypeName)
+      ? asPolicy(map[contentTypeName])
+      : null;
   if (configured) return configured;
   if (settings.gateDefaultPolicy) return settings.gateDefaultPolicy;
   return hasBodyField ? 'enforce' : 'advisory';
