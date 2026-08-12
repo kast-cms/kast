@@ -37,6 +37,9 @@ describe('Delivery public surface (e2e)', () => {
         displayName: 'Delivery Fixture',
         description: 'internal-only description',
         isLocalized: true,
+        // Discovery is opt-in (default false); the schema tests exercise the
+        // public shape, so the fixture must be discoverable.
+        isPubliclyDiscoverable: true,
         fields: {
           create: [
             {

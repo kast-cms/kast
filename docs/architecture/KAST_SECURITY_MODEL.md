@@ -214,12 +214,19 @@ Displayed: prefix (first 8 chars) in UI: "kast_x8j2..."
 {
   "scope": "SCOPED",
   "scopeData": {
-    "content": ["read", "create", "update"],
+    "content:*": ["read", "create", "update"],
+    "content:articles": ["publish"],
     "media": ["read", "upload"],
     "seo": ["read"]
   }
 }
 ```
+
+Content routes carry the content-type slug as a scope, so content grants are
+keyed `content:<type>` or `content:*`. A bare `content` key only matches
+content routes that carry no type scope — it deliberately does **not** widen
+to every content type, so a token minted before a type existed never gains
+access to it silently.
 
 **Enforcement** happens in `TokenPolicyGuard`, which runs between
 `JwtAuthGuard` and `RolesGuard`. `resource` and `action` are derived from the

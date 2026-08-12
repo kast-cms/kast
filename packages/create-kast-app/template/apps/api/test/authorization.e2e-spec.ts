@@ -164,7 +164,9 @@ describe('Authorization matrix (e2e)', () => {
       const created = await mintApiToken(app, jwt, {
         name: 'e2e-scoped',
         scope: 'SCOPED',
-        scopeData: { content: ['read'] },
+        // Entry routes carry a content-type scope; a bare `content` key is a
+        // legacy grant that deliberately does not widen to every type.
+        scopeData: { 'content:*': ['read'] },
       });
       token = created.token;
       createdTokenIds.push(created.id);
@@ -260,9 +262,22 @@ describe('Authorization matrix (e2e)', () => {
       const res = await request(httpServer(app))
         .post('/api/v1/mcp')
         .set(...bearer(token))
+        // Streamable HTTP requires clients to accept both content types, and
+        // the transport may answer with either one — buffer the raw payload.
+        .set('Accept', 'application/json, text/event-stream')
         .send({ jsonrpc: '2.0', id: 1, method: 'tools/list' })
+        .buffer(true)
+        .parse((response, cb) => {
+          let text = '';
+          response.on('data', (chunk: Buffer) => (text += chunk.toString()));
+          response.on('end', () => cb(null, text));
+        })
         .expect(200);
-      expect(res.body).toMatchObject({ jsonrpc: '2.0', id: 1 });
+
+      const raw = res.body as string;
+      const sseData = /^data: (.+)$/m.exec(raw);
+      const payload = JSON.parse(sseData?.[1] ?? raw) as Record<string, unknown>;
+      expect(payload).toMatchObject({ jsonrpc: '2.0', id: 1 });
     });
 
     it.each([
