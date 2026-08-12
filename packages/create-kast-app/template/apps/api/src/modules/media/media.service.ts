@@ -3,26 +3,23 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  ServiceUnavailableException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { MediaFile } from '@prisma/client';
 import { randomUUID } from 'crypto';
-import { lookup } from 'dns/promises';
-import { isIP } from 'net';
-import { extname } from 'path';
 import sharp from 'sharp';
 import type { PaginatedResult } from '../../common/types/auth.types';
 import { validateMagicBytes } from '../../common/utils/mime-magic.util';
-import { isPrivateAddress } from '../../common/utils/ssrf-guard.util';
 import type { Env } from '../../config/env.schema';
 import { QueueAdapter } from '../queue/queue.adapter';
 import { QUEUE_NAMES } from '../queue/queue.constants';
 import { ListMediaDto } from './dto/list-media.dto';
 import type { MediaJobData } from './media.processor';
-import { MediaRepository } from './media.repository';
-import { readBoundedBody } from './remote-body.util';
+import { MediaRepository, type MediaDetailRow, type MediaListRow } from './media.repository';
+import { fetchRemoteMedia } from './remote-media-fetcher';
 import { derivedStorageKeys } from './storage/derived-keys.util';
 import { safeExtension } from './storage/storage-key.util';
 import type { StorageAdapter } from './storage/storage.adapter';
@@ -44,8 +41,21 @@ const OPTIMIZE_RASTER_TYPES = new Set([
   'image/tiff',
 ]);
 
-const MAX_REDIRECTS = 5;
-const FETCH_TIMEOUT_MS = 15_000;
+export interface MediaFileView extends Omit<MediaFile, 'thumbnails'> {
+  folder: { id: string; name: string } | null;
+  usagesCount: number;
+  thumbnails: Record<string, { url: string; size: number }>;
+  totalSize: number;
+}
+
+export interface MediaFileDetailView extends MediaFileView {
+  usages: Array<{
+    entryId: string;
+    contentType: string;
+    fieldName: string;
+    entryTitle: string | null;
+  }>;
+}
 
 @Injectable()
 export class MediaService {
@@ -79,7 +89,8 @@ export class MediaService {
   async upload(
     file: Express.Multer.File | undefined,
     uploaderId: string,
-  ): Promise<{ data: MediaFile }> {
+    folderId?: string,
+  ): Promise<{ data: MediaFileDetailView }> {
     if (!file) {
       throw new BadRequestException('No file was uploaded under the "file" field');
     }
@@ -109,8 +120,12 @@ export class MediaService {
       url,
       storageKey,
       provider: this.storage.provider,
+      originalStorageKey: storageKey,
+      originalUrl: url,
+      originalSize: file.size,
       width: width ?? null,
       height: height ?? null,
+      ...(folderId ? { folder: { connect: { id: folderId } } } : {}),
       uploadedBy: { connect: { id: uploaderId } },
     });
 
@@ -120,7 +135,7 @@ export class MediaService {
       mimeType: media.mimeType,
       url: media.url,
     });
-    return { data: media };
+    return this.findById(media.id);
   }
 
   /**
@@ -152,33 +167,42 @@ export class MediaService {
     if (!OPTIMIZE_RASTER_TYPES.has(mimeType)) return;
     const jobData: MediaJobData = { mediaFileId, storageKey, mimeType };
     await Promise.all([
-      this.queue.enqueue(QUEUE_NAMES.MEDIA, 'optimize', jobData, { attempts: 3 }),
-      this.queue.enqueue(QUEUE_NAMES.MEDIA, 'thumbnail', jobData, { attempts: 3 }),
+      this.queue.enqueue(QUEUE_NAMES.MEDIA, 'optimize', jobData, {
+        attempts: 3,
+        jobId: `media-optimize-${mediaFileId}`,
+        removeOnComplete: true,
+      }),
+      this.queue.enqueue(QUEUE_NAMES.MEDIA, 'thumbnail', jobData, {
+        attempts: 3,
+        jobId: `media-thumbnail-${mediaFileId}`,
+        removeOnComplete: true,
+      }),
     ]);
   }
 
-  async findAll(query: ListMediaDto): Promise<PaginatedResult<MediaFile>> {
+  async findAll(query: ListMediaDto): Promise<PaginatedResult<MediaFileView>> {
     const limit = query.limit ?? 20;
     const { items, total } = await this.repo.findAll(query);
     const hasNextPage = items.length > limit;
-    const data = hasNextPage ? items.slice(0, limit) : items;
+    const rows = hasNextPage ? items.slice(0, limit) : items;
+    const data = rows.map((item) => this.toView(item));
     const cursor = hasNextPage ? (data[data.length - 1]?.id ?? null) : null;
     return { data, meta: { total, limit, cursor, hasNextPage } };
   }
 
-  async findById(id: string): Promise<{ data: MediaFile }> {
+  async findById(id: string): Promise<{ data: MediaFileDetailView }> {
     const media = await this.repo.findById(id);
     if (!media) throw new NotFoundException(`Media ${id} not found`);
-    return { data: media };
+    return { data: this.toDetailView(media) };
   }
 
   async update(
     id: string,
     data: { altText?: string; caption?: string; folderId?: string },
-  ): Promise<{ data: MediaFile }> {
+  ): Promise<{ data: MediaFileDetailView }> {
     await this.findById(id);
-    const updated = await this.repo.update(id, data);
-    return { data: updated };
+    await this.repo.update(id, data);
+    return this.findById(id);
   }
 
   /**
@@ -189,6 +213,7 @@ export class MediaService {
   async delete(id: string, actorId?: string): Promise<void> {
     await this.findById(id);
     await this.repo.softDelete(id, actorId);
+    this.eventEmitter.emit('media.deleted', { mediaId: id });
   }
 
   /**
@@ -199,13 +224,19 @@ export class MediaService {
   async purge(id: string): Promise<void> {
     const media = await this.repo.findByIdIncludingTrashed(id);
     if (!media) throw new NotFoundException(`Media ${id} not found`);
+    const failures: string[] = [];
     for (const key of derivedStorageKeys(media.storageKey)) {
       try {
         await this.storage.delete(key);
       } catch (err: unknown) {
-        // A missing or unreachable object must not strand the row in the trash.
         this.logger.warn(`Could not delete stored object ${key}: ${String(err)}`);
+        failures.push(key);
       }
+    }
+    if (failures.length > 0) {
+      throw new ServiceUnavailableException(
+        `Media storage cleanup failed for ${failures.length} object(s); the row was retained`,
+      );
     }
     await this.repo.hardDelete(id);
   }
@@ -218,8 +249,12 @@ export class MediaService {
     url: string,
     uploaderId: string,
     opts: { folderId?: string; altText?: string } = {},
-  ): Promise<{ data: MediaFile }> {
-    const { buffer, mimeType, originalName } = await this.fetchRemoteFile(url);
+  ): Promise<{ data: MediaFileDetailView }> {
+    const { buffer, mimeType, originalName } = await fetchRemoteMedia(
+      url,
+      this.allowedMimes,
+      this.maxBytes,
+    );
 
     const key = `${randomUUID()}${safeExtension(originalName)}`;
     const { url: storedUrl, storageKey } = await this.storage.upload(key, buffer, mimeType);
@@ -237,6 +272,9 @@ export class MediaService {
       url: storedUrl,
       storageKey,
       provider: this.storage.provider,
+      originalStorageKey: storageKey,
+      originalUrl: storedUrl,
+      originalSize: buffer.length,
       width: width ?? null,
       height: height ?? null,
       ...(opts.altText !== undefined ? { altText: opts.altText } : {}),
@@ -250,101 +288,42 @@ export class MediaService {
       mimeType: media.mimeType,
       url: media.url,
     });
-    return { data: media };
+    return this.findById(media.id);
   }
 
-  /** Downloads and validates a remote file (URL, size, MIME, magic bytes). */
-  private async fetchRemoteFile(
-    url: string,
-  ): Promise<{ buffer: Buffer; mimeType: string; originalName: string }> {
-    const parsed = this.parseHttpUrl(url);
-
-    const res = await this.fetchGuarded(url);
-    if (!res.ok) {
-      throw new UnprocessableEntityException(`Remote returned ${res.status} for the URL`);
-    }
-
-    const mimeType = (res.headers.get('content-type') ?? '').split(';')[0]?.trim() ?? '';
-    if (!this.allowedMimes.has(mimeType)) {
-      throw new UnprocessableEntityException(`MIME type ${mimeType || 'unknown'} is not allowed`);
-    }
-
-    const buffer = await readBoundedBody(res, this.maxBytes);
-    if (!validateMagicBytes(buffer, mimeType)) {
-      throw new UnprocessableEntityException(
-        'File type mismatch: magic bytes do not match content-type',
-      );
-    }
-    return { buffer, mimeType, originalName: this.fileNameFromUrl(parsed, mimeType) };
-  }
-
-  /** Fetches a URL, blocking SSRF to private/internal hosts and re-validating each redirect hop. */
-  private async fetchGuarded(initialUrl: string): Promise<Response> {
-    let target = this.parseHttpUrl(initialUrl);
-    for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
-      await this.assertPublicUrl(target);
-      let res: Response;
-      try {
-        res = await fetch(target, {
-          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-          redirect: 'manual',
-        });
-      } catch (err: unknown) {
-        throw new UnprocessableEntityException(`Failed to fetch URL: ${String(err)}`);
-      }
-      if (res.status < 300 || res.status >= 400) return res;
-      const location = res.headers.get('location');
-      if (location === null) return res;
-      target = this.parseHttpUrl(new URL(location, target).toString());
-    }
-    throw new UnprocessableEntityException('Too many redirects while fetching the URL');
-  }
-
-  /** Rejects hosts that resolve to loopback/private/link-local addresses (SSRF guard). */
-  private async assertPublicUrl(parsed: URL): Promise<void> {
-    const host = parsed.hostname
-      .toLowerCase()
-      .replace(/\.$/, '')
-      .replace(/^\[|\]$/g, '');
-    let addresses: string[];
-    if (isIP(host) !== 0) {
-      addresses = [host];
-    } else {
-      try {
-        addresses = (await lookup(host, { all: true })).map((record) => record.address);
-      } catch {
-        throw new BadRequestException('Could not resolve URL host');
-      }
-    }
-    if (addresses.length === 0 || addresses.some((address) => isPrivateAddress(address))) {
-      throw new BadRequestException('URL host is not allowed');
-    }
-  }
-
-  private parseHttpUrl(url: string): URL {
-    let parsed: URL;
-    try {
-      parsed = new URL(url);
-    } catch {
-      throw new BadRequestException('Invalid URL');
-    }
-    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-      throw new BadRequestException('Only http(s) URLs are supported');
-    }
-    return parsed;
-  }
-
-  private fileNameFromUrl(parsed: URL, mimeType: string): string {
-    const base = parsed.pathname.split('/').filter(Boolean).pop() ?? 'download';
-    if (extname(base)) return base;
-    const extByMime: Record<string, string> = {
-      'image/jpeg': '.jpg',
-      'image/png': '.png',
-      'image/gif': '.gif',
-      'image/webp': '.webp',
-      'image/svg+xml': '.svg',
-      'application/pdf': '.pdf',
+  private toView(row: MediaListRow): MediaFileView {
+    const { _count, ...file } = row;
+    const thumbnails = this.parseThumbnails(file.thumbnails);
+    return {
+      ...file,
+      thumbnails,
+      usagesCount: _count.usages,
+      totalSize: (file.originalSize ?? file.size) + (file.optimizedSize ?? 0) + file.thumbnailSize,
     };
-    return `${base}${extByMime[mimeType] ?? ''}`;
+  }
+
+  private toDetailView(row: MediaDetailRow): MediaFileDetailView {
+    const view = this.toView(row);
+    return {
+      ...view,
+      usages: row.usages.map((usage) => ({
+        entryId: usage.entryId,
+        contentType: usage.entry.contentType.name,
+        fieldName: usage.fieldName,
+        entryTitle: this.entryTitle(usage.entry.locales[0]?.data),
+      })),
+    };
+  }
+
+  private parseThumbnails(value: unknown): Record<string, { url: string; size: number }> {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+    return value as Record<string, { url: string; size: number }>;
+  }
+
+  private entryTitle(data: unknown): string | null {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+    const row = data as Record<string, unknown>;
+    const value = row['title'] ?? row['name'];
+    return typeof value === 'string' ? value : null;
   }
 }

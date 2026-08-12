@@ -142,6 +142,13 @@ describe('TokenPolicyGuard', () => {
       );
     });
 
+    it('rejects a human JWT on the MCP transport', () => {
+      const user: AuthUser = { id: 'u1', email: 'a@b.c', roles: ['super_admin'] };
+      expect(() => guard.canActivate(makeContext(TestMcpController, 'rpc', 'POST', user))).toThrow(
+        ForbiddenException,
+      );
+    });
+
     it('short-circuits on a public route even for an agent token', () => {
       expect(guard.canActivate(makeContext(PublicController, 'anything', 'POST', agentUser))).toBe(
         true,
@@ -272,6 +279,35 @@ describe('TokenPolicyGuard', () => {
       expect(guard.canActivate(makeContext(SettingsController, 'read', 'GET', user))).toBe(true);
     });
 
+    it('does not let a grant for one content type cross into another', () => {
+      const user = apiTokenUser(TokenScope.SCOPED, { 'content:articles': ['read'] });
+      expect(
+        guard.canActivate(
+          makeContext(EntriesController, 'list', 'GET', user, { typeSlug: 'articles' }),
+        ),
+      ).toBe(true);
+      expect(() =>
+        guard.canActivate(
+          makeContext(EntriesController, 'list', 'GET', user, { typeSlug: 'pages' }),
+        ),
+      ).toThrow(ForbiddenException);
+    });
+
+    it('requires content:* to grant every content type explicitly', () => {
+      const broadLegacyKey = apiTokenUser(TokenScope.SCOPED, { content: ['read'] });
+      const wildcard = apiTokenUser(TokenScope.SCOPED, { 'content:*': ['read'] });
+      expect(() =>
+        guard.canActivate(
+          makeContext(EntriesController, 'list', 'GET', broadLegacyKey, { typeSlug: 'pages' }),
+        ),
+      ).toThrow(ForbiddenException);
+      expect(
+        guard.canActivate(
+          makeContext(EntriesController, 'list', 'GET', wildcard, { typeSlug: 'pages' }),
+        ),
+      ).toBe(true);
+    });
+
     it('rejects when scopeData is missing', () => {
       expect(() =>
         guard.canActivate(
@@ -375,5 +411,12 @@ describe('scopeDataAllows', () => {
 
   it('allows an exact grant', () => {
     expect(scopeDataAllows({ content: ['read', 'create'] }, target)).toBe(true);
+  });
+
+  it('uses an exact scoped-resource grant before resource wildcards', () => {
+    const scopedTarget = { ...target, scopeValue: 'articles' };
+    expect(scopeDataAllows({ 'content:articles': ['read'] }, scopedTarget)).toBe(true);
+    expect(scopeDataAllows({ 'content:pages': ['read'] }, scopedTarget)).toBe(false);
+    expect(scopeDataAllows({ 'content:*': ['read'] }, scopedTarget)).toBe(true);
   });
 });

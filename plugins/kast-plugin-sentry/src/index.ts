@@ -11,10 +11,7 @@ const LOG_PREFIX = '[kast-plugin-sentry]';
  * reported automatically. `captureException` / `captureMessage` are also
  * exposed so the host (e.g. a Nest exception filter) can forward handled errors.
  *
- * Limitation: `KastPluginContext` exposes no error/exception hook, so the
- * plugin cannot subscribe to the host's request-scoped error pipeline. Handled
- * 4xx/5xx errors are only captured if the host invokes `captureException`;
- * process-level crashes are captured automatically via Sentry's global hooks.
+ * The plugin also registers a request-scoped reporter for handled server errors.
  */
 export class SentryPlugin implements IKastPlugin {
   private initialized = false;
@@ -43,6 +40,13 @@ export class SentryPlugin implements IKastPlugin {
       configuredAt: new Date().toISOString(),
     });
 
+    ctx.registerErrorReporter({
+      provider: 'sentry',
+      captureException: (error, context) => {
+        this.captureException(error, context);
+      },
+    });
+
     this.log(`Active — reporting to Sentry (env: ${environment}, traces: ${tracesSampleRate})`);
   }
 
@@ -67,6 +71,11 @@ export class SentryPlugin implements IKastPlugin {
   async flush(timeoutMs = 2000): Promise<boolean> {
     if (!this.initialized) return true;
     return Sentry.flush(timeoutMs);
+  }
+
+  async onUnload(): Promise<void> {
+    await this.flush();
+    this.initialized = false;
   }
 
   private log(message: string): void {

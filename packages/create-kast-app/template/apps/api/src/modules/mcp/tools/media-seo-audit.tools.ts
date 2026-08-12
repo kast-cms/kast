@@ -23,7 +23,7 @@ export class McpMediaSeoAuditTools {
     inputSchema: {
       type: 'object',
       properties: {
-        limit: { type: 'number' },
+        limit: { type: 'integer', minimum: 1, maximum: 100 },
         cursor: { type: 'string' },
       },
     },
@@ -109,7 +109,7 @@ export class McpMediaSeoAuditTools {
         userId: { type: 'string' },
         from: { type: 'string', format: 'date-time' },
         to: { type: 'string', format: 'date-time' },
-        limit: { type: 'number' },
+        limit: { type: 'integer', minimum: 1, maximum: 100 },
         cursor: { type: 'string' },
       },
     },

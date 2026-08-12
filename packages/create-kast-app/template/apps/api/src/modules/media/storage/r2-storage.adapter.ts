@@ -51,6 +51,7 @@ export class R2StorageAdapter implements StorageAdapter {
         Key: key,
         Body: buffer,
         ContentType: mimeType,
+        ContentDisposition: mimeType === 'image/svg+xml' ? 'attachment' : undefined,
       }),
     );
     const url = this.publicUrl ? `${this.publicUrl}/${key}` : key;

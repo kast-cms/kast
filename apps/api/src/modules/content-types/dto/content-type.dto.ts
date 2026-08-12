@@ -42,6 +42,16 @@ export class CreateContentTypeDto {
   @IsBoolean()
   @Transform(toBoolean)
   isLocalized?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'Expose this type and its visible field schema through the anonymous delivery API.',
+    default: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  @Transform(toBoolean)
+  isPubliclyDiscoverable?: boolean;
 }
 
 export class UpdateContentTypeDto {
@@ -65,6 +75,15 @@ export class UpdateContentTypeDto {
   @IsBoolean()
   @Transform(toBoolean)
   isLocalized?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'Expose this type and its visible field schema through the anonymous delivery API.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  @Transform(toBoolean)
+  isPubliclyDiscoverable?: boolean;
 }
 
 export class ReorderFieldsDto {

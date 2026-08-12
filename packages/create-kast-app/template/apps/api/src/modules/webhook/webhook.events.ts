@@ -5,6 +5,7 @@ export const WEBHOOK_EVENTS = {
   CONTENT_UNPUBLISHED: 'content.unpublished',
   CONTENT_TRASHED: 'content.trashed',
   MEDIA_UPLOADED: 'media.uploaded',
+  MEDIA_DELETED: 'media.deleted',
   USER_CREATED: 'user.created',
   WEBHOOK_TEST: 'webhook.test',
 } as const;

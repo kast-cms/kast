@@ -180,7 +180,7 @@ SUPER_ADMIN > ADMIN > EDITOR > VIEWER
     "message": "Content entry not found",
     "statusCode": 404,
     "timestamp": "2026-04-22T10:00:00.000Z",
-    "path": "/api/v1/content/blog-post/abc123"
+    "path": "/api/v1/content-types/blog-post/entries/abc123"
   }
 }
 ```
@@ -639,7 +639,7 @@ Remove a field from a content type.
 
 ## 4. Content Entries API
 
-### GET /api/v1/content/:type 👁
+### GET /api/v1/content-types/:type/entries 👁
 
 List entries of a content type. Includes drafts and trashed items for admin.
 
@@ -685,7 +685,7 @@ List entries of a content type. Includes drafts and trashed items for admin.
 
 ---
 
-### POST /api/v1/content/:type ✏️
+### POST /api/v1/content-types/:type/entries ✏️
 
 Create a new content entry as a draft.
 
@@ -727,7 +727,7 @@ Create a new content entry as a draft.
 
 ---
 
-### GET /api/v1/content/:type/:id 👁
+### GET /api/v1/content-types/:type/entries/:id 👁
 
 Get a single content entry with all locales and full field data.
 
@@ -782,7 +782,7 @@ Get a single content entry with all locales and full field data.
 
 ---
 
-### PATCH /api/v1/content/:type/:id ✏️
+### PATCH /api/v1/content-types/:type/entries/:id ✏️
 
 Update an entry's data for a specific locale.
 
@@ -802,7 +802,7 @@ Update an entry's data for a specific locale.
 
 ---
 
-### POST /api/v1/content/:type/:id/publish ✏️
+### POST /api/v1/content-types/:type/entries/:id/publish ✏️
 
 Publish an entry. Triggers BullMQ SEO validation before publishing.
 
@@ -830,7 +830,7 @@ Publish an entry. Triggers BullMQ SEO validation before publishing.
 
 ---
 
-### POST /api/v1/content/:type/:id/unpublish ✏️
+### POST /api/v1/content-types/:type/entries/:id/unpublish ✏️
 
 Revert a published entry back to draft.
 
@@ -850,7 +850,7 @@ Revert a published entry back to draft.
 
 ---
 
-### POST /api/v1/content/:type/:id/schedule ✏️
+### POST /api/v1/content-types/:type/entries/:id/schedule ✏️
 
 Schedule an entry to publish at a future date.
 
@@ -878,7 +878,7 @@ Schedule an entry to publish at a future date.
 
 ---
 
-### DELETE /api/v1/content/:type/:id ✏️
+### DELETE /api/v1/content-types/:type/entries/:id ✏️
 
 Move an entry to trash. Recoverable within 30 days.
 
@@ -898,7 +898,7 @@ Move an entry to trash. Recoverable within 30 days.
 
 ---
 
-### GET /api/v1/content/:type/:id/versions 👁
+### GET /api/v1/content-types/:type/entries/:id/versions 👁
 
 List all saved versions of an entry.
 
@@ -930,7 +930,7 @@ List all saved versions of an entry.
 
 ---
 
-### GET /api/v1/content/:type/:id/versions/:versionNumber 👁
+### GET /api/v1/content-types/:type/entries/:id/versions/:versionId 👁
 
 Get the full snapshot of a specific version.
 
@@ -955,7 +955,7 @@ Get the full snapshot of a specific version.
 
 ---
 
-### POST /api/v1/content/:type/:id/versions/:versionNumber/restore ✏️
+### POST /api/v1/content-types/:type/entries/:id/versions/:versionId/revert ✏️
 
 Restore an entry to a previous version. Creates a new version before restoring.
 
@@ -965,7 +965,7 @@ Restore an entry to a previous version. Creates a new version before restoring.
 
 ---
 
-### POST /api/v1/content/:type/:id/locale ✏️
+### POST /api/v1/content-types/:type/entries/:id/locale ✏️
 
 Add a new locale to an existing entry.
 
@@ -1943,9 +1943,11 @@ Get MCP session history for an agent token.
     {
       "id": "clsess001",
       "agentName": "claude-sonnet-4",
-      "toolsUsed": ["kast_content_list", "kast_content_publish"],
+      "toolsUsed": ["list_content_entries", "publish_content_entry"],
       "startedAt": "2026-04-22T08:00:00.000Z",
-      "endedAt": "2026-04-22T08:01:32.000Z"
+      "endedAt": "2026-04-22T08:01:32.000Z",
+      "durationMs": 92000,
+      "outcome": "success"
     }
   ],
   "meta": { "total": 8, "limit": 20, "cursor": null, "hasNextPage": false }

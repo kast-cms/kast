@@ -1,4 +1,5 @@
 import type { KastClient } from './client.js';
+import type { ApiListResponse } from './types.js';
 
 export interface WebhookSummary {
   id: string;
@@ -69,8 +70,12 @@ export class WebhooksResource {
     return this.client.request(`/api/v1/webhooks/${id}/test`, { method: 'POST' });
   }
 
-  deliveries(id: string): Promise<WebhookDeliverySummary[]> {
-    return this.client.request(`/api/v1/webhooks/${id}/deliveries`);
+  deliveries(
+    id: string,
+    params: { cursor?: string; limit?: string; order?: 'asc' | 'desc' } = {},
+  ): Promise<ApiListResponse<WebhookDeliverySummary>> {
+    const query = new URLSearchParams(params as Record<string, string>).toString();
+    return this.client.request(`/api/v1/webhooks/${id}/deliveries${query ? `?${query}` : ''}`);
   }
 
   redeliver(id: string, deliveryId: string): Promise<void> {
@@ -85,7 +90,10 @@ export class WebhooksResource {
   }
 
   /** @alias deliveries */
-  getDeliveries(id: string): Promise<WebhookDeliverySummary[]> {
-    return this.deliveries(id);
+  getDeliveries(
+    id: string,
+    params?: { cursor?: string; limit?: string; order?: 'asc' | 'desc' },
+  ): Promise<ApiListResponse<WebhookDeliverySummary>> {
+    return this.deliveries(id, params);
   }
 }

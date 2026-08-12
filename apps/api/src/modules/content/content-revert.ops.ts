@@ -2,8 +2,8 @@ import { NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import type { ContentTypeWithFields } from '../content-types/content-types.repository';
 import { writeLocale } from './content-entry.helpers';
-import { deriveLocaleSlug } from './content-slug';
-import { allocateVersionNumber } from './content-version.ops';
+import { deriveLocaleSlug, requireSlug } from './content-slug';
+import { allocateVersionNumber, pruneContentVersions } from './content-version.ops';
 import type { ContentRepository, EntryWithLocale, VersionWithAuthor } from './content.repository';
 import type { UniqueCheck } from './validation/content-validation.types';
 import type { ContentWriteGate } from './validation/content-write.gate';
@@ -56,11 +56,15 @@ export function buildRevertLocaleOps(
         create: {
           entryId,
           localeCode: code,
-          slug: payload.slug ?? deriveLocaleSlug(primarySlug, code),
+          slug: payload.slug
+            ? requireSlug(payload.slug, `version slug for locale ${code}`)
+            : deriveLocaleSlug(primarySlug, code),
           data: payload.data as Prisma.InputJsonValue,
         },
         update: {
-          ...(payload.slug ? { slug: payload.slug } : {}),
+          ...(payload.slug
+            ? { slug: requireSlug(payload.slug, `version slug for locale ${code}`) }
+            : {}),
           data: payload.data as Prisma.InputJsonValue,
         },
       }),
@@ -121,6 +125,7 @@ export async function applyVersionRevert(
       savedById: userId,
     },
   });
+  await pruneContentVersions(tx, entryId);
   return tx.contentEntry.findUniqueOrThrow({
     where: { id: entryId },
     include: { locales: true },

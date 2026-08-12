@@ -14,6 +14,16 @@ export class TrashScheduler {
   @Cron('0 2 * * *')
   async scheduleDailyCleanup(): Promise<void> {
     this.logger.log('Enqueueing daily trash hard-delete job');
-    await this.trashQueue.add('permanent-delete', {}, { attempts: 1 });
+    const day = new Date().toISOString().slice(0, 10);
+    await this.trashQueue.add(
+      'permanent-delete',
+      {},
+      {
+        attempts: 1,
+        jobId: `trash-purge-${day}`,
+        removeOnComplete: true,
+        removeOnFail: false,
+      },
+    );
   }
 }

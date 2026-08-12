@@ -76,6 +76,43 @@ export class RolesRepository {
     });
   }
 
+  /** Replace a role's permission links atomically, retaining the shared catalogue rows. */
+  async replacePermissions(
+    roleId: string,
+    requested: Array<{ resource: string; action: string; scope: string }>,
+  ): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const permissionIds: string[] = [];
+      for (const item of requested) {
+        const permission = await tx.permission.upsert({
+          where: {
+            resource_action_scope: {
+              resource: item.resource,
+              action: item.action,
+              scope: item.scope,
+            },
+          },
+          create: item,
+          update: {},
+        });
+        permissionIds.push(permission.id);
+      }
+
+      await tx.rolePermission.deleteMany({
+        where: {
+          roleId,
+          ...(permissionIds.length > 0 ? { permissionId: { notIn: permissionIds } } : {}),
+        },
+      });
+      if (permissionIds.length > 0) {
+        await tx.rolePermission.createMany({
+          data: permissionIds.map((permissionId) => ({ roleId, permissionId })),
+          skipDuplicates: true,
+        });
+      }
+    });
+  }
+
   async removePermission(roleId: string, permissionId: string): Promise<boolean> {
     const result = await this.prisma.rolePermission.deleteMany({
       where: { roleId, permissionId },

@@ -6,6 +6,8 @@ sidebar:
 ---
 
 Run through this checklist before making a Kast deployment accessible to users.
+The empty boxes are deployment-specific operator attestations, not the product's
+release status. Kast also enforces the controls listed at the end of this page.
 
 ## Authentication & tokens
 
@@ -54,3 +56,13 @@ Run through this checklist before making a Kast deployment accessible to users.
 - [ ] Only trusted plugins are installed
 - [ ] Plugin env vars containing secrets are stored in the secrets manager
 - [ ] Disabled plugins are removed, not just toggled off
+
+## Platform-enforced controls
+
+- [x] Production startup rejects wildcard `CORS_ORIGINS`
+- [x] Production startup requires a dedicated secret-encryption key
+- [x] S3/R2 startup rejects missing provider credentials
+- [x] Default upload MIME types exclude SVG and executable formats
+- [x] Compose protects Redis with authentication and does not publish its port
+- [x] CI blocks moderate, high, and critical production dependency advisories
+- [x] CI starts and probes the built API and admin Docker images before release

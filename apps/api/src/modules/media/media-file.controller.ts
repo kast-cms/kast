@@ -4,6 +4,7 @@ import type { Response } from 'express';
 import { Public } from '../../common/decorators/public.decorator';
 import { LOCAL_MEDIA_ROUTE_PATH, contentDispositionFor, mimeTypeForKey } from './media.constants';
 import { STORAGE_ADAPTER } from './media.processor';
+import { MediaRepository } from './media.repository';
 import { LocalStorageAdapter } from './storage/local-storage.adapter';
 import type { StorageAdapter } from './storage/storage.adapter';
 
@@ -20,6 +21,7 @@ export class MediaFileController {
   constructor(
     @Inject(STORAGE_ADAPTER) private readonly storage: StorageAdapter,
     private readonly local: LocalStorageAdapter,
+    private readonly repo: MediaRepository,
   ) {}
 
   @Public()
@@ -28,6 +30,12 @@ export class MediaFileController {
   async serve(@Param('key') key: string | string[], @Res() res: Response): Promise<void> {
     if (this.storage !== this.local) throw new NotFoundException('Not found');
     const storageKey = Array.isArray(key) ? key.join('/') : key;
+    const sourceKey = storageKey.startsWith('thumbs/')
+      ? storageKey.split('/').slice(2).join('/')
+      : storageKey;
+    if (!(await this.repo.findActiveByStorageKey(sourceKey))) {
+      throw new NotFoundException('Not found');
+    }
     const object = await this.local.resolveObject(storageKey);
     if (object === null) throw new NotFoundException('Not found');
 

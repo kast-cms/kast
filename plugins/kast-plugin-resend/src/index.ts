@@ -21,11 +21,7 @@ const LOG_PREFIX = '[kast-plugin-resend]';
  * delivered through Resend, and persists its configuration so the admin UI /
  * core can detect that Resend is available.
  *
- * Limitation: `KastPluginContext` exposes no transport-registration extension
- * point, so the plugin cannot register `sendEmail` as the host's active mailer
- * from inside `onLoad`. The transport is fully functional and callable; wiring
- * it as the default mailer requires either the host reading the persisted
- * `provider: 'resend'` config or a future `ctx.registerEmailTransport` hook.
+ * When enabled, the plugin registers itself as the host's outbound transport.
  */
 export class ResendPlugin implements IKastPlugin {
   private resend: Resend | null = null;
@@ -54,6 +50,13 @@ export class ResendPlugin implements IKastPlugin {
       fromEmail: fromEmail || null,
       fromName: fromName || null,
       configuredAt: new Date().toISOString(),
+    });
+
+    ctx.registerEmailTransport({
+      provider: 'resend',
+      send: async (message) => {
+        await this.sendEmail(message);
+      },
     });
 
     this.log(`Active — Resend transport ready (from ${this.fromAddress || 'unset'})`);
@@ -109,6 +112,10 @@ export class ResendPlugin implements IKastPlugin {
       throw new Error(`${LOG_PREFIX} sendEmail called before the plugin was configured`);
     }
     return this.resend;
+  }
+
+  async onUnload(): Promise<void> {
+    this.resend = null;
   }
 
   private log(message: string): void {

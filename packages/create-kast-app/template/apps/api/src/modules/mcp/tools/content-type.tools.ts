@@ -57,6 +57,8 @@ export class McpContentTypeTools {
         displayName: { type: 'string' },
         description: { type: 'string' },
         icon: { type: 'string' },
+        isLocalized: { type: 'boolean' },
+        isPubliclyDiscoverable: { type: 'boolean' },
         dryRun: { type: 'boolean' },
       },
       required: ['name', 'displayName'],
@@ -69,7 +71,12 @@ export class McpContentTypeTools {
     ctx: ToolContext,
   ): Promise<unknown> {
     if (ctx.dryRun) {
-      return { action: 'create_content_type', wouldCreate: args };
+      return {
+        action: 'create_content_type',
+        wouldCreate: await this.contentTypesService.previewCreate(
+          args as unknown as CreateContentTypeDto,
+        ),
+      };
     }
     return this.contentTypesService.create(args as unknown as CreateContentTypeDto);
   }
@@ -84,6 +91,9 @@ export class McpContentTypeTools {
         name: { type: 'string', description: 'Current content type name' },
         displayName: { type: 'string' },
         description: { type: 'string' },
+        icon: { type: 'string' },
+        isLocalized: { type: 'boolean' },
+        isPubliclyDiscoverable: { type: 'boolean' },
         dryRun: { type: 'boolean' },
       },
       required: ['name'],
@@ -97,7 +107,14 @@ export class McpContentTypeTools {
   ): Promise<unknown> {
     const { name, ...dto } = args;
     if (ctx.dryRun) {
-      return { action: 'update_content_type', name, wouldUpdate: dto };
+      return {
+        action: 'update_content_type',
+        name,
+        wouldUpdate: await this.contentTypesService.previewUpdate(
+          name as string,
+          dto as unknown as UpdateContentTypeDto,
+        ),
+      };
     }
     return this.contentTypesService.update(name as string, dto as unknown as UpdateContentTypeDto);
   }

@@ -730,7 +730,7 @@ Every checkbox must be verified with a test, a manual check, or a documented dec
 
 **Data:**
 
-- Passwords hashed with bcrypt cost factor 12 — code audit
+- Passwords hashed with Argon2id — code audit
 - API/agent tokens shown once, stored as hash — code audit
 - Plugin config values encrypted at rest — code audit
 - No secrets in logs — automated grep test in CI: `grep -r "password\|secret\|token" logs/ | grep -v redacted`
@@ -755,12 +755,12 @@ Every checkbox must be verified with a test, a manual check, or a documented dec
 | OWASP ID | Vulnerability               | Kast Mitigation                                                                    | Verified By                         |
 | -------- | --------------------------- | ---------------------------------------------------------------------------------- | ----------------------------------- |
 | A01      | Broken Access Control       | `RbacGuard` + `@RequirePermission` on every endpoint; SUPER_ADMIN-only routes      | Integration test suite              |
-| A02      | Cryptographic Failures      | bcrypt(12) passwords; SHA-256 token hashes; AES-256-GCM plugin config encryption   | Code audit                          |
+| A02      | Cryptographic Failures      | Argon2id passwords; SHA-256 token hashes; AES-256-GCM plugin config encryption     | Code audit                          |
 | A03      | Injection                   | Prisma parameterized queries; DOMPurify for rich text; `whitelist: true` DTOs      | Unit tests + code audit             |
 | A04      | Insecure Design             | Soft delete; audit log; least-privilege RBAC; three-layer security model           | Architecture review                 |
 | A05      | Security Misconfiguration   | Helmet + CSP; env validated at startup; no default secrets; `securityheaders.com`  | Automated CI check                  |
 | A06      | Vulnerable Components       | `pnpm audit` in CI; Dependabot alerts enabled; no known-vulnerable dependencies    | CI: `pnpm audit --audit-level=high` |
-| A07      | Authentication Failures     | Rate limiting (20/15min); JWT rotation; bcrypt; no username enumeration on reset   | Integration tests                   |
+| A07      | Authentication Failures     | Rate limiting (20/15min); JWT rotation; Argon2id; no username enumeration on reset | Integration tests                   |
 | A08      | Software/Data Integrity     | Plugin manifest hash verification; HMAC webhook signing; no `eval`                 | Code audit                          |
 | A09      | Logging/Monitoring Failures | Audit interceptor on all mutations; Sentry plugin for 5xx; structured JSON logs    | Plugin integration test             |
 | A10      | SSRF                        | Plugin network allowlist; no user-controlled URL fetch in core; URL validation DTO | Code audit + unit test              |
@@ -1147,7 +1147,7 @@ createdAt DateTime  @default(now())
 2. POST /auth/reset-password { token, newPassword }
    → hash token, find PasswordResetToken where hash matches AND expiresAt > NOW() AND usedAt IS NULL
    → if not found: 400 "Invalid or expired reset link"
-   → bcrypt.hash new password, update User.passwordHash
+   → argon2.hash new password with Argon2id, update User.passwordHash
    → mark token as used (usedAt = now())
    → revoke all refresh tokens for user (force re-login everywhere)
    → return 200 "Password updated"
@@ -1582,15 +1582,15 @@ Lifted directly from [KAST_PRD.md §4](../architecture/KAST_PRD.md), expanded to
 A workstream is **done** only when every item below is true:
 
 - [ ] All deliverables implemented per the scope defined in this plan.
-- [ ] Permissions enforced per [KAST_SECURITY_MODEL.md](../architecture/KAST_SECURITY_MODEL.md).
+- [x] Permissions enforced per [KAST_SECURITY_MODEL.md](../architecture/KAST_SECURITY_MODEL.md).
 - [ ] Unit tests for every new service method with branching logic.
 - [ ] Integration/e2e tests covering happy path + at least 2 error paths per new endpoint.
 - [ ] No `any`, no `@ts-ignore`, no `console.log` in production code.
 - [ ] No `ml-`, `mr-`, `pl-`, `pr-` Tailwind classes in `apps/admin` — only logical property equivalents.
 - [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e` all pass locally.
-- [ ] Audit interceptor verified to fire for new mutations.
-- [ ] SDK types updated for any new endpoints.
-- [ ] Documentation page written for the feature (or linked to existing docs).
+- [x] Audit interceptor verified to fire for new mutations.
+- [x] SDK types updated for any new endpoints.
+- [x] Documentation page written for the feature (or linked to existing docs).
 - [ ] PR reviewed with conventional commit on merge.
 - [ ] Security checklist items relevant to the workstream verified.
 

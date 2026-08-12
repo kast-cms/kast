@@ -15,6 +15,10 @@ const SENSITIVE_KEYS = new Set([
   'secrethash',
   'accesstoken',
   'refreshtoken',
+  'apikey',
+  'accesskey',
+  'clientsecret',
+  'passphrase',
 ]);
 
 const REDACTED = '***REDACTED***';
@@ -51,7 +55,10 @@ function redactObject(record: Record<string, unknown>, depth: number): Record<st
   const secretPair = isSecretKeyValuePair(record);
   const out: Record<string, unknown> = {};
   for (const [key, val] of Object.entries(record)) {
-    const redactThis = SENSITIVE_KEYS.has(key.toLowerCase()) || (secretPair && key === 'value');
+    const redactThis =
+      SENSITIVE_KEYS.has(key.toLowerCase()) ||
+      isSecretSettingKey(key) ||
+      (secretPair && key === 'value');
     out[key] = redactThis ? REDACTED : redactSensitive(val, depth + 1);
   }
   return out;

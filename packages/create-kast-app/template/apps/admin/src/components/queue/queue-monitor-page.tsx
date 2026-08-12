@@ -14,12 +14,18 @@ export function QueueMonitorPage(): JSX.Element {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [iframeUrl, setIframeUrl] = useState<string | null>(null);
 
-  useEffect((): void => {
+  useEffect(() => {
     if (status !== 'authenticated' || !session?.accessToken) return;
-    // The API mounts everything behind the global 'api' prefix, so the board
-    // lives at /api/bull-board — /bull-board alone is a 404.
-    const url = `${API_URL}/api/bull-board/?token=${encodeURIComponent(session.accessToken)}`;
-    setIframeUrl(url);
+    const controller = new AbortController();
+    void fetch(`${API_URL}/api/v1/queue-board/session`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${session.accessToken}` },
+      credentials: 'include',
+      signal: controller.signal,
+    }).then((response) => {
+      if (response.ok) setIframeUrl(`${API_URL}/api/bull-board/`);
+    });
+    return () => controller.abort();
   }, [status, session]);
 
   if (status === 'loading') {
@@ -48,6 +54,7 @@ export function QueueMonitorPage(): JSX.Element {
           title="Bull Board Queue Monitor"
           className="block h-[calc(100vh-16rem)] min-h-[32rem] w-full border-0 bg-card"
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+          referrerPolicy="no-referrer"
         />
       </Card>
     </div>

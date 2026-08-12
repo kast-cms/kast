@@ -9,6 +9,7 @@ import {
 import { HttpAdapterHost } from '@nestjs/core';
 import { Prisma } from '@prisma/client';
 import { Request, Response } from 'express';
+import type { AuthUser } from '../types/auth.types';
 
 interface ErrorResponse {
   error: {
@@ -32,6 +33,27 @@ interface ErrorResponse {
  * by parsing the flattened message.
  */
 const DETAIL_KEYS = ['errors', 'details', 'issues'] as const;
+const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+function auditIdentity(request: Request, user?: AuthUser): Partial<FailedRequestAudit> {
+  return {
+    ...(user?.id ? { userId: user.id } : {}),
+    ...(user?.agentTokenId ? { agentTokenId: user.agentTokenId } : {}),
+    ...(request.ip ? { ipAddress: request.ip } : {}),
+    ...(request.headers['user-agent'] ? { userAgent: request.headers['user-agent'] } : {}),
+  };
+}
+
+export interface FailedRequestAudit {
+  action: string;
+  resource: string;
+  resourceId?: string;
+  userId?: string;
+  agentTokenId?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  changes: Prisma.InputJsonValue;
+}
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
@@ -40,14 +62,19 @@ export class GlobalExceptionFilter implements ExceptionFilter {
   constructor(
     private readonly httpAdapterHost: HttpAdapterHost,
     private readonly onError?: (err: unknown, context: Record<string, string>) => void,
+    private readonly onFailedRequest?: (entry: FailedRequestAudit) => Promise<void>,
   ) {}
 
-  catch(exception: unknown, host: ArgumentsHost): void {
+  async catch(exception: unknown, host: ArgumentsHost): Promise<void> {
     const { httpAdapter } = this.httpAdapterHost;
     const ctx = host.switchToHttp();
     const request = ctx.getRequest<Request>();
 
     const { statusCode, code, message, details } = this.resolveException(exception);
+
+    if (this.onFailedRequest && this.shouldAuditFailure(request.method, statusCode)) {
+      await this.auditFailure(request, statusCode, code, message);
+    }
 
     if (statusCode >= 500) {
       this.logger.error(exception instanceof Error ? exception.stack : String(exception));
@@ -66,6 +93,42 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     };
 
     httpAdapter.reply(ctx.getResponse<Response>(), body, statusCode);
+  }
+
+  private shouldAuditFailure(method: string, statusCode: number): boolean {
+    return MUTATION_METHODS.has(method) || statusCode === 401 || statusCode === 403;
+  }
+
+  private async auditFailure(
+    request: Request,
+    statusCode: number,
+    code: string,
+    message: string,
+  ): Promise<void> {
+    if (!this.onFailedRequest) return;
+    const authenticated = request as Request & { user?: AuthUser };
+    const segments = request.path.split('/').filter((segment) => segment && segment !== 'api');
+    const versionless = segments[0]?.match(/^v\d+$/) ? segments.slice(1) : segments;
+    const rawResourceId = request.params['id'];
+    const resourceId = typeof rawResourceId === 'string' ? rawResourceId : undefined;
+    try {
+      await this.onFailedRequest({
+        action: statusCode === 401 || statusCode === 403 ? 'request.denied' : 'request.failed',
+        resource: versionless[0] ?? 'unknown',
+        ...(resourceId ? { resourceId } : {}),
+        ...auditIdentity(request, authenticated.user),
+        changes: {
+          outcome: 'failed',
+          method: request.method,
+          path: request.path,
+          statusCode,
+          code,
+          message,
+        } as Prisma.InputJsonValue,
+      });
+    } catch (auditError: unknown) {
+      this.logger.error('Failed to record rejected request in the audit log', auditError);
+    }
   }
 
   private resolveException(exception: unknown): {

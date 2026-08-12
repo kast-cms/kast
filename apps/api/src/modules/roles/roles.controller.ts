@@ -71,7 +71,7 @@ export class RolesController {
   @Post(':id/permissions')
   @Roles(SYSTEM_ROLES.SUPER_ADMIN)
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Assign permissions to a role' })
+  @ApiOperation({ summary: "Replace a role's permissions" })
   assignPermissions(
     @Param('id') id: string,
     @Body() dto: AssignPermissionsDto,

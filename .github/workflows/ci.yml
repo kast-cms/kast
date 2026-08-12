@@ -14,7 +14,7 @@ jobs:
   ci:
     name: Lint · Typecheck · Test
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
 
     # Service containers for the API e2e suite.
     services:
@@ -64,7 +64,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Security audit
-        run: pnpm audit --audit-level=high
+        run: pnpm audit --prod --audit-level=moderate
 
       - name: Generate Prisma client
         run: pnpm --filter @kast-cms/api exec prisma generate
@@ -92,3 +92,28 @@ jobs:
 
       - name: CLI e2e
         run: pnpm --filter create-kast-app test:e2e
+
+      - name: Docker image smoke test
+        run: |
+          set -euo pipefail
+          trap 'docker rm -f kast-api-smoke kast-admin-smoke >/dev/null 2>&1 || true' EXIT
+          docker build -f apps/api/Dockerfile -t kast-api-smoke .
+          docker run -d --name kast-api-smoke --network host \
+            -e NODE_ENV=test \
+            -e DATABASE_URL="$DATABASE_URL" \
+            -e REDIS_HOST=127.0.0.1 \
+            -e REDIS_PORT=6379 \
+            -e JWT_SECRET="$JWT_SECRET" \
+            kast-api-smoke
+          for attempt in {1..60}; do
+            curl -fsS http://127.0.0.1:3000/api/v1/health && break
+            if [ "$attempt" = 60 ]; then docker logs kast-api-smoke; exit 1; fi
+            sleep 2
+          done
+          docker build -f apps/admin/Dockerfile -t kast-admin-smoke .
+          docker run -d --name kast-admin-smoke --network host kast-admin-smoke
+          for attempt in {1..60}; do
+            curl -fsS http://127.0.0.1:3001/admin/login >/dev/null && break
+            if [ "$attempt" = 60 ]; then docker logs kast-admin-smoke; exit 1; fi
+            sleep 2
+          done

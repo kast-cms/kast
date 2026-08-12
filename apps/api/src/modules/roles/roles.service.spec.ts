@@ -56,6 +56,7 @@ describe('RolesService', () => {
       delete: jest.fn(),
       findPermissionsForRoleNames: jest.fn(),
       addPermission: jest.fn(),
+      replacePermissions: jest.fn(),
       removePermission: jest.fn(),
     } as unknown as Mocked<RolesRepository>;
     permissions = { invalidate: jest.fn(), invalidateRoles: jest.fn() };
@@ -159,7 +160,7 @@ describe('RolesService', () => {
           adminActor,
         ),
       ).rejects.toThrow(ForbiddenException);
-      expect(repo.addPermission).not.toHaveBeenCalled();
+      expect(repo.replacePermissions).not.toHaveBeenCalled();
     });
 
     it('allows granting a permission covered by a wildcard scope the actor holds', async () => {
@@ -174,7 +175,9 @@ describe('RolesService', () => {
         { permissions: [{ resource: 'content', action: 'update', scope: 'own' }] },
         adminActor,
       );
-      expect(repo.addPermission).toHaveBeenCalledWith('role1', 'content', 'update', 'own');
+      expect(repo.replacePermissions).toHaveBeenCalledWith('role1', [
+        { resource: 'content', action: 'update', scope: 'own' },
+      ]);
     });
 
     it('invalidates the resolver cache so the grant takes effect immediately', async () => {
@@ -220,7 +223,9 @@ describe('RolesService', () => {
         superActor,
       );
       expect(repo.findPermissionsForRoleNames).not.toHaveBeenCalled();
-      expect(repo.addPermission).toHaveBeenCalledWith('role1', 'system', 'admin', '*');
+      expect(repo.replacePermissions).toHaveBeenCalledWith('role1', [
+        { resource: 'system', action: 'admin', scope: '*' },
+      ]);
     });
   });
 

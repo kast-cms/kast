@@ -289,21 +289,21 @@ Every Kast installation ships with a built-in MCP server. Connect it to Claude, 
 
 ```typescript
 // Tools exposed by Kast MCP Server
-kast_content_list({ type, status, limit, filters });
-kast_content_create({ type, data, locale });
-kast_content_update({ id, data });
-kast_content_publish({ id });
-kast_content_unpublish({ id });
-kast_schema_create_type({ name, fields });
-kast_schema_add_field({ contentType, field });
-kast_seo_validate({ entryId });
-kast_plugin_install({ name, version });
-kast_plugin_enable({ name });
-kast_plugin_disable({ name });
-kast_media_upload({ url, folder });
-kast_redirect_create({ from, to, type });
-kast_user_create({ email, role });
-kast_audit_log({ limit, filters });
+list_content_types();
+get_content_type({ name });
+create_content_type({ name, displayName, dryRun });
+update_content_type({ name, displayName, dryRun });
+list_content_entries({ typeSlug, limit, cursor, locale });
+get_content_entry({ typeSlug, entryId, locale });
+create_content_entry({ typeSlug, data, locale, dryRun });
+update_content_entry({ typeSlug, entryId, data, dryRun });
+publish_content_entry({ typeSlug, entryId, force, dryRun });
+delete_content_entry({ typeSlug, entryId, dryRun });
+list_media({ limit, cursor });
+get_media_file({ id });
+get_seo_score({ entryId });
+validate_seo({ entryId, dryRun });
+get_audit_log({ limit, cursor, action, resource });
 ```
 
 Any developer who installs Kast gets full AI control of their CMS out of the box — no extra configuration.
@@ -631,7 +631,7 @@ npx create-kast-app my-site
 Run: cd my-site && docker-compose up
 Admin: http://localhost:3001/admin
 API:   http://localhost:3001/api
-MCP:   http://localhost:3001/mcp
+MCP:   http://localhost:3001/api/v1/mcp
 ```
 
 This is Kast's **"easy like WordPress"** moment.

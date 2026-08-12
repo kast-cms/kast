@@ -84,6 +84,8 @@ describe('DeliveryService', () => {
     contentTypes = {
       findAll: jest.fn(),
       findByName: jest.fn(),
+      findPubliclyDiscoverable: jest.fn(),
+      findPubliclyDiscoverableByName: jest.fn(),
     } as unknown as Mocked<ContentTypesService>;
     menus = { findBySlug: jest.fn() } as unknown as Mocked<MenuService>;
     settings = { getPublicSettings: jest.fn() } as unknown as Mocked<SettingsService>;
@@ -389,7 +391,7 @@ describe('DeliveryService', () => {
 
   describe('schema discovery', () => {
     it('projects only safe field metadata and drops hidden fields', async () => {
-      contentTypes.findByName.mockResolvedValue(buildContentType());
+      contentTypes.findPubliclyDiscoverableByName.mockResolvedValue(buildContentType());
 
       const { data } = await service.getSchema('blog');
 
@@ -409,7 +411,7 @@ describe('DeliveryService', () => {
     });
 
     it('lists schemas for every content type', async () => {
-      contentTypes.findAll.mockResolvedValue([
+      contentTypes.findPubliclyDiscoverable.mockResolvedValue([
         buildContentType(),
         buildContentType({ id: 'ct2', name: 'page', displayName: 'Page', isLocalized: false }),
       ]);
@@ -421,7 +423,7 @@ describe('DeliveryService', () => {
     });
 
     it('propagates the 404 for an unknown content type', async () => {
-      contentTypes.findByName.mockRejectedValue(new NotFoundException('nope'));
+      contentTypes.findPubliclyDiscoverableByName.mockRejectedValue(new NotFoundException('nope'));
 
       await expect(service.getSchema('does-not-exist')).rejects.toBeInstanceOf(NotFoundException);
     });

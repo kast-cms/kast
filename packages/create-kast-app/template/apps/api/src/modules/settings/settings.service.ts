@@ -10,8 +10,8 @@ import { Prisma, type GlobalSetting } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { createTransport, type Transporter } from 'nodemailer';
 import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
+import { SecretEncryptionService } from '../../common/security/secret-encryption.service';
 import type { AuthUser } from '../../common/types/auth.types';
-import { decryptSecret, encryptSecret } from '../../common/utils/secret-crypto.util';
 import type { Env } from '../../config/env.schema';
 import type { StorageAdapter } from '../media/storage/storage.adapter';
 import { TestSmtpDto } from './dto/test-smtp.dto';
@@ -24,6 +24,10 @@ import { STORAGE_PROBE_ADAPTER } from './storage-probe.token';
 /** Roles allowed to learn that a secret setting exists at all. */
 const SECRET_READER_ROLES: string[] = [SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN];
 
+function firstNonEmpty(...values: Array<string | undefined>): string {
+  return values.find((value) => value !== undefined && value.length > 0) ?? '';
+}
+
 export interface StorageProbeResult {
   provider: string;
   status: string;
@@ -31,35 +35,22 @@ export interface StorageProbeResult {
   warning?: string;
 }
 
+export interface RuntimeEmail {
+  to: string;
+  subject: string;
+  html?: string;
+  text?: string;
+}
+
 @Injectable()
 export class SettingsService {
   private readonly logger = new Logger(SettingsService.name);
-  private readonly encryptionKey: string;
-
   constructor(
     private readonly repo: SettingsRepository,
     private readonly config: ConfigService<Env>,
     @Inject(STORAGE_PROBE_ADAPTER) private readonly storage: StorageAdapter,
-  ) {
-    // KAST_SECRET_ENCRYPTION_KEY is intentionally read from the process env
-    // rather than the validated schema so an existing deployment keeps booting
-    // without it; the JWT_SECRET fallback ties secret readability to JWT
-    // rotation, which the warning below tells operators to avoid.
-    const dedicated = process.env.KAST_SECRET_ENCRYPTION_KEY;
-    if (dedicated && dedicated.length >= 32) {
-      this.encryptionKey = dedicated;
-    } else {
-      if (dedicated) {
-        this.logger.warn(
-          'KAST_SECRET_ENCRYPTION_KEY is shorter than 32 characters and was ignored.',
-        );
-      }
-      this.logger.warn(
-        'KAST_SECRET_ENCRYPTION_KEY is not set — secret settings are encrypted with JWT_SECRET. Rotating JWT_SECRET will make them unreadable.',
-      );
-      this.encryptionKey = config.get('JWT_SECRET', { infer: true }) ?? 'kast-dev-secret';
-    }
-  }
+    private readonly secrets: SecretEncryptionService,
+  ) {}
 
   /**
    * Secret rows are withheld entirely below admin, and reduced to
@@ -106,14 +97,8 @@ export class SettingsService {
   }
 
   async testSmtp(dto: TestSmtpDto): Promise<{ success: boolean }> {
-    const settings = await this.repo.findAll();
-    const transport = this.buildTransporter(settings);
-    const address = this.getStringValue(settings, 'smtp.from') || 'noreply@kast.io';
-    const fromName = this.getStringValue(settings, 'smtp.fromName');
-    const from = fromName ? `${fromName} <${address}>` : address;
     try {
-      await transport.sendMail({
-        from,
+      await this.sendEmail({
         to: dto.to,
         subject: 'KAST SMTP Test',
         text: 'This is a test email sent from KAST to verify your SMTP configuration.',
@@ -125,6 +110,24 @@ export class SettingsService {
     }
   }
 
+  /** Sends queued transactional mail through saved SMTP settings, with env fallback. */
+  async sendEmail(message: RuntimeEmail): Promise<void> {
+    const settings = await this.repo.findAll();
+    const address = firstNonEmpty(
+      this.getStringValue(settings, 'smtp.from'),
+      this.config.get('SMTP_FROM', { infer: true }),
+      'noreply@kast.io',
+    );
+    const fromName = this.getStringValue(settings, 'smtp.fromName');
+    const from = fromName ? `${fromName} <${address}>` : address;
+    await (await this.buildTransporter(settings)).sendMail({ from, ...message });
+  }
+
+  async getSiteName(): Promise<string> {
+    const row = await this.repo.findByKey('site.name');
+    return typeof row?.value === 'string' && row.value.trim() ? row.value.trim() : 'Kast CMS';
+  }
+
   /**
    * Writes, reads back and removes a probe object through the adapter the API
    * actually uploads with. The provider is reported from the environment
@@ -132,7 +135,7 @@ export class SettingsService {
    */
   async testStorage(): Promise<StorageProbeResult> {
     const configured = this.config.get('STORAGE_PROVIDER', { infer: true }) ?? 'local';
-    const effective = configured === 'gcs' ? 'local' : configured;
+    const effective = configured;
     // The probe travels the upload path, so the key has to satisfy the same
     // object-key rules a real upload does — no leading dot on any segment.
     const key = `kast-probe/${randomUUID()}.txt`;
@@ -156,11 +159,6 @@ export class SettingsService {
       provider: effective.toUpperCase(),
       status: 'ok',
       checks: { write: true, read: true, delete: await this.removeProbe(key) },
-      ...(configured === effective
-        ? {}
-        : {
-            warning: `STORAGE_PROVIDER=${configured} has no adapter; the ${effective} adapter is in use.`,
-          }),
     };
   }
 
@@ -185,7 +183,7 @@ export class SettingsService {
     // `configured` honest instead of reporting a ciphertext of nothing.
     return {
       key,
-      value: value === '' ? '' : encryptSecret(value, this.encryptionKey),
+      value: value === '' ? '' : this.secrets.encrypt(value),
       isPublic: false,
     };
   }
@@ -195,11 +193,15 @@ export class SettingsService {
     return typeof found?.value === 'string' ? found.value : '';
   }
 
-  private getSecretValue(settings: GlobalSetting[], key: string): string {
+  private async getSecretValue(settings: GlobalSetting[], key: string): Promise<string> {
     const stored = this.getStringValue(settings, key);
     if (!stored) return '';
     try {
-      return decryptSecret(stored, this.encryptionKey);
+      const decrypted = this.secrets.decryptAndRotate(stored);
+      if (decrypted.rotatedCiphertext) {
+        await this.repo.upsert(key, decrypted.rotatedCiphertext, undefined);
+      }
+      return decrypted.plaintext;
     } catch {
       throw new BadRequestException(
         `Stored value for "${key}" could not be decrypted. Re-save it in Settings.`,
@@ -207,16 +209,31 @@ export class SettingsService {
     }
   }
 
-  private buildTransporter(settings: GlobalSetting[]): Transporter {
-    const host = this.getStringValue(settings, 'smtp.host');
-    if (!host) throw new BadRequestException('SMTP host is not configured');
-    const port = parseInt(this.getStringValue(settings, 'smtp.port') || '587', 10);
-    const user = this.getStringValue(settings, 'smtp.user');
-    const pass = this.getSecretValue(settings, 'smtp.password');
+  private async buildTransporter(settings: GlobalSetting[]): Promise<Transporter> {
+    const host = firstNonEmpty(
+      this.getStringValue(settings, 'smtp.host'),
+      this.config.get('SMTP_HOST', { infer: true }),
+      'localhost',
+    );
+    const port = parseInt(
+      firstNonEmpty(
+        this.getStringValue(settings, 'smtp.port'),
+        String(this.config.get('SMTP_PORT', { infer: true }) ?? 1025),
+      ),
+      10,
+    );
+    const user = firstNonEmpty(
+      this.getStringValue(settings, 'smtp.user'),
+      this.config.get('SMTP_USER', { infer: true }),
+    );
+    const storedPassword = this.getStringValue(settings, 'smtp.password');
+    const pass = storedPassword
+      ? await this.getSecretValue(settings, 'smtp.password')
+      : (this.config.get('SMTP_PASS', { infer: true }) ?? '');
     return createTransport({
       host,
       port,
-      secure: port === 465,
+      secure: port === 465 || (this.config.get('SMTP_SECURE', { infer: true }) ?? false),
       ...(user ? { auth: { user, pass } } : {}),
     });
   }

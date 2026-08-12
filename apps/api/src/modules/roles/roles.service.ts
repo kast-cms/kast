@@ -165,12 +165,14 @@ export class RolesService {
 
     await this.assertActorHoldsPermissions(actor, dto.permissions);
 
+    const unique = new Map<string, { resource: string; action: string; scope: string }>();
     for (const perm of dto.permissions) {
-      await this.repo.addPermission(id, perm.resource, perm.action, perm.scope ?? '*');
+      const normalized = { ...perm, scope: perm.scope ?? '*' };
+      unique.set(`${normalized.resource}:${normalized.action}:${normalized.scope}`, normalized);
     }
+    await this.repo.replacePermissions(id, [...unique.values()]);
 
-    // The guard caches resolved permissions per role-name set; without this a
-    // grant would not take effect for up to the cache TTL.
+    // Grants and revocations must both take effect before this request returns.
     this.permissions.invalidateRoles([role.name]);
 
     const updated = await this.repo.findById(id);

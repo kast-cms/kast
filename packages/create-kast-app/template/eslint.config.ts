@@ -19,6 +19,7 @@ export default tseslint.config(
       'apps/docs/**',
       'apps/web-blog/**',
       'apps/web-docs/**',
+      'packages/create-kast-app/template/**',
     ],
   },
 
@@ -80,11 +81,16 @@ export default tseslint.config(
     },
   },
 
-  // Relaxed rules for test files
+  // Relaxed rules for test files — Jest mocks are inherently loosely typed
   {
     files: ['**/*.spec.ts', '**/*.test.ts', '**/*.e2e-spec.ts'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
       'max-lines-per-function': 'off',
       'max-lines': 'off',
     },

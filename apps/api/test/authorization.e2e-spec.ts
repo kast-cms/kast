@@ -49,15 +49,19 @@ function withKey(token: string): [string, string] {
 
 describe('Authorization matrix (e2e)', () => {
   let app: INestApplication;
+  let prisma: PrismaService;
   let jwt: string;
   const createdTokenIds: string[] = [];
   const createdAgentTokenIds: string[] = [];
+  const createdUserIds: string[] = [];
+  let customRoleId: string | undefined;
   // Created here rather than assumed from seed data, so a 404 can never be
   // mistaken for the guard allowing or denying a request.
   const typeName = `authz-fixture-${Date.now()}`;
 
   beforeAll(async () => {
     app = await createTestApp();
+    prisma = app.get(PrismaService);
     jwt = await adminToken(app);
     await request(httpServer(app))
       .post('/api/v1/content-types')
@@ -80,8 +84,43 @@ describe('Authorization matrix (e2e)', () => {
     await request(httpServer(app))
       .delete(`/api/v1/content-types/${typeName}`)
       .set(...bearer(jwt));
+    if (createdUserIds.length > 0) {
+      await prisma.user.deleteMany({ where: { id: { in: createdUserIds } } });
+    }
+    if (customRoleId) {
+      await prisma.role.delete({ where: { id: customRoleId } });
+    }
     await app.close();
   });
+
+  async function createUserWithRole(
+    roleName: string,
+    label: string,
+  ): Promise<{
+    id: string;
+    email: string;
+    password: string;
+    accessToken: string;
+    refreshToken: string;
+  }> {
+    const role = await prisma.role.findUniqueOrThrow({ where: { name: roleName } });
+    const email = `authz-${label}-${Date.now()}@kast.local`;
+    const password = 'Writer1234!';
+    const user = await prisma.user.create({
+      data: {
+        email,
+        passwordHash: await argon2.hash(password, { type: argon2.argon2id }),
+        firstName: 'Authz',
+        lastName: label,
+        isActive: true,
+        isVerified: true,
+        roles: { create: [{ roleId: role.id }] },
+      },
+    });
+    createdUserIds.push(user.id);
+    const session = await login(app, email, password);
+    return { id: user.id, email, password, ...session };
+  }
 
   describe('READ_ONLY API token', () => {
     let token: string;
@@ -252,20 +291,7 @@ describe('Authorization matrix (e2e)', () => {
     let entryId: string;
 
     beforeAll(async () => {
-      const prisma = app.get(PrismaService);
-      const editorRole = await prisma.role.findUniqueOrThrow({ where: { name: 'editor' } });
-      const email = `authz-editor-${Date.now()}@kast.local`;
-      await prisma.user.create({
-        data: {
-          email,
-          passwordHash: await argon2.hash('Writer1234!', { type: argon2.argon2id }),
-          firstName: 'Authz',
-          lastName: 'Editor',
-          isActive: true,
-          roles: { create: [{ roleId: editorRole.id }] },
-        },
-      });
-      editorJwt = (await login(app, email, 'Writer1234!')).accessToken;
+      editorJwt = (await createUserWithRole('editor', 'editor')).accessToken;
     });
 
     it.each([
@@ -310,6 +336,164 @@ describe('Authorization matrix (e2e)', () => {
         .set(...bearer(editorJwt))
         .send({ settings: [{ key: 'site_name', value: 'nope' }] })
         .expect(403);
+    });
+  });
+
+  describe('viewer JWT', () => {
+    let viewerJwt: string;
+
+    beforeAll(async () => {
+      viewerJwt = (await createUserWithRole('viewer', 'viewer')).accessToken;
+    });
+
+    it.each(['/api/v1/content-types', '/api/v1/media', '/api/v1/settings'])(
+      'can read %s',
+      async (path) => {
+        await request(httpServer(app))
+          .get(path)
+          .set(...bearer(viewerJwt))
+          .expect(200);
+      },
+    );
+
+    it('cannot create content types', async () => {
+      await request(httpServer(app))
+        .post('/api/v1/content-types')
+        .set(...bearer(viewerJwt))
+        .send({ name: 'viewer-cannot-create', displayName: 'Nope' })
+        .expect(403);
+    });
+
+    it('cannot read the user administration API', async () => {
+      await request(httpServer(app))
+        .get('/api/v1/users')
+        .set(...bearer(viewerJwt))
+        .expect(403);
+    });
+  });
+
+  describe('admin JWT', () => {
+    let adminJwt: string;
+    let adminUserId: string;
+
+    beforeAll(async () => {
+      const session = await createUserWithRole('admin', 'admin');
+      adminJwt = session.accessToken;
+      adminUserId = session.id;
+    });
+
+    it.each(['/api/v1/users', '/api/v1/audit', '/api/v1/plugins'])('can read %s', async (path) => {
+      await request(httpServer(app))
+        .get(path)
+        .set(...bearer(adminJwt))
+        .expect(200);
+    });
+
+    it('cannot perform a super-admin-only settings write', async () => {
+      await request(httpServer(app))
+        .patch('/api/v1/settings')
+        .set(...bearer(adminJwt))
+        .send({ settings: [{ key: 'site_name', value: 'nope' }] })
+        .expect(403);
+    });
+
+    it('uses current database roles rather than stale JWT role claims', async () => {
+      const viewerRole = await prisma.role.findUniqueOrThrow({ where: { name: 'viewer' } });
+      await prisma.userRole.deleteMany({ where: { userId: adminUserId } });
+      await prisma.userRole.create({ data: { userId: adminUserId, roleId: viewerRole.id } });
+
+      await request(httpServer(app))
+        .get('/api/v1/users')
+        .set(...bearer(adminJwt))
+        .expect(403);
+      await request(httpServer(app))
+        .get('/api/v1/content-types')
+        .set(...bearer(adminJwt))
+        .expect(200);
+    });
+  });
+
+  describe('custom-role permissions', () => {
+    let customJwt: string;
+
+    beforeAll(async () => {
+      const roleName = `content-reader-${Date.now()}`;
+      const created = await request(httpServer(app))
+        .post('/api/v1/roles')
+        .set(...bearer(jwt))
+        .send({ name: roleName, displayName: 'Content Reader' })
+        .expect(201);
+      customRoleId = (created.body as { data: { id: string } }).data.id;
+
+      await request(httpServer(app))
+        .post(`/api/v1/roles/${customRoleId}/permissions`)
+        .set(...bearer(jwt))
+        .send({ permissions: [{ resource: 'content-types', action: 'read', scope: '*' }] })
+        .expect(200);
+
+      customJwt = (await createUserWithRole(roleName, 'custom-role')).accessToken;
+    });
+
+    it('allows an explicitly granted resource and action', async () => {
+      await request(httpServer(app))
+        .get('/api/v1/content-types')
+        .set(...bearer(customJwt))
+        .expect(200);
+    });
+
+    it('denies ungranted actions and resources', async () => {
+      await request(httpServer(app))
+        .post('/api/v1/content-types')
+        .set(...bearer(customJwt))
+        .send({ name: 'custom-cannot-create', displayName: 'Nope' })
+        .expect(403);
+      await request(httpServer(app))
+        .get('/api/v1/media')
+        .set(...bearer(customJwt))
+        .expect(403);
+    });
+
+    it('applies permission revocation immediately to an existing JWT', async () => {
+      await request(httpServer(app))
+        .post(`/api/v1/roles/${customRoleId}/permissions`)
+        .set(...bearer(jwt))
+        .send({ permissions: [] })
+        .expect(200);
+
+      await request(httpServer(app))
+        .get('/api/v1/content-types')
+        .set(...bearer(customJwt))
+        .expect(403);
+    });
+  });
+
+  describe('inactive user', () => {
+    let inactive: Awaited<ReturnType<typeof createUserWithRole>>;
+
+    beforeAll(async () => {
+      inactive = await createUserWithRole('viewer', 'inactive');
+      await prisma.user.update({ where: { id: inactive.id }, data: { isActive: false } });
+    });
+
+    it('rejects an access token minted before deactivation', async () => {
+      await request(httpServer(app))
+        .get('/api/v1/content-types')
+        .set(...bearer(inactive.accessToken))
+        .expect(401);
+    });
+
+    it('rejects refresh after deactivation', async () => {
+      await request(httpServer(app))
+        .post('/api/v1/auth/refresh')
+        .send({ refreshToken: inactive.refreshToken })
+        .expect(401);
+    });
+
+    it('rejects a new login', async () => {
+      await request(httpServer(app))
+        .post('/api/v1/auth/login')
+        .send({ email: inactive.email, password: inactive.password })
+        .expect(401);
     });
   });
 

@@ -25,6 +25,7 @@ const ALL_EVENTS = [
   'content.unpublished',
   'content.trashed',
   'media.uploaded',
+  'media.deleted',
   'user.created',
 ];
 

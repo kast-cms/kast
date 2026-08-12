@@ -23,6 +23,26 @@ describe('redactSensitive', () => {
     expect(out.user.nested.secretHash).toBe('***REDACTED***');
   });
 
+  it('redacts common credential-shaped object keys', () => {
+    const out = redactSensitive({
+      apiKey: 'sk-live',
+      accessKey: 'access',
+      clientSecret: 'client-secret',
+      passphrase: 'phrase',
+      webhookSigningKey: 'signing-key',
+      ordinaryKey: 'visible',
+    }) as Record<string, unknown>;
+
+    expect(out).toEqual({
+      apiKey: '***REDACTED***',
+      accessKey: '***REDACTED***',
+      clientSecret: '***REDACTED***',
+      passphrase: '***REDACTED***',
+      webhookSigningKey: '***REDACTED***',
+      ordinaryKey: 'visible',
+    });
+  });
+
   it('redacts the value of a {key,value} settings pair naming a credential', () => {
     const out = redactSensitive({
       settings: [

@@ -6,9 +6,9 @@ packages:
 catalog:
   typescript: ^5.5.0
 
-# Mirrored from package.json "pnpm". Newer pnpm reads settings only from here;
-# pnpm 9 still reads package.json, so both must carry the same values until the
-# repo pins a pnpm that no longer needs the package.json copy.
+# Dependency-resolution and build policy lives here for every supported pnpm
+# version. Keeping a second copy in package.json is ignored by current pnpm and
+# lets the two policies drift.
 overrides:
   'body-parser': '^2.3.0'
   'brace-expansion@1': '^1.1.18'

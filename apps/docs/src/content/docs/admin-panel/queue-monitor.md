@@ -43,15 +43,16 @@ Click a job to see:
 
 ## Actions
 
-| Action            | Who         | Description                                 |
-| ----------------- | ----------- | ------------------------------------------- |
-| Retry             | SUPER_ADMIN | Re-queues a failed job immediately          |
-| Remove            | SUPER_ADMIN | Permanently removes a completed/failed job  |
-| Pause queue       | SUPER_ADMIN | Stops processing new jobs (logged to audit) |
-| Resume queue      | SUPER_ADMIN | Resumes a paused queue                      |
-| Clean dead-letter | SUPER_ADMIN | Removes all failed jobs from a queue        |
+| Action            | Who         | Description                                |
+| ----------------- | ----------- | ------------------------------------------ |
+| Retry             | SUPER_ADMIN | Re-queues a failed job immediately         |
+| Remove            | SUPER_ADMIN | Permanently removes a completed/failed job |
+| Pause queue       | SUPER_ADMIN | Stops processing new jobs                  |
+| Resume queue      | SUPER_ADMIN | Resumes a paused queue                     |
+| Clean dead-letter | SUPER_ADMIN | Removes all failed jobs from a queue       |
 
-Pause/resume actions are written to the audit log with the actor's identity.
+Failed jobs are retained as the dead-letter set. See the
+[operations runbook](/deploy/operations-runbook/) before replaying a batch.
 
 ## Dashboard integration
 
@@ -59,4 +60,7 @@ The [Dashboard](/admin-panel/overview/) shows a queue health summary in the bott
 
 ## Access control
 
-The `/admin/queues` route requires a valid `SUPER_ADMIN` JWT. Accessing it as any other role returns `403 Forbidden`.
+The `/admin/queues` route requires a valid `SUPER_ADMIN` JWT. The admin exchanges
+the bearer token for a short-lived HTTP-only Bull Board cookie; tokens are never
+placed in iframe URLs or access logs. Accessing it as any other role returns
+`403 Forbidden`.

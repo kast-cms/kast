@@ -9,6 +9,10 @@ RUN pnpm install --frozen-lockfile --filter @kast-cms/admin...
 
 # ── Stage 2: build ─────────────────────────────────────────────────────────────
 FROM deps AS builder
+ARG NEXT_PUBLIC_API_URL=http://localhost:3000
+ARG NEXT_PUBLIC_ADMIN_BASE_PATH=/admin
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_ADMIN_BASE_PATH=$NEXT_PUBLIC_ADMIN_BASE_PATH
 COPY . .
 RUN pnpm --filter @kast-cms/sdk run build && \
     pnpm --filter @kast-cms/admin run build && \

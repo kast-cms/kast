@@ -8,7 +8,7 @@
   "adminPages": [
     {
       "label": "Resend",
-      "path": "/plugins/resend",
+      "path": "/plugins/kast-plugin-resend",
       "icon": "Mail"
     }
   ],

@@ -14,8 +14,7 @@ export function createBullBoardAuthMiddleware(
 ): (req: Request, res: Response, next: NextFunction) => void {
   return (req: Request, res: Response, next: NextFunction): void => {
     const cookieToken = parseCookieHeader(req.headers.cookie, 'kast_bull');
-    const queryToken = typeof req.query['token'] === 'string' ? req.query['token'] : undefined;
-    const token = cookieToken ?? queryToken;
+    const token = cookieToken;
 
     if (!token) {
       res.status(401).json({ message: 'Unauthorized' });
@@ -29,17 +28,6 @@ export function createBullBoardAuthMiddleware(
       if (!roles.includes(SYSTEM_ROLES.SUPER_ADMIN)) {
         res.status(403).json({ message: 'Forbidden' });
         return;
-      }
-
-      if (queryToken !== undefined && cookieToken === undefined) {
-        res.cookie('kast_bull', queryToken, {
-          httpOnly: true,
-          sameSite: 'lax',
-          maxAge: 15 * 60 * 1000,
-          // Must match the mounted path, which carries the global 'api' prefix,
-          // or the browser never sends this cookie back to the board.
-          path: '/api/bull-board',
-        });
       }
 
       next();

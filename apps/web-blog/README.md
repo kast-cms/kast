@@ -86,4 +86,4 @@ src/
 └── types/index.ts                # Content data shapes
 ```
 
-See the full [Kast docs](https://kastcms.com/docs) and the [Delivery API reference](https://kastcms.com/docs/api-reference/delivery).
+See the full [Kast docs](https://docs.kast.dev) and the [Delivery API reference](https://docs.kast.dev/api-reference/delivery/).

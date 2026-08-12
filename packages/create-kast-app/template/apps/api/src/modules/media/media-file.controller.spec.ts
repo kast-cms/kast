@@ -9,6 +9,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import type { Env } from '../../config/env.schema';
 import { MediaFileController } from './media-file.controller';
 import { STORAGE_ADAPTER } from './media.processor';
+import { MediaRepository } from './media.repository';
 import { LocalStorageAdapter } from './storage/local-storage.adapter';
 import type { StorageAdapter } from './storage/storage.adapter';
 import request = require('supertest');
@@ -39,6 +40,18 @@ describe('MediaFileController (MED-01)', () => {
       providers: [
         { provide: LocalStorageAdapter, useValue: local },
         { provide: STORAGE_ADAPTER, useValue: useLocalAsActiveAdapter ? local : remote },
+        {
+          provide: MediaRepository,
+          useValue: {
+            findActiveByStorageKey: jest.fn((key: string) =>
+              Promise.resolve(
+                ['photo.png', 'drawing.svg', 'notes.pdf', 'payload.bin', 'link.txt'].includes(key)
+                  ? { id: key }
+                  : null,
+              ),
+            ),
+          },
+        },
         // The real global guard, so the anonymous reads below prove @Public is
         // wired rather than assuming it.
         { provide: APP_GUARD, useClass: JwtAuthGuard },

@@ -9,12 +9,14 @@ RUN corepack enable
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/api/package.json ./apps/api/
 COPY packages/ ./packages/
-RUN pnpm install --frozen-lockfile --filter @kast-cms/api...
+COPY plugins/ ./plugins/
+RUN pnpm install --frozen-lockfile --filter @kast-cms/api... --filter './plugins/**'
 
 # ── Stage 2: build plugin-sdk, generate Prisma client, build the API ───────────
 FROM deps AS builder
 COPY . .
 RUN pnpm --filter @kast-cms/plugin-sdk run build \
+ && pnpm -r --filter './plugins/**' run build \
  && pnpm --filter @kast-cms/api run prisma:generate \
  && pnpm --filter @kast-cms/api run build
 
@@ -38,7 +40,6 @@ ENV NODE_ENV=production
 # to guarantee the compiled output is present.
 COPY --from=deployer /deploy .
 COPY --from=builder /app/apps/api/dist ./dist
+COPY --from=builder /app/plugins ./plugins
 EXPOSE 3000
-# Run database migrations before starting (manual step), e.g.:
-#   docker compose run --rm api node_modules/.bin/prisma migrate deploy
-CMD ["node", "dist/main.js"]
+CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && node dist/main.js"]

@@ -2,6 +2,7 @@ import { BadRequestException, type CallHandler, type ExecutionContext } from '@n
 import type { Reflector } from '@nestjs/core';
 import { lastValueFrom, of, throwError } from 'rxjs';
 import type { AuditService, LogActionParams } from '../../modules/audit/audit.service';
+import type { PrismaService } from '../../prisma/prisma.service';
 import { AUDIT_ACTION_KEY } from '../decorators/audit-action.decorator';
 import type { AuthUser } from '../types/auth.types';
 import { AuditInterceptor } from './audit.interceptor';
@@ -34,14 +35,17 @@ function makeHandler(result: unknown, fail = false): CallHandler {
 describe('AuditInterceptor', () => {
   let auditService: { logAction: jest.Mock };
   let reflector: { getAllAndOverride: jest.Mock };
+  let prisma: { user: { findUnique: jest.Mock } };
   let interceptor: AuditInterceptor;
 
   beforeEach(() => {
-    auditService = { logAction: jest.fn() };
+    auditService = { logAction: jest.fn().mockResolvedValue(undefined) };
     reflector = { getAllAndOverride: jest.fn().mockReturnValue(undefined) };
+    prisma = { user: { findUnique: jest.fn().mockResolvedValue(null) } };
     interceptor = new AuditInterceptor(
       auditService as unknown as AuditService,
       reflector as unknown as Reflector,
+      prisma as unknown as PrismaService,
     );
   });
 
@@ -75,11 +79,12 @@ describe('AuditInterceptor', () => {
     expect(log.ipAddress).toBe('127.0.0.1');
   });
 
-  it('redacts sensitive fields in the captured before/after bodies', async () => {
+  it('redacts sensitive fields in request metadata and the persisted response', async () => {
+    prisma.user.findUnique.mockResolvedValue({ id: 'e1', email: 'x@kast.local', secret: 'shh' });
     const ctx = makeContext({
       method: 'POST',
-      path: '/api/v1/auth/reset',
-      route: { path: '/api/v1/auth/reset' },
+      path: '/api/v1/users',
+      route: { path: '/api/v1/users' },
       body: { email: 'x@kast.local', password: 'hunter2', token: 'raw-token' },
       headers: {},
     });
@@ -88,15 +93,19 @@ describe('AuditInterceptor', () => {
     );
 
     const log = lastLog();
-    const before = log.before as Record<string, unknown>;
-    expect(before.email).toBe('x@kast.local');
-    expect(before.password).toBe('***REDACTED***');
-    expect(before.token).toBe('***REDACTED***');
+    expect(log.before).toBeUndefined();
+    const changes = log.changes as Record<string, unknown>;
+    const request = changes.request as Record<string, unknown>;
+    expect(changes.outcome).toBe('success');
+    expect(request.email).toBe('x@kast.local');
+    expect(request.password).toBe('***REDACTED***');
+    expect(request.token).toBe('***REDACTED***');
     const after = log.after as Record<string, unknown>;
+    expect(after.email).toBe('x@kast.local');
     expect(after.secret).toBe('***REDACTED***');
   });
 
-  it('does NOT write an audit log when the handler throws (4xx skips tap)', async () => {
+  it('writes a failed outcome when the handler throws', async () => {
     const ctx = makeContext({
       method: 'POST',
       path: '/api/v1/users',
@@ -107,7 +116,10 @@ describe('AuditInterceptor', () => {
     await expect(
       lastValueFrom(interceptor.intercept(ctx, makeHandler(null, true))),
     ).rejects.toThrow(BadRequestException);
-    expect(auditService.logAction).not.toHaveBeenCalled();
+    const log = lastLog();
+    expect(log.action).toBe('user.create');
+    expect(log.after).toBeUndefined();
+    expect(log.changes).toMatchObject({ outcome: 'failed', statusCode: 400 });
   });
 
   it('omits the after-body for DELETE and uses the path param id', async () => {
@@ -125,6 +137,25 @@ describe('AuditInterceptor', () => {
     expect(log.action).toBe('user.delete');
     expect(log.resourceId).toBe('user-to-delete');
     expect(log.after).toBeUndefined();
+  });
+
+  it('captures the persisted row before and after an update', async () => {
+    prisma.user.findUnique
+      .mockResolvedValueOnce({ id: 'u1', firstName: 'Before' })
+      .mockResolvedValueOnce({ id: 'u1', firstName: 'After' });
+    const ctx = makeContext({
+      method: 'PATCH',
+      path: '/api/v1/users/u1',
+      route: { path: '/api/v1/users/:id' },
+      params: { id: 'u1' },
+      body: { firstName: 'After' },
+      headers: {},
+    });
+
+    await lastValueFrom(interceptor.intercept(ctx, makeHandler({ data: { id: 'u1' } })));
+
+    expect(lastLog().before).toMatchObject({ firstName: 'Before' });
+    expect(lastLog().after).toMatchObject({ firstName: 'After' });
   });
 
   it('honours an @AuditAction override for the action name', async () => {
@@ -160,5 +191,19 @@ describe('AuditInterceptor', () => {
     });
     await lastValueFrom(interceptor.intercept(ctx, makeHandler({ data: { id: 'e1' } })));
     expect(lastLog().agentTokenId).toBe('agent-9');
+  });
+
+  it('does not silently acknowledge a mutation when the audit write fails', async () => {
+    auditService.logAction.mockRejectedValueOnce(new Error('audit database unavailable'));
+    const ctx = makeContext({
+      method: 'POST',
+      path: '/api/v1/users',
+      route: { path: '/api/v1/users' },
+      headers: {},
+    });
+
+    await expect(
+      lastValueFrom(interceptor.intercept(ctx, makeHandler({ data: { id: 'u1' } }))),
+    ).rejects.toThrow('audit database unavailable');
   });
 });

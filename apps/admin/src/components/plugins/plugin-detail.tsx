@@ -36,37 +36,6 @@ const PLUGIN_ICONS: Record<string, JSX.Element> = {
   'kast-plugin-sentry': <ShieldAlert className="size-5" />,
 };
 
-/**
- * Mirrors the `env` array in each plugin's kast-plugin.json. Kept in sync by
- * hand — the plugin API does not surface the manifest's env list yet.
- */
-const PLUGIN_ENV_VARS: Record<string, string[]> = {
-  'kast-plugin-meilisearch': [
-    'MEILISEARCH_HOST',
-    'MEILISEARCH_MASTER_KEY',
-    'MEILISEARCH_INDEX_PREFIX',
-    'MEILISEARCH_AGGREGATE_INDEX',
-    'KAST_API_URL',
-    'KAST_API_TOKEN',
-  ],
-  'kast-plugin-stripe': [
-    'STRIPE_SECRET_KEY',
-    'STRIPE_WEBHOOK_SECRET',
-    'STRIPE_PRODUCT_TYPE_SLUG',
-    'KAST_API_URL',
-    'KAST_API_TOKEN',
-  ],
-  'kast-plugin-resend': ['RESEND_API_KEY', 'RESEND_FROM_EMAIL', 'RESEND_FROM_NAME'],
-  'kast-plugin-r2': [
-    'R2_ACCOUNT_ID',
-    'R2_ACCESS_KEY_ID',
-    'R2_SECRET_ACCESS_KEY',
-    'R2_BUCKET_NAME',
-    'R2_PUBLIC_URL',
-  ],
-  'kast-plugin-sentry': ['SENTRY_DSN', 'SENTRY_ENVIRONMENT', 'SENTRY_TRACES_SAMPLE_RATE'],
-};
-
 interface PluginConfig {
   provider?: string;
   configuredAt?: string;
@@ -165,7 +134,7 @@ function ConfigStatus({ config, isActive }: ConfigStatusProps): JSX.Element {
       <Alert variant="warning">
         <AlertDescription>
           This plugin is enabled but has not persisted any configuration yet. Ensure the required
-          environment variables are set and restart the API.
+          environment variables are set, then disable and re-enable it.
         </AlertDescription>
       </Alert>
     );
@@ -283,7 +252,7 @@ export function PluginDetailClient({ pluginId }: PluginDetailClientProps): JSX.E
     );
   }
 
-  const envVars = PLUGIN_ENV_VARS[pluginId] ?? [];
+  const envVars = plugin.env;
   const icon = PLUGIN_ICONS[pluginId] ?? <Puzzle className="size-5" />;
 
   return (

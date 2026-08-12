@@ -122,7 +122,6 @@ export class DashboardService {
     @InjectQueue(QUEUE_NAMES.MEDIA) private readonly mediaQueue: Queue,
     @InjectQueue(QUEUE_NAMES.SEO) private readonly seoQueue: Queue,
     @InjectQueue(QUEUE_NAMES.PUBLISH) private readonly publishQueue: Queue,
-    @InjectQueue(QUEUE_NAMES.AUDIT) private readonly auditQueue: Queue,
     @InjectQueue(QUEUE_NAMES.EMAIL) private readonly emailQueue: Queue,
     @InjectQueue(QUEUE_NAMES.TRASH) private readonly trashQueue: Queue,
   ) {}
@@ -250,7 +249,6 @@ export class DashboardService {
       { name: QUEUE_NAMES.MEDIA, queue: this.mediaQueue },
       { name: QUEUE_NAMES.SEO, queue: this.seoQueue },
       { name: QUEUE_NAMES.PUBLISH, queue: this.publishQueue },
-      { name: QUEUE_NAMES.AUDIT, queue: this.auditQueue },
       { name: QUEUE_NAMES.EMAIL, queue: this.emailQueue },
       { name: QUEUE_NAMES.TRASH, queue: this.trashQueue },
     ];

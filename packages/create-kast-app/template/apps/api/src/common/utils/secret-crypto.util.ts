@@ -11,6 +11,10 @@ const PREFIX = 'enc:v1:';
 const ALGO = 'aes-256-gcm';
 const IV_BYTES = 12;
 
+export function isEncryptedSecret(value: string): boolean {
+  return value.startsWith(PREFIX);
+}
+
 function deriveKey(appSecret: string): Buffer {
   return createHash('sha256').update(`kast:secret:${appSecret}`).digest();
 }

@@ -57,6 +57,9 @@ function fakeContext(
     },
     getConfig: () => Promise.resolve({}),
     setConfig: () => Promise.resolve(),
+    registerEmailTransport: () => undefined,
+    registerStorageAdapter: () => undefined,
+    registerErrorReporter: () => undefined,
   };
 }
 

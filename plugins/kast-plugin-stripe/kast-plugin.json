@@ -4,11 +4,11 @@
   "displayName": "Stripe",
   "description": "Sync product content types to Stripe and receive payment webhooks",
   "permissions": ["content:read", "settings:read"],
-  "hooks": ["content.published", "content.updated", "content.trashed"],
+  "hooks": ["content.published", "content.updated", "content.trashed", "stripe.event"],
   "adminPages": [
     {
       "label": "Stripe",
-      "path": "/plugins/stripe",
+      "path": "/plugins/kast-plugin-stripe",
       "icon": "CreditCard"
     }
   ],

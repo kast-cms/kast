@@ -34,7 +34,13 @@ export class S3StorageAdapter implements StorageAdapter {
     mimeType: string,
   ): Promise<{ url: string; storageKey: string }> {
     await this.client.send(
-      new PutObjectCommand({ Bucket: this.bucket, Key: key, Body: buffer, ContentType: mimeType }),
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: buffer,
+        ContentType: mimeType,
+        ContentDisposition: mimeType === 'image/svg+xml' ? 'attachment' : undefined,
+      }),
     );
     const url = `https://${this.bucket}.s3.amazonaws.com/${key}`;
     return { url, storageKey: key };

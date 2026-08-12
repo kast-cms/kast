@@ -1,10 +1,12 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Logger } from '@nestjs/common';
+import { Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Job } from 'bullmq';
 import { createTransport, type Transporter } from 'nodemailer';
 import type { Env } from '../../config/env.schema';
+import { PluginExtensionRegistry } from '../plugin/plugin-extension.registry';
 import { QUEUE_NAMES } from '../queue/queue.constants';
+import { SettingsService } from '../settings/settings.service';
 
 export interface SendEmailJobData {
   to: string;
@@ -47,7 +49,11 @@ export class EmailProcessor extends WorkerHost {
    */
   private readonly adminUrl: string;
 
-  constructor(config: ConfigService<Env>) {
+  constructor(
+    config: ConfigService<Env>,
+    @Optional() private readonly extensions?: PluginExtensionRegistry,
+    @Optional() private readonly settings?: SettingsService,
+  ) {
     super();
     this.from = config.get('SMTP_FROM', { infer: true }) ?? 'noreply@kast.io';
     this.resendApiKey = config.get('RESEND_API_KEY', { infer: true });
@@ -74,7 +80,7 @@ export class EmailProcessor extends WorkerHost {
   }
 
   async process(job: Job<EmailJobData>): Promise<void> {
-    const rendered = this.render(job.name, job.data);
+    const rendered = this.render(job.name, job.data, await this.settings?.getSiteName());
     const { to } = job.data;
     this.logger.log(`Sending email "${rendered.subject}" to ${to} (job ${job.id ?? ''})`);
     try {
@@ -87,12 +93,12 @@ export class EmailProcessor extends WorkerHost {
   }
 
   /** Branches on the job name to build the right template; falls back to the generic send. */
-  private render(jobName: string, data: EmailJobData): RenderedEmail {
+  private render(jobName: string, data: EmailJobData, siteName = 'Kast'): RenderedEmail {
     if (jobName === 'password-reset') {
-      return this.renderPasswordReset(data as PasswordResetJobData);
+      return this.renderPasswordReset(data as PasswordResetJobData, siteName);
     }
     if (jobName === 'user-invite') {
-      return this.renderUserInvite(data as UserInviteJobData);
+      return this.renderUserInvite(data as UserInviteJobData, siteName);
     }
     const generic = data as SendEmailJobData;
     return {
@@ -102,38 +108,38 @@ export class EmailProcessor extends WorkerHost {
     };
   }
 
-  private renderPasswordReset(data: PasswordResetJobData): RenderedEmail {
+  private renderPasswordReset(data: PasswordResetJobData, siteName: string): RenderedEmail {
     const link = `${this.adminUrl}/reset-password?token=${encodeURIComponent(data.token)}`;
-    const subject = 'Reset your Kast password';
+    const subject = `Reset your ${siteName} password`;
     const html = [
       '<div style="font-family:system-ui,sans-serif;max-width:480px;margin:auto">',
       '<h2>Reset your password</h2>',
-      '<p>We received a request to reset your Kast CMS password. Click the button below to choose a new one. This link expires in 1 hour.</p>',
+      `<p>We received a request to reset your ${siteName} password. Click the button below to choose a new one. This link expires in 1 hour.</p>`,
       `<p><a href="${link}" style="display:inline-block;padding:10px 18px;background:#111;color:#fff;border-radius:6px;text-decoration:none">Reset password</a></p>`,
       `<p>If the button does not work, paste this URL into your browser:</p><p><a href="${link}">${link}</a></p>`,
       '<p>If you did not request this, you can safely ignore this email.</p>',
       '</div>',
     ].join('');
-    const text = `Reset your Kast password by visiting: ${link}\n\nThis link expires in 1 hour. If you did not request this, ignore this email.`;
+    const text = `Reset your ${siteName} password by visiting: ${link}\n\nThis link expires in 1 hour. If you did not request this, ignore this email.`;
     return { subject, html, text };
   }
 
-  private renderUserInvite(data: UserInviteJobData): RenderedEmail {
+  private renderUserInvite(data: UserInviteJobData, siteName: string): RenderedEmail {
     const greeting = data.firstName ? `Hi ${data.firstName},` : 'Hello,';
     const link = data.token
       ? `${this.adminUrl}/accept-invite?token=${encodeURIComponent(data.token)}`
       : `${this.adminUrl}/login`;
-    const subject = 'You have been invited to Kast CMS';
+    const subject = `You have been invited to ${siteName}`;
     const html = [
       '<div style="font-family:system-ui,sans-serif;max-width:480px;margin:auto">',
-      `<h2>Welcome to Kast CMS</h2><p>${greeting}</p>`,
-      '<p>An administrator has invited you to the Kast CMS admin panel.</p>',
+      `<h2>Welcome to ${siteName}</h2><p>${greeting}</p>`,
+      `<p>An administrator has invited you to the ${siteName} admin panel.</p>`,
       data.token ? '<p>Use the link below to choose your password. It expires in 7 days.</p>' : '',
       `<p><a href="${link}" style="display:inline-block;padding:10px 18px;background:#111;color:#fff;border-radius:6px;text-decoration:none">Get started</a></p>`,
       `<p>Or open: <a href="${link}">${link}</a></p>`,
       '</div>',
     ].join('');
-    const text = `${greeting}\n\nYou have been invited to Kast CMS. Get started: ${link}`;
+    const text = `${greeting}\n\nYou have been invited to ${siteName}. Get started: ${link}`;
     return { subject, html, text };
   }
 
@@ -145,8 +151,28 @@ export class EmailProcessor extends WorkerHost {
   }
 
   private async deliver(to: string, email: RenderedEmail): Promise<void> {
+    const pluginTransport = this.extensions?.getEmailTransport();
+    if (pluginTransport) {
+      await pluginTransport.send({
+        to,
+        subject: email.subject,
+        html: email.html,
+        text: email.text,
+        from: this.from,
+      });
+      return;
+    }
     if (this.resendApiKey) {
       await this.sendViaResend({ to, subject: email.subject, html: email.html, text: email.text });
+      return;
+    }
+    if (this.settings) {
+      await this.settings.sendEmail({
+        to,
+        subject: email.subject,
+        html: email.html,
+        text: email.text,
+      });
       return;
     }
     if (!this.transporter) throw new Error('SMTP transporter not initialized');

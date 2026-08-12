@@ -134,12 +134,5 @@ import):
 
 Existing rows are not rewritten; the check applies on write.
 
-## List all SEO records
-
-```http
-GET /api/v1/seo
-Authorization: Bearer <token>
-?sort=score:asc&limit=50
-```
-
-Returns all entries with their SEO scores, sorted by score ascending — useful for finding pages that need attention.
+There is no collection route at `GET /api/v1/seo`. Use the per-entry score and
+score-history routes above; the admin obtains entry IDs from the content API.

@@ -1,15 +1,15 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import type { WebhookDelivery } from '@prisma/client';
 import { randomBytes } from 'crypto';
-import { encryptSecret } from '../../common/utils/secret-crypto.util';
+import type { PaginationDto } from '../../common/dto/pagination.dto';
+import { SecretEncryptionService } from '../../common/security/secret-encryption.service';
+import type { PaginatedResult } from '../../common/types/auth.types';
 import {
   assertPublicUrl,
   BlockedUrlError,
   parseHostAllowList,
   parseOutboundUrl,
 } from '../../common/utils/ssrf-guard.util';
-import type { Env } from '../../config/env.schema';
 import { QueueAdapter } from '../queue/queue.adapter';
 import { QUEUE_NAMES } from '../queue/queue.constants';
 import type { CreateWebhookDto, UpdateWebhookDto } from './dto/webhook.dto';
@@ -24,15 +24,11 @@ const FIRE_OPTS = { attempts: 5, backoff: { type: 'exponential' as const, delay:
 
 @Injectable()
 export class WebhookService {
-  private readonly appSecret: string;
-
   constructor(
     private readonly repo: WebhookRepository,
     private readonly queue: QueueAdapter,
-    config: ConfigService<Env>,
-  ) {
-    this.appSecret = config.get('JWT_SECRET', { infer: true }) ?? 'kast-dev-secret';
-  }
+    private readonly secrets: SecretEncryptionService,
+  ) {}
 
   list(): Promise<EndpointRow[]> {
     return this.repo.findAll();
@@ -60,7 +56,7 @@ export class WebhookService {
     const endpoint = await this.repo.create({
       name: dto.name,
       url: dto.url,
-      secretHash: encryptSecret(secret, this.appSecret),
+      secretHash: this.secrets.encrypt(secret),
       events: dto.events,
     });
     const { secretHash: _omitted, ...rest } = endpoint;
@@ -79,7 +75,7 @@ export class WebhookService {
     const { secret, ...rest } = dto;
     return this.repo.update(id, {
       ...rest,
-      ...(secret !== undefined ? { secretHash: encryptSecret(secret, this.appSecret) } : {}),
+      ...(secret !== undefined ? { secretHash: this.secrets.encrypt(secret) } : {}),
     });
   }
 
@@ -96,12 +92,15 @@ export class WebhookService {
       payload: { message: 'This is a test delivery from Kast.' },
     });
     const jobData: WebhookFireJobData = { endpointId: endpoint.id, deliveryId: delivery.id };
-    await this.queue.enqueue(QUEUE_NAMES.WEBHOOK, 'fire', jobData, FIRE_OPTS);
+    await this.queue.enqueue(QUEUE_NAMES.WEBHOOK, 'fire', jobData, {
+      ...FIRE_OPTS,
+      jobId: `webhook-${delivery.id}`,
+    });
   }
 
-  async getDeliveries(id: string): Promise<WebhookDelivery[]> {
+  async getDeliveries(id: string, query: PaginationDto): Promise<PaginatedResult<WebhookDelivery>> {
     await this.findOne(id);
-    return this.repo.findDeliveries(id);
+    return this.repo.findDeliveries(id, query);
   }
 
   async redeliver(id: string, deliveryId: string): Promise<void> {
@@ -110,7 +109,15 @@ export class WebhookService {
     if (delivery?.endpointId !== id) {
       throw new NotFoundException(`Delivery ${deliveryId} not found for endpoint ${id}`);
     }
-    const jobData: WebhookFireJobData = { endpointId: id, deliveryId };
-    await this.queue.enqueue(QUEUE_NAMES.WEBHOOK, 'fire', jobData, FIRE_OPTS);
+    const replay = await this.repo.createDelivery({
+      endpointId: id,
+      event: delivery.event,
+      payload: delivery.payload as Record<string, unknown>,
+    });
+    const jobData: WebhookFireJobData = { endpointId: id, deliveryId: replay.id };
+    await this.queue.enqueue(QUEUE_NAMES.WEBHOOK, 'fire', jobData, {
+      ...FIRE_OPTS,
+      jobId: `webhook-${replay.id}`,
+    });
   }
 }

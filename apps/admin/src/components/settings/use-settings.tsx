@@ -9,7 +9,7 @@ export interface UseSettingsReturn {
   loading: boolean;
   saving: boolean;
   loadSettings: () => Promise<void>;
-  patchSettings: (patches: { key: string; value: unknown }[]) => Promise<void>;
+  patchSettings: (patches: { key: string; value: unknown; isPublic?: boolean }[]) => Promise<void>;
   testSmtp: (to: string) => Promise<{ success: boolean }>;
   testStorage: () => Promise<{ provider: string; status: string }>;
   getValue: (key: string) => unknown;
@@ -33,7 +33,7 @@ export function useSettings(): UseSettingsReturn {
   }, [client]);
 
   const patchSettings = useCallback(
-    async (patches: { key: string; value: unknown }[]): Promise<void> => {
+    async (patches: { key: string; value: unknown; isPublic?: boolean }[]): Promise<void> => {
       setSaving(true);
       try {
         const res = await client.settings.update({ settings: patches });

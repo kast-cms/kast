@@ -30,9 +30,11 @@ import {
   type SeoGatePolicy,
   type SeoSettings,
 } from './seo-settings';
+import { buildEntryUrl } from './seo-url.util';
 import type { SeoJobData } from './seo.processor';
 import {
   SeoRepository,
+  type PublicRedirect,
   type SeoIssueInput,
   type SeoMetaFull,
   type SeoScoreWithIssues,
@@ -144,7 +146,7 @@ function gatherSeoIssues(
 
 @Injectable()
 export class SeoService {
-  private readonly siteUrl: string;
+  private readonly defaultSiteUrl: string;
 
   constructor(
     private readonly repo: SeoRepository,
@@ -152,10 +154,9 @@ export class SeoService {
     config: ConfigService<Env>,
     @InjectQueue(QUEUE_NAMES.SEO) private readonly seoQueue: Queue<SeoJobData>,
   ) {
-    this.siteUrl = (config.get('SITE_URL', { infer: true }) ?? 'http://localhost:3000').replace(
-      /\/$/,
-      '',
-    );
+    this.defaultSiteUrl = (
+      config.get('SITE_URL', { infer: true }) ?? 'http://localhost:3000'
+    ).replace(/\/$/, '');
   }
 
   /**
@@ -292,10 +293,12 @@ export class SeoService {
   }
 
   async buildSitemapEntries(): Promise<SitemapEntry[]> {
-    const [entries, locales] = await Promise.all([
+    const [entries, locales, savedSiteUrl] = await Promise.all([
       this.repo.findPublishedEntriesForSitemap(),
       this.repo.findActiveLocales(),
+      this.repo.findGlobalSettingString('site.url'),
     ]);
+    const siteUrl = (savedSiteUrl ?? this.defaultSiteUrl).replace(/\/$/, '');
     const defaultCode = locales.find((l) => l.isDefault)?.code ?? locales[0]?.code ?? 'en';
     const activeCodes = new Set(locales.map((l) => l.code));
 
@@ -305,7 +308,7 @@ export class SeoService {
         .filter((l) => activeCodes.has(l.localeCode))
         .map((l) => ({
           hreflang: l.localeCode,
-          href: this.entryUrl(entry.contentTypeName, l.slug, l.localeCode, defaultCode),
+          href: buildEntryUrl(siteUrl, entry.contentTypeName, l.slug, l.localeCode, defaultCode),
         }));
       if (localeUrls.length === 0) continue;
       // Prefer the default-locale URL as the canonical <loc>.
@@ -316,14 +319,8 @@ export class SeoService {
     return result;
   }
 
-  private entryUrl(
-    contentTypeName: string,
-    slug: string,
-    localeCode: string,
-    defaultCode: string,
-  ): string {
-    const prefix = localeCode === defaultCode ? '' : `/${localeCode}`;
-    return `${this.siteUrl}${prefix}/${contentTypeName}/${slug}`;
+  async listPublicRedirects(): Promise<{ data: PublicRedirect[] }> {
+    return { data: await this.repo.findActiveRedirects() };
   }
 
   async listRedirects(query: PaginationDto): Promise<PaginatedResult<Redirect>> {

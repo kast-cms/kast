@@ -11,21 +11,25 @@ export const ENV_EXAMPLE_TEMPLATE = `# =========================================
 NODE_ENV=development
 PORT=3000
 SITE_URL=http://localhost:{{apiPort}}
+KAST_DEFAULT_LOCALE={{defaultLocale}}
+KAST_INITIAL_LOCALES={{defaultLocale}}{{#each extraLocales}},{{this}}{{/each}}
 
 # ---------------------------------------------------------------------------
 # Database (PostgreSQL)
 # ---------------------------------------------------------------------------
 POSTGRES_USER=kast
-POSTGRES_PASSWORD=kast_secret
+POSTGRES_PASSWORD=replace_me_with_a_random_database_password
 POSTGRES_DB=kast_db
-DATABASE_URL=postgresql://kast:kast_secret@localhost:5432/kast_db
+DATABASE_URL=postgresql://kast:replace_me_with_a_random_database_password@localhost:5432/kast_db
 
 # ---------------------------------------------------------------------------
 # Redis
 # ---------------------------------------------------------------------------
 REDIS_HOST=localhost
 REDIS_PORT=6379
-# REDIS_PASSWORD=
+REDIS_PASSWORD=replace_me_with_a_random_redis_password
+QUEUE_BACKLOG_ALERT_THRESHOLD=1000
+QUEUE_FAILED_ALERT_THRESHOLD=100
 # For Docker: change REDIS_HOST to "redis"
 
 # ---------------------------------------------------------------------------
@@ -45,6 +49,7 @@ JWT_EXPIRES_IN=15m
 # assigning an empty value: \`KAST_SECRET_ENCRYPTION_KEY=\` fails validation and
 # the API refuses to boot.
 KAST_SECRET_ENCRYPTION_KEY=replace_me_with_a_32_character_secret_at_minimum_length
+KAST_SECRET_ENCRYPTION_PREVIOUS_KEYS=
 
 # ---------------------------------------------------------------------------
 # Webhook egress policy
@@ -82,12 +87,12 @@ STORAGE_LOCAL_DIR=./uploads
 STORAGE_LOCAL_URL=http://localhost:{{apiPort}}/api/v1/media/files
 {{#if storageIsCloud}}
 
-# Cloud storage (required when STORAGE_PROVIDER is s3, r2, or minio)
+# Cloud storage (required when STORAGE_PROVIDER is s3 or r2)
 AWS_REGION=auto
 AWS_ACCESS_KEY_ID=
 AWS_SECRET_ACCESS_KEY=
 AWS_S3_BUCKET={{projectName}}-media
-# For R2 or MinIO, set the custom endpoint:
+# For R2, use the dedicated R2_* variables in the plugin section below.
 # AWS_S3_ENDPOINT=https://<account_id>.r2.cloudflarestorage.com
 {{/if}}
 
@@ -136,7 +141,7 @@ SMTP_FROM=noreply@{{projectName}}.local
 # Meilisearch (@kast-cms/plugin-meilisearch)
 # ---------------------------------------------------------------------------
 MEILISEARCH_HOST=http://meilisearch:7700
-MEILISEARCH_API_KEY=masterKey
+MEILISEARCH_MASTER_KEY=replace_me_with_a_random_meilisearch_key
 {{/if}}
 {{#if pluginStripe}}
 
@@ -159,11 +164,11 @@ RESEND_API_KEY=re_replace_me
 # Cloudflare R2 (@kast-cms/plugin-r2)
 # ---------------------------------------------------------------------------
 # R2 endpoint format: https://<account_id>.r2.cloudflarestorage.com
-CF_R2_ACCOUNT_ID=
-CF_R2_ACCESS_KEY_ID=
-CF_R2_SECRET_ACCESS_KEY=
-CF_R2_BUCKET={{projectName}}-media
-CF_R2_PUBLIC_URL=https://media.{{projectName}}.dev
+R2_ACCOUNT_ID=
+R2_ACCESS_KEY_ID=
+R2_SECRET_ACCESS_KEY=
+R2_BUCKET_NAME={{projectName}}-media
+R2_PUBLIC_URL=https://media.{{projectName}}.dev
 {{/if}}
 {{#if pluginSentry}}
 

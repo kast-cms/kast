@@ -1185,15 +1185,15 @@ Lifted directly from [KAST_PRD.md §4](../architecture/KAST_PRD.md), expanded to
 A workstream is **done** only when every item below is true:
 
 - [ ] All API endpoints implemented per [KAST_API_SPEC.md](../architecture/KAST_API_SPEC.md) shape.
-- [ ] Permissions enforced per [KAST_SECURITY_MODEL.md](../architecture/KAST_SECURITY_MODEL.md).
+- [x] Permissions enforced per [KAST_SECURITY_MODEL.md](../architecture/KAST_SECURITY_MODEL.md).
 - [ ] Unit tests for every NestJS service method with branching logic.
 - [ ] e2e tests (Playwright for admin UI, Supertest for API) covering happy path + at least 2 error paths per endpoint.
 - [ ] No `any`, no `@ts-ignore`, no `console.log` in production code.
 - [ ] No `ml-`, `mr-`, `pl-`, `pr-` Tailwind classes in `apps/admin` — only logical property equivalents.
 - [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e` all pass locally.
-- [ ] Audit interceptor verified to fire for new mutations.
+- [x] Audit interceptor verified to fire for new mutations.
 - [ ] BullMQ jobs verified to enqueue and process in integration tests.
-- [ ] SDK types updated if the workstream introduces new endpoints.
+- [x] SDK types updated if the workstream introduces new endpoints.
 - [ ] PR reviewed by at least one other engineer; conventional commit on merge.
 
 ---

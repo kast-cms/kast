@@ -14,30 +14,16 @@ import {
 } from './dto/trash-query.dto';
 import { assertActorOutranksTarget } from './trash-actor.guard';
 import { decodeTrashCursor, encodeTrashCursor, type TrashCursor } from './trash-cursor.util';
+import { byTrashedAtDesc, daysUntilDeletion, type RankedTrashItem } from './trash-ranking.util';
 import { TRASH_RETENTION_MS } from './trash.constants';
 
-interface RankedItem {
-  item: TrashedItemDto;
-  trashedAt: Date;
-}
+type RankedItem = RankedTrashItem<TrashedItemDto>;
 
 /** The four trashable models share these columns, so one filter serves them all. */
 type TrashedWhere = Prisma.ContentEntryWhereInput &
   Prisma.MediaFileWhereInput &
   Prisma.UserWhereInput &
   Prisma.FormWhereInput;
-
-function daysUntilDeletion(trashedAt: Date): number {
-  const deletionDate = new Date(trashedAt.getTime() + TRASH_RETENTION_MS);
-  return Math.max(0, Math.ceil((deletionDate.getTime() - Date.now()) / 86_400_000));
-}
-
-/** Newest first, with `id` as the tiebreak the keyset predicate also uses. */
-function byTrashedAtDesc(a: RankedItem, b: RankedItem): number {
-  const diff = b.trashedAt.getTime() - a.trashedAt.getTime();
-  if (diff !== 0) return diff;
-  return b.item.id.localeCompare(a.item.id);
-}
 
 @Injectable()
 export class TrashService {
@@ -88,7 +74,12 @@ export class TrashService {
     await this.assertTrashed(model, id);
     await assertActorOutranksTarget(this.prisma, model, id, actor);
     await this.applyRestore(model, id);
-    this.audit.logAction({ action: 'RESTORE', resource: model, resourceId: id, userId: actor.id });
+    await this.audit.logAction({
+      action: 'RESTORE',
+      resource: model,
+      resourceId: id,
+      userId: actor.id,
+    });
     this.logger.log(`Restored ${model}:${id} by user ${actor.id}`);
   }
 
@@ -96,7 +87,7 @@ export class TrashService {
     await this.assertTrashed(model, id);
     await assertActorOutranksTarget(this.prisma, model, id, actor);
     await this.applyHardDelete(model, id);
-    this.audit.logAction({
+    await this.audit.logAction({
       action: 'PERMANENT_DELETE',
       resource: model,
       resourceId: id,
@@ -122,13 +113,13 @@ export class TrashService {
       for (const id of ids) {
         try {
           await this.applyHardDelete(model, id);
-          deleted += 1;
-          this.audit.logAction({
+          await this.audit.logAction({
             action: 'PERMANENT_DELETE',
             resource: model,
             resourceId: id,
             changes: { reason: 'retention', cutoff: cutoff.toISOString() },
           });
+          deleted += 1;
         } catch (err: unknown) {
           failed += 1;
           this.logger.error(`Failed to purge ${model}:${id}`, err);
@@ -314,11 +305,18 @@ export class TrashService {
         data: { trashedAt: null, trashedByUserId: null },
       });
     } else if (model === 'user') {
-      // Trashing a user also deactivates the account, so restoring has to undo
-      // both or the account comes back unable to sign in.
+      const user = await this.prisma.user.findUniqueOrThrow({
+        where: { id },
+        select: { preTrashIsActive: true },
+      });
       await this.prisma.user.update({
         where: { id },
-        data: { trashedAt: null, trashedByUserId: null, isActive: true },
+        data: {
+          trashedAt: null,
+          trashedByUserId: null,
+          isActive: user.preTrashIsActive ?? true,
+          preTrashIsActive: null,
+        },
       });
     } else {
       await this.prisma.form.update({

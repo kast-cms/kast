@@ -28,12 +28,7 @@ const LOG_PREFIX = '[kast-plugin-r2]';
  * `@aws-sdk/client-s3`. Provides put / get / delete / presigned-URL operations
  * and a public-URL helper for media assets.
  *
- * Limitation: `KastPluginContext` exposes no storage-provider registration
- * extension point, so the plugin cannot install itself as the host's active
- * media storage backend from `onLoad`. The adapter is fully functional and
- * callable; making it the default backend currently relies on the host reading
- * the persisted `provider: 'r2'` config (or a future `ctx.registerStorage`
- * hook).
+ * When enabled, the plugin registers itself as the host's `r2` storage adapter.
  */
 export class R2Plugin implements IKastPlugin {
   private client: S3Client | null = null;
@@ -68,6 +63,20 @@ export class R2Plugin implements IKastPlugin {
       bucket: this.bucket,
       publicUrl: this.publicUrl || null,
       configuredAt: new Date().toISOString(),
+    });
+
+    ctx.registerStorageAdapter({
+      provider: 'r2',
+      upload: async (key, body, mimeType) => {
+        await this.put({ key, body, contentType: mimeType });
+        return {
+          storageKey: key,
+          url: this.publicUrlFor(key) ?? (await this.getSignedUrl(key, 3600)),
+        };
+      },
+      read: async (key) => (await this.get(key)).body,
+      delete: (key) => this.delete(key),
+      getSignedUrl: (key, expiresInSeconds) => this.getSignedUrl(key, expiresInSeconds),
     });
 
     this.log(`Active — R2 adapter ready for bucket "${this.bucket}"`);
@@ -127,6 +136,11 @@ export class R2Plugin implements IKastPlugin {
   publicUrlFor(key: string): string | null {
     if (!this.publicUrl) return null;
     return `${this.publicUrl}/${key.replace(/^\/+/, '')}`;
+  }
+
+  async onUnload(): Promise<void> {
+    this.client?.destroy();
+    this.client = null;
   }
 
   private requireClient(): S3Client {

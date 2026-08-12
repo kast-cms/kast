@@ -2,7 +2,7 @@
 const SECRET_SETTING_KEYS = new Set<string>(['smtp.password']);
 
 const SECRET_KEY_SUFFIX =
-  /(password|passphrase|secret|api_?key|access_?key|private_?key|token|credentials?)$/;
+  /(password|passphrase|secret|api_?key|access_?key|private_?key|signing_?key|encryption_?key|token|credentials?)$/;
 
 /**
  * A setting holds a credential when it is explicitly listed or when its last

@@ -10,6 +10,8 @@ import { assertNoKnownWeakCredentials } from './common/utils/weak-credential.uti
 import { originOf, parseTrustProxy } from './config/bootstrap.util';
 import { CORS_METHODS } from './config/cors-methods';
 import type { Env } from './config/env.schema';
+import { AuditService } from './modules/audit/audit.service';
+import { PluginExtensionRegistry } from './modules/plugin/plugin-extension.registry';
 import { PrismaService } from './prisma/prisma.service';
 
 function applyHelmet(app: INestApplication, siteUrl: string, adminUrl: string): void {
@@ -85,14 +87,7 @@ async function buildSentryReporter(
   }
 }
 
-async function bootstrap(): Promise<void> {
-  // Typed as the Express app so `trust proxy` can be set below.
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    bufferLogs: true,
-    rawBody: true,
-  });
-  const configService = app.get<ConfigService<Env>>(ConfigService);
-
+function configureHttp(app: NestExpressApplication, configService: ConfigService<Env>): void {
   applyHelmet(
     app,
     configService.get('SITE_URL', { infer: true }) ?? 'http://localhost:3000',
@@ -105,10 +100,10 @@ async function bootstrap(): Promise<void> {
 
   const corsOrigins = configService.get<string>('CORS_ORIGINS', { infer: true }) ?? '*';
   app.enableCors({
-    origin: corsOrigins === '*' ? '*' : corsOrigins.split(','),
+    origin: corsOrigins === '*' ? '*' : corsOrigins.split(',').map((origin) => origin.trim()),
     methods: [...CORS_METHODS],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Kast-Key'],
-    credentials: true,
+    credentials: corsOrigins !== '*',
   });
 
   app.setGlobalPrefix('api');
@@ -121,18 +116,33 @@ async function bootstrap(): Promise<void> {
       transformOptions: { enableImplicitConversion: true },
     }),
   );
+}
 
+async function configureErrorReporting(
+  app: NestExpressApplication,
+  configService: ConfigService<Env>,
+): Promise<void> {
   const httpAdapterHost = app.get<HttpAdapterHost>(HttpAdapterHost);
+  const environmentReporter = await buildSentryReporter(configService);
+  const pluginReporters = app.get(PluginExtensionRegistry);
+  const sentryReporter: SentryReporter = (err, ctx) => {
+    environmentReporter?.(err, ctx);
+    pluginReporters.captureException(err, ctx);
+  };
 
-  const sentryReporter = await buildSentryReporter(configService);
+  const auditService = app.get(AuditService);
+  app.useGlobalFilters(
+    new GlobalExceptionFilter(httpAdapterHost, sentryReporter, (entry) =>
+      auditService.logAction(entry),
+    ),
+  );
+}
 
-  app.useGlobalFilters(new GlobalExceptionFilter(httpAdapterHost, sentryReporter));
-
+async function verifyCredentials(
+  app: NestExpressApplication,
+  configService: ConfigService<Env>,
+): Promise<void> {
   const nodeEnv = configService.get<string>('NODE_ENV', { infer: true });
-  if (nodeEnv !== 'production') {
-    applySwagger(app);
-  }
-
   // P0-05: a database seeded before the seed-script guard (or restored from an
   // old dump) can still hold a publicly documented super-admin password. Fatal
   // unless this install explicitly opted into those logins — NODE_ENV is not
@@ -146,6 +156,20 @@ async function bootstrap(): Promise<void> {
     },
     new Logger('CredentialCheck'),
   );
+}
+
+async function bootstrap(): Promise<void> {
+  // Typed as the Express app so `trust proxy` can be set below.
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bufferLogs: true,
+    rawBody: true,
+  });
+  const configService = app.get<ConfigService<Env>>(ConfigService);
+
+  configureHttp(app, configService);
+  await configureErrorReporting(app, configService);
+  if (configService.get<string>('NODE_ENV', { infer: true }) !== 'production') applySwagger(app);
+  await verifyCredentials(app, configService);
 
   const port: number =
     (configService.get<number>('PORT', { infer: true }) as number | undefined) ?? 3000;

@@ -23,6 +23,7 @@ import { useState, type JSX } from 'react';
  * be granted from the UI at all — only via POST /api/v1/roles/:id/permissions.
  */
 const RESOURCES = [
+  'auth',
   'content',
   'content-types',
   'media',
@@ -41,9 +42,33 @@ const RESOURCES = [
   'settings',
   'audit',
   'dashboard',
+  'mcp',
 ] as const;
 
-const ACTIONS = ['read', 'create', 'update', 'delete', 'publish'] as const;
+const ACTIONS = [
+  'read',
+  'create',
+  'update',
+  'delete',
+  'publish',
+  'unpublish',
+  'archive',
+  'restore',
+  'schedule',
+  'revert',
+  'locale',
+  'duplicate',
+  'enable',
+  'disable',
+  'install',
+  'uninstall',
+  'test',
+  'validate',
+  'import',
+  'export',
+  'revoke',
+  'permanent-delete',
+] as const;
 
 type Matrix = Record<string, Record<string, boolean>>;
 

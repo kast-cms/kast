@@ -92,12 +92,13 @@ describe('ContentService', () => {
       updateSchedule: jest.fn().mockResolvedValue(true),
       trash: jest.fn().mockResolvedValue(true),
       createVersion: jest.fn().mockResolvedValue(undefined),
+      syncReferences: jest.fn().mockResolvedValue(undefined),
       listVersions: jest.fn().mockResolvedValue({ items: [], total: 0 }),
       findVersionByIdForType: jest.fn(),
       revertToVersion: jest.fn(),
     } as unknown as Mocked<ContentRepository>;
     contentTypes = { findByName: jest.fn() } as unknown as Mocked<ContentTypesService>;
-    seo = { validateNow: jest.fn() } as unknown as Mocked<SeoService>;
+    seo = { validateNow: jest.fn(), createRedirect: jest.fn() } as unknown as Mocked<SeoService>;
     queue = { add: jest.fn(), getJob: jest.fn() } as unknown as Mocked<Queue>;
     emitter = { emit: jest.fn() } as unknown as Mocked<EventEmitter2>;
 
@@ -505,6 +506,27 @@ describe('ContentService', () => {
         expect.objectContaining({ jobId: 'publish-e1' }),
       );
       expect(repo.updateSchedule).toHaveBeenCalledWith('e1', 'ct1', expect.any(Date), 'SCHEDULED');
+    });
+
+    it('replaces the existing delayed job when an entry is rescheduled', async () => {
+      const remove = jest.fn().mockResolvedValue(undefined);
+      queue.getJob.mockResolvedValue({ remove } as never);
+      queue.add.mockResolvedValue({ remove: jest.fn() } as never);
+      contentTypes.findByName.mockResolvedValue(buildContentType());
+      repo.findByIdForType
+        .mockResolvedValueOnce(buildEntry({ status: 'SCHEDULED' }))
+        .mockResolvedValueOnce(buildEntry({ status: 'SCHEDULED' }));
+
+      await service.schedulePublish('blog', 'e1', {
+        publishAt: new Date(Date.now() + 7200_000).toISOString(),
+      });
+
+      expect(remove).toHaveBeenCalledTimes(1);
+      expect(queue.add).toHaveBeenCalledWith(
+        'publish',
+        { entryId: 'e1', typeSlug: 'blog' },
+        expect.objectContaining({ jobId: 'publish-e1' }),
+      );
     });
 
     it('refuses to schedule content that could not be published', async () => {

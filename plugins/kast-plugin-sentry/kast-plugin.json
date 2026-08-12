@@ -8,7 +8,7 @@
   "adminPages": [
     {
       "label": "Sentry",
-      "path": "/plugins/sentry",
+      "path": "/plugins/kast-plugin-sentry",
       "icon": "ShieldAlert"
     }
   ],

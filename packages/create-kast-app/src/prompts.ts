@@ -136,7 +136,6 @@ async function promptStorageAndPlugins(): Promise<{
         { value: 'local', label: 'Local filesystem', hint: 'recommended for dev' },
         { value: 'r2', label: 'Cloudflare R2', hint: 'production-ready' },
         { value: 's3', label: 'Amazon S3' },
-        { value: 'minio', label: 'MinIO', hint: 'self-hosted S3' },
       ],
     }),
   ) as StorageProvider;

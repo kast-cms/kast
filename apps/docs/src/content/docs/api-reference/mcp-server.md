@@ -1,18 +1,15 @@
 ---
 title: MCP Server
-description: Connect AI agents to Kast via the Model Context Protocol JSON-RPC endpoint.
+description: Connect AI agents to Kast via the Model Context Protocol Streamable HTTP endpoint.
 ---
 
-Kast exposes a built-in [Model Context Protocol](https://modelcontextprotocol.io) server. AI agents (Claude, etc.) use this to read and write CMS content under full RBAC and audit control. The server is advertised at `http://localhost:3000/mcp`; the underlying versioned routes are listed below.
+Kast exposes a built-in [Model Context Protocol](https://modelcontextprotocol.io) server. AI agents use it to read and write CMS content under full RBAC and audit control. Connect to `http://localhost:3000/api/v1/mcp` with an agent token.
 
 ## Transport
 
-| Endpoint              | Method   | Description                                                         |
-| --------------------- | -------- | ------------------------------------------------------------------- |
-| `GET /api/v1/mcp/sse` | —        | Server-Sent Events transport — opens a session, returns `sessionId` |
-| `POST /api/v1/mcp`    | JSON-RPC | Handle tool calls on an existing session                            |
+`/api/v1/mcp` is a single stateless Streamable HTTP endpoint. It supports current MCP protocol negotiation and the 2025 stateless protocol. POST carries JSON-RPC requests; GET is reserved for protocol streams and subscriptions.
 
-All requests require a valid Bearer token (agent token or user JWT).
+All requests require a valid `kastagent_...` Bearer token. Human JWTs and ordinary API tokens are rejected.
 
 ## JSON-RPC methods
 
@@ -28,14 +25,14 @@ Kast exposes 15 built-in tools:
 
 ### Content Entry Tools
 
-| Tool                    | Role   | Dry-runable | Description                             |
-| ----------------------- | ------ | ----------- | --------------------------------------- |
-| `list_content_entries`  | viewer | No          | List entries with filter and pagination |
-| `get_content_entry`     | viewer | No          | Get a single entry with all locale data |
-| `create_content_entry`  | editor | **Yes**     | Create a new entry (status = DRAFT)     |
-| `update_content_entry`  | editor | **Yes**     | Update entry fields or status           |
-| `publish_content_entry` | editor | No          | Publish or unpublish an entry           |
-| `delete_content_entry`  | admin  | No          | Soft-delete (trash) an entry            |
+| Tool                    | Role   | Dry-runable | Description                                  |
+| ----------------------- | ------ | ----------- | -------------------------------------------- |
+| `list_content_entries`  | viewer | No          | List entries with filter and pagination      |
+| `get_content_entry`     | viewer | No          | Get a single entry with all locale data      |
+| `create_content_entry`  | editor | **Yes**     | Create a new entry (status = DRAFT)          |
+| `update_content_entry`  | editor | **Yes**     | Update entry fields or status                |
+| `publish_content_entry` | editor | **Yes**     | Publish an entry after content and SEO gates |
+| `delete_content_entry`  | admin  | **Yes**     | Soft-delete (trash) an entry                 |
 
 ### Content Type Tools
 
@@ -53,7 +50,7 @@ Kast exposes 15 built-in tools:
 | `list_media`     | viewer | No          | List media files                          |
 | `get_media_file` | viewer | No          | Get metadata for a single media file      |
 | `get_seo_score`  | viewer | No          | Get the SEO score and issues for an entry |
-| `validate_seo`   | editor | No          | Trigger SEO validation job                |
+| `validate_seo`   | editor | **Yes**     | Trigger SEO validation job                |
 | `get_audit_log`  | admin  | No          | Query the audit log with filters          |
 
 ## Example: tools/call

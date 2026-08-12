@@ -64,6 +64,7 @@ export class MediaProcessor extends WorkerHost {
         storageKey: webpKey,
         mimeType: 'image/webp',
         size: webpBuffer.length,
+        optimizedSize: webpBuffer.length,
         width: (meta.width as number | null | undefined) ?? null,
         height: (meta.height as number | null | undefined) ?? null,
       });
@@ -83,12 +84,17 @@ export class MediaProcessor extends WorkerHost {
     this.logger.log(`Generating thumbnails for ${mediaFileId}`);
     try {
       const original = await this.storage.read(storageKey);
+      const thumbnails: Record<string, { url: string; size: number }> = {};
+      let thumbnailSize = 0;
       for (const width of THUMBNAIL_WIDTHS) {
         const thumbBuffer = await sharp(original).resize(width).webp({ quality: 80 }).toBuffer();
         const thumbKey = `thumbs/${width}/${storageKey}`;
-        await this.storage.upload(thumbKey, thumbBuffer, 'image/webp');
+        const { url } = await this.storage.upload(thumbKey, thumbBuffer, 'image/webp');
+        thumbnails[String(width)] = { url, size: thumbBuffer.length };
+        thumbnailSize += thumbBuffer.length;
         this.logger.log(`Thumbnail ${width}px written for ${mediaFileId}`);
       }
+      await this.repo.update(mediaFileId, { thumbnails, thumbnailSize });
     } catch (err: unknown) {
       this.logger.error(`Failed to generate thumbnails for ${mediaFileId}`, err);
       throw err;

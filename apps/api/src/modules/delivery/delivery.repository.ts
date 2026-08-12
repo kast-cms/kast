@@ -88,4 +88,31 @@ export class DeliveryRepository {
     });
     return new Map(rows.map((r) => [r.id, r.url]));
   }
+
+  /** Resolves only live, published relation targets in the requested locale. */
+  async findPublishedRelations(
+    ids: string[],
+    locale: string,
+  ): Promise<Map<string, { id: string; type: string; slug: string }>> {
+    if (ids.length === 0) return new Map();
+    const rows = await this.prisma.contentEntry.findMany({
+      where: {
+        id: { in: ids },
+        status: 'PUBLISHED',
+        trashedAt: null,
+        locales: { some: { localeCode: locale } },
+      },
+      select: {
+        id: true,
+        contentType: { select: { name: true } },
+        locales: { where: { localeCode: locale }, take: 1, select: { slug: true } },
+      },
+    });
+    return new Map(
+      rows.flatMap((row) => {
+        const slug = row.locales[0]?.slug;
+        return slug ? [[row.id, { id: row.id, type: row.contentType.name, slug }] as const] : [];
+      }),
+    );
+  }
 }

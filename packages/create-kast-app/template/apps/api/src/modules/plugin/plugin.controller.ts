@@ -46,7 +46,7 @@ export class PluginController {
   @Post(':name/enable')
   @Roles(SYSTEM_ROLES.SUPER_ADMIN)
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Enable a plugin (takes effect on next restart)' })
+  @ApiOperation({ summary: 'Enable a plugin immediately' })
   enable(@Param('name') name: string): Promise<{ data: PluginRecord }> {
     return this.service.enable(name);
   }
@@ -54,7 +54,7 @@ export class PluginController {
   @Post(':name/disable')
   @Roles(SYSTEM_ROLES.SUPER_ADMIN)
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Disable a plugin (takes effect on next restart)' })
+  @ApiOperation({ summary: 'Disable a plugin immediately' })
   disable(@Param('name') name: string): Promise<{ data: PluginRecord }> {
     return this.service.disable(name);
   }

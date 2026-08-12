@@ -46,6 +46,7 @@ export class AgentTokenStrategy extends PassportStrategy(Strategy, 'agent-token'
       roles: record.user.roles.map((ur) => ur.role.name),
       isAgentToken: true,
       agentTokenId: record.id,
+      agentTokenName: record.name,
       agentTokenScopes: scopes,
     };
   }

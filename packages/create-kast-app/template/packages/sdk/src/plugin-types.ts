@@ -5,7 +5,12 @@ export interface PluginRecord {
   version: string;
   description: string | null;
   isActive: boolean;
+  isInstalled: boolean;
   isSystemPlugin: boolean;
+  permissions: string[];
+  hooks: string[];
+  adminPages: Array<{ label: string; path: string; icon?: string }>;
+  env: string[];
   installedAt: string;
   updatedAt: string;
 }

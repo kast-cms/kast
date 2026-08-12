@@ -30,7 +30,7 @@ function run(exception: unknown): { body: CapturedBody; status: number } {
   const filter = new GlobalExceptionFilter({
     httpAdapter: { reply },
   } as unknown as HttpAdapterHost);
-  filter.catch(exception, host);
+  void filter.catch(exception, host);
 
   const [, body, status] = reply.mock.calls[0] as [unknown, CapturedBody, number];
   return { body, status };

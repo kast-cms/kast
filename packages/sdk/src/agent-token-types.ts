@@ -16,3 +16,13 @@ export interface CreateAgentTokenBody {
   name: string;
   scopes: string[];
 }
+
+export interface AgentSessionSummary {
+  id: string;
+  agentName: string | null;
+  toolsUsed: string[];
+  startedAt: string;
+  endedAt: string | null;
+  durationMs: number | null;
+  outcome: string | null;
+}

@@ -1,13 +1,18 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
-  ArrayNotEmpty,
+  ArrayMaxSize,
   IsArray,
+  IsIn,
   IsOptional,
   IsString,
   MinLength,
   ValidateNested,
 } from 'class-validator';
+import {
+  PERMISSION_ACTIONS,
+  PERMISSION_RESOURCES,
+} from '../../../common/authorization/permission-catalog';
 
 export class CreateRoleDto {
   @ApiProperty()
@@ -39,12 +44,12 @@ export class UpdateRoleDto {
 }
 
 export class PermissionInputDto {
-  @ApiProperty()
-  @IsString()
+  @ApiProperty({ enum: PERMISSION_RESOURCES })
+  @IsIn(PERMISSION_RESOURCES)
   resource!: string;
 
-  @ApiProperty()
-  @IsString()
+  @ApiProperty({ enum: PERMISSION_ACTIONS })
+  @IsIn(PERMISSION_ACTIONS)
   action!: string;
 
   @ApiPropertyOptional({ default: '*' })
@@ -56,7 +61,7 @@ export class PermissionInputDto {
 export class AssignPermissionsDto {
   @ApiProperty({ type: [PermissionInputDto] })
   @IsArray()
-  @ArrayNotEmpty()
+  @ArrayMaxSize(PERMISSION_RESOURCES.length * PERMISSION_ACTIONS.length)
   @ValidateNested({ each: true })
   @Type(() => PermissionInputDto)
   permissions!: PermissionInputDto[];

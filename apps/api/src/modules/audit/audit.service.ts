@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, type AuditLog } from '@prisma/client';
 import type { PaginatedResult } from '../../common/types/auth.types';
 import { AuditRepository } from './audit.repository';
@@ -31,29 +31,23 @@ function orJsonNull(
 
 @Injectable()
 export class AuditService {
-  private readonly logger = new Logger(AuditService.name);
-
   constructor(private readonly auditRepository: AuditRepository) {}
 
-  logAction(params: LogActionParams): void {
-    this.auditRepository
-      .create({
-        action: params.action,
-        resource: params.resource,
-        resourceId: orNull(params.resourceId),
-        userId: orNull(params.userId),
-        agentTokenId: orNull(params.agentTokenId),
-        agentName: orNull(params.agentName),
-        before: orJsonNull(params.before),
-        after: orJsonNull(params.after),
-        metadata: orJsonNull(params.changes),
-        ipAddress: orNull(params.ipAddress),
-        userAgent: orNull(params.userAgent),
-        isDryRun: params.isDryRun ?? false,
-      })
-      .catch((err: unknown) => {
-        this.logger.error('Failed to write audit log', err);
-      });
+  async logAction(params: LogActionParams): Promise<void> {
+    await this.auditRepository.create({
+      action: params.action,
+      resource: params.resource,
+      resourceId: orNull(params.resourceId),
+      userId: orNull(params.userId),
+      agentTokenId: orNull(params.agentTokenId),
+      agentName: orNull(params.agentName),
+      before: orJsonNull(params.before),
+      after: orJsonNull(params.after),
+      metadata: orJsonNull(params.changes),
+      ipAddress: orNull(params.ipAddress),
+      userAgent: orNull(params.userAgent),
+      isDryRun: params.isDryRun ?? false,
+    });
   }
 
   async findAll(query: AuditQueryDto): Promise<PaginatedResult<AuditLog>> {

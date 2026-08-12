@@ -8,7 +8,7 @@
   "adminPages": [
     {
       "label": "Cloudflare R2",
-      "path": "/plugins/r2",
+      "path": "/plugins/kast-plugin-r2",
       "icon": "Cloud"
     }
   ],

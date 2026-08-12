@@ -38,11 +38,9 @@ const METADATA_KEY = 'kastEntryId';
  *  - `handleWebhook` verifies and dispatches inbound Stripe webhook events using
  *    `STRIPE_WEBHOOK_SECRET`; `createCheckoutSession` starts a Checkout flow.
  *
- * Limitation: the Kast plugin context exposes neither an inbound HTTP route
- * registration API nor a content-data accessor. `handleWebhook` /
- * `createCheckoutSession` are therefore provided as callable methods that the
- * host must mount on a route, and product field data is fetched over an
- * authenticated HTTP call to the Kast management API (see `KastApiClient`).
+ * The host's verified Stripe webhook is delivered through `stripe.event`.
+ * Product field data is fetched over an authenticated HTTP call to the Kast
+ * management API (see `KastApiClient`).
  */
 export class StripePlugin implements IKastPlugin {
   private stripe: Stripe | null = null;
@@ -72,6 +70,7 @@ export class StripePlugin implements IKastPlugin {
     ctx.on(PluginHook.CONTENT_PUBLISHED, (payload) => this.onPublish(payload));
     ctx.on(PluginHook.CONTENT_UPDATED, (payload) => this.onUpdate(payload));
     ctx.on(PluginHook.CONTENT_TRASHED, (payload) => this.onTrash(payload));
+    ctx.on(PluginHook.STRIPE_EVENT, (payload) => this.dispatchEvent(payload as Stripe.Event));
 
     await ctx.setConfig({
       provider: 'stripe',

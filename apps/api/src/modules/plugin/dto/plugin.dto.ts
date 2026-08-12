@@ -23,7 +23,12 @@ export interface PluginRecord {
   version: string;
   description: string | null;
   isActive: boolean;
+  isInstalled: boolean;
   isSystemPlugin: boolean;
+  permissions: string[];
+  hooks: string[];
+  adminPages: Array<{ label: string; path: string; icon?: string }>;
+  env: string[];
   installedAt: string;
   updatedAt: string;
 }
@@ -37,4 +42,5 @@ export interface UpsertPluginParams {
   displayName: string;
   version: string;
   description?: string;
+  manifest: Record<string, unknown>;
 }

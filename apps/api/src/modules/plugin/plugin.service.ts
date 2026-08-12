@@ -12,8 +12,7 @@ import { PluginRepository } from './plugin.repository';
 export class PluginService {
   constructor(
     private readonly repo: PluginRepository,
-    // loader is injected to trigger OnApplicationBootstrap during module init
-    _loader: PluginLoaderService,
+    private readonly loader: PluginLoaderService,
   ) {}
 
   async list(): Promise<PluginListResponse> {
@@ -23,32 +22,32 @@ export class PluginService {
 
   async install(name: string, version: string): Promise<{ data: PluginRecord }> {
     const existing = await this.repo.findByName(name);
-    if (existing) throw new ConflictException(`Plugin "${name}" is already installed`);
-    const data = await this.repo.install(name, version);
+    if (existing?.isInstalled) throw new ConflictException(`Plugin "${name}" is already installed`);
+    const data = await this.loader.install(name, version);
     return { data };
   }
 
   async uninstall(name: string): Promise<void> {
     const existing = await this.repo.findByName(name);
-    if (!existing) throw new NotFoundException(`Plugin "${name}" not found`);
+    if (!existing?.isInstalled) throw new NotFoundException(`Plugin "${name}" not found`);
     if (existing.isSystemPlugin) {
       throw new ForbiddenException('System plugins cannot be uninstalled');
     }
-    await this.repo.remove(name);
+    await this.loader.uninstall(name);
   }
 
   async enable(name: string): Promise<{ data: PluginRecord }> {
-    const data = await this.repo.setActive(name, true);
+    const data = await this.loader.enable(name);
     return { data };
   }
 
   async disable(name: string): Promise<{ data: PluginRecord }> {
-    const data = await this.repo.setActive(name, false);
+    const data = await this.loader.disable(name);
     return { data };
   }
 
   async getConfig(name: string): Promise<{ data: Record<string, unknown> }> {
-    const data = await this.repo.getConfig(name);
+    const data = await this.repo.getSafeConfig(name);
     return { data };
   }
 
@@ -57,7 +56,7 @@ export class PluginService {
     config: Record<string, unknown>,
   ): Promise<{ data: Record<string, unknown> }> {
     await this.repo.setConfig(name, config);
-    const data = await this.repo.getConfig(name);
+    const data = await this.repo.getSafeConfig(name);
     return { data };
   }
 }

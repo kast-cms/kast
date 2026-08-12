@@ -5,7 +5,7 @@ sidebar:
   order: 1
 ---
 
-Kast exposes a Model Context Protocol (MCP) server over SSE. Any MCP-compatible AI client — Claude Desktop, Claude Code, Cursor, Zed — can connect to it and call Kast tools directly.
+Kast exposes a Model Context Protocol (MCP) server over Streamable HTTP. Any MCP-compatible AI client — Claude Desktop, Claude Code, Cursor, Zed — can connect to it and call Kast tools directly.
 
 ## Prerequisites
 
@@ -20,7 +20,7 @@ Add this to your `claude_desktop_config.json`:
 {
   "mcpServers": {
     "kast": {
-      "url": "https://api.example.com/api/v1/mcp/sse",
+      "url": "https://api.example.com/api/v1/mcp",
       "headers": {
         "Authorization": "Bearer <your-agent-token>"
       }
@@ -40,8 +40,8 @@ Restart Claude Desktop. You should see "kast" appear in the MCP servers list.
 
 ```bash
 claude mcp add kast \
-  --transport sse \
-  --url https://api.example.com/api/v1/mcp/sse \
+  --transport http \
+  --url https://api.example.com/api/v1/mcp \
   --header "Authorization: Bearer <your-agent-token>"
 ```
 
@@ -59,7 +59,7 @@ When running the API locally:
 {
   "mcpServers": {
     "kast-local": {
-      "url": "http://localhost:3000/api/v1/mcp/sse",
+      "url": "http://localhost:3000/api/v1/mcp",
       "headers": {
         "Authorization": "Bearer <your-agent-token>"
       }

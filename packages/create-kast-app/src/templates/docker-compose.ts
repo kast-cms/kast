@@ -15,10 +15,10 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: \${POSTGRES_USER:-kast}
-      POSTGRES_PASSWORD: \${POSTGRES_PASSWORD:-kast_secret}
+      POSTGRES_PASSWORD: \${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: \${POSTGRES_DB:-kast_db}
     ports:
-      - '5432:5432'
+      - '127.0.0.1:5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -30,12 +30,15 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    ports:
-      - '6379:6379'
+    command: redis-server --appendonly yes --requirepass "$\${REDIS_PASSWORD}"
+    environment:
+      REDIS_PASSWORD: \${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+    expose:
+      - '6379'
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
+      test: ['CMD-SHELL', 'redis-cli -a "$\${REDIS_PASSWORD}" --no-auth-warning ping']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -49,13 +52,20 @@ services:
     # this container is the container itself. Set DOCKER_DATABASE_URL /
     # DOCKER_REDIS_HOST to use servers outside compose.
     environment:
-      DATABASE_URL: \${DOCKER_DATABASE_URL:-postgresql://\${POSTGRES_USER:-kast}:\${POSTGRES_PASSWORD:-kast_secret}@postgres:5432/\${POSTGRES_DB:-kast_db}}
+      NODE_ENV: \${KAST_DOCKER_NODE_ENV:-production}
+      DATABASE_URL: postgresql://\${POSTGRES_USER:-kast}:\${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@\${POSTGRES_HOST:-postgres}:5432/\${POSTGRES_DB:-kast_db}
       REDIS_HOST: \${DOCKER_REDIS_HOST:-redis}
       REDIS_PORT: \${DOCKER_REDIS_PORT:-6379}
+      REDIS_PASSWORD: \${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
     # Apply migrations before serving so a fresh volume yields a working API.
     command: sh -c "node_modules/.bin/prisma migrate deploy && node dist/main.js"
     ports:
       - '{{apiPort}}:3000'
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:3000/api/v1/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
     depends_on:
       postgres:
         condition: service_healthy
@@ -72,7 +82,8 @@ services:
     ports:
       - '3001:3001'
     depends_on:
-      - api
+      api:
+        condition: service_healthy
 {{/if}}
 {{#if includeFrontend}}
   web:
@@ -92,7 +103,7 @@ services:
     ports:
       - '7700:7700'
     environment:
-      - MEILI_MASTER_KEY=\${MEILISEARCH_API_KEY:-masterKey}
+      - MEILI_MASTER_KEY=\${MEILISEARCH_MASTER_KEY:?Set MEILISEARCH_MASTER_KEY in .env}
     volumes:
       - meilisearch_data:/meili_data
 {{/if}}
