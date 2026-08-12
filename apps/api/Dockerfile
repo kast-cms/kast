@@ -8,6 +8,10 @@ ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 RUN corepack enable
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/api/package.json ./apps/api/
+# The api's postinstall runs `prisma generate`, which needs the schema and the
+# prisma config to exist before `pnpm install` fires it.
+COPY apps/api/prisma.config.ts ./apps/api/
+COPY apps/api/prisma/ ./apps/api/prisma/
 COPY packages/ ./packages/
 COPY plugins/ ./plugins/
 RUN pnpm install --frozen-lockfile --filter @kast-cms/api... --filter './plugins/**'
