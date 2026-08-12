@@ -72,6 +72,7 @@ interface RepoMocks {
   updateStatus: jest.Mock;
   findVersionByIdForType: jest.Mock;
   revertToVersion: jest.Mock;
+  syncReferences: jest.Mock;
 }
 
 describe('validation mode comes from the stored entry status', () => {
@@ -89,6 +90,7 @@ describe('validation mode comes from the stored entry status', () => {
       updateStatus: jest.fn().mockResolvedValue(true),
       findVersionByIdForType: jest.fn(),
       revertToVersion: jest.fn().mockResolvedValue(entry('PUBLISHED')),
+      syncReferences: jest.fn().mockResolvedValue(undefined),
     };
     const validator = new ContentSchemaValidator({
       findLiveMedia: jest.fn().mockResolvedValue(new Map()),

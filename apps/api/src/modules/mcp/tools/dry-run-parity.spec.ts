@@ -73,6 +73,7 @@ function harness(status: string): Harness {
     createVersion: jest.fn().mockResolvedValue(undefined),
     update,
     updateStatus: jest.fn().mockResolvedValue(true),
+    syncReferences: jest.fn().mockResolvedValue(undefined),
   };
   const validator = new ContentSchemaValidator({
     findLiveMedia: jest.fn().mockResolvedValue(new Map()),

@@ -59,6 +59,7 @@ describe('SeoService', () => {
       findPublishedWithCanonical: jest.fn(),
       findPublishedEntriesForSitemap: jest.fn(),
       findActiveLocales: jest.fn(),
+      findGlobalSettingString: jest.fn().mockResolvedValue(null),
     } as unknown as Mocked<SeoRepository>;
     prisma = { contentEntry: { findUnique: jest.fn() } };
     queue = { add: jest.fn() } as unknown as Mocked<Queue>;

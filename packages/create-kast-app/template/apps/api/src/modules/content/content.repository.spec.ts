@@ -17,6 +17,11 @@ function buildTx(): Record<string, jest.Mock | Record<string, jest.Mock>> {
     contentEntryVersion: {
       findFirst: jest.fn().mockResolvedValue({ versionNumber: 4 }),
       create: jest.fn().mockResolvedValue({ id: 'v1' }),
+      findMany: jest.fn().mockResolvedValue([]),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+    },
+    globalSetting: {
+      findUnique: jest.fn().mockResolvedValue(null),
     },
   };
 }

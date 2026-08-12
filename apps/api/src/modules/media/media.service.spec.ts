@@ -20,7 +20,18 @@ function pngUpload(originalname = 'photo.png'): Express.Multer.File {
 }
 
 function mediaRow(overrides: Partial<MediaFile> = {}): MediaFile {
-  return { id: 'media-1', storageKey: 'key.png', ...overrides } as MediaFile;
+  return {
+    id: 'media-1',
+    storageKey: 'key.png',
+    size: PNG.length,
+    originalSize: null,
+    optimizedSize: null,
+    thumbnailSize: 0,
+    thumbnails: null,
+    usages: [],
+    _count: { usages: 0 },
+    ...overrides,
+  } as MediaFile;
 }
 
 interface Harness {

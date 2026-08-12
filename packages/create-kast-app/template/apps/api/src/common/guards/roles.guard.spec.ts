@@ -112,13 +112,15 @@ describe('RolesGuard', () => {
       expect(resolver.isAllowed).not.toHaveBeenCalled();
     });
 
-    it('allows a system-role holder on an undecorated route', async () => {
+    it('fails closed for a non-super-admin system role on an undecorated route', async () => {
+      // An undecorated handler declares nothing, so a role below super_admin
+      // only passes if the resolver grants the derived permission.
       await expect(
         guard.canActivate(
           makeContext(UndecoratedController, 'create', 'POST', user([SYSTEM_ROLES.VIEWER])),
         ),
-      ).resolves.toBe(true);
-      expect(resolver.isAllowed).not.toHaveBeenCalled();
+      ).rejects.toThrow(ForbiddenException);
+      expect(resolver.isAllowed).toHaveBeenCalled();
     });
 
     it('allows a public route with no principal', async () => {

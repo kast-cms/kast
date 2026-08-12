@@ -229,6 +229,9 @@ export class MediaService {
       try {
         await this.storage.delete(key);
       } catch (err: unknown) {
+        // An object that is already gone is the goal state of a delete, not a
+        // cleanup failure — only a retained object may retain the row.
+        if (this.isAlreadyGone(err)) continue;
         this.logger.warn(`Could not delete stored object ${key}: ${String(err)}`);
         failures.push(key);
       }
@@ -239,6 +242,12 @@ export class MediaService {
       );
     }
     await this.repo.hardDelete(id);
+  }
+
+  private isAlreadyGone(err: unknown): boolean {
+    const code = (err as Partial<NodeJS.ErrnoException> | null)?.code ?? '';
+    const text = `${code} ${err instanceof Error ? err.message : String(err)}`;
+    return /NoSuchKey|NotFound|ENOENT|\b404\b/i.test(text);
   }
 
   /**

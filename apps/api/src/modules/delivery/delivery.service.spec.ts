@@ -80,6 +80,7 @@ describe('DeliveryService', () => {
       listPublished: jest.fn(),
       findPublishedBySlug: jest.fn(),
       findMediaUrls: jest.fn().mockResolvedValue(new Map()),
+      findPublishedRelations: jest.fn().mockResolvedValue(new Map()),
     } as unknown as Mocked<DeliveryRepository>;
     contentTypes = {
       findAll: jest.fn(),
