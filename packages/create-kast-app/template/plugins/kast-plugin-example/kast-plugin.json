@@ -1,0 +1,10 @@
+{
+  "name": "kast-plugin-example",
+  "version": "1.0.0",
+  "displayName": "Example Plugin",
+  "description": "Demonstrates the Kast plugin system with content hooks.",
+  "permissions": ["content:read"],
+  "hooks": ["content.created"],
+  "adminPages": [],
+  "env": []
+}
