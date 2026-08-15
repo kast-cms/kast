@@ -166,18 +166,14 @@ export class MediaService {
   ): Promise<void> {
     if (!OPTIMIZE_RASTER_TYPES.has(mimeType)) return;
     const jobData: MediaJobData = { mediaFileId, storageKey, mimeType };
-    await Promise.all([
-      this.queue.enqueue(QUEUE_NAMES.MEDIA, 'optimize', jobData, {
-        attempts: 3,
-        jobId: `media-optimize-${mediaFileId}`,
-        removeOnComplete: true,
-      }),
-      this.queue.enqueue(QUEUE_NAMES.MEDIA, 'thumbnail', jobData, {
-        attempts: 3,
-        jobId: `media-thumbnail-${mediaFileId}`,
-        removeOnComplete: true,
-      }),
-    ]);
+    // One job, not two: optimize and thumbnailing both consume the uploaded
+    // object, and running them in sequence is what lets the processor delete it
+    // afterwards instead of leaving an unreferenced original behind.
+    await this.queue.enqueue(QUEUE_NAMES.MEDIA, 'derive', jobData, {
+      attempts: 3,
+      jobId: `media-derive-${mediaFileId}`,
+      removeOnComplete: true,
+    });
   }
 
   async findAll(query: ListMediaDto): Promise<PaginatedResult<MediaFileView>> {
