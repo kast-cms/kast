@@ -19,7 +19,7 @@ not revoke, scoped tokens ignoring the content-type dimension, MCP accepting JWT
 `gcs` silently writing to ephemeral disk, an open Redis, unaudited denials — are
 closed with enforcement you can point at.
 
-What is left is **ten entries, five of which are product decisions rather than
+What is left is **eight entries, five of which are product decisions rather than
 defects.** Nothing on the list is a security boundary failure, a data-loss path, or
 an advertised feature that silently does nothing. The largest remaining items are
 the two deliberate architectural commitments the previous register flagged as
@@ -38,9 +38,9 @@ Re-verified entry by entry against the source at `d0e707b`.
 |                                                   |  Count |
 | ------------------------------------------------- | -----: |
 | Entries carried from the 2026-08-12 register      |     78 |
-| **Closed** (verified against enforcing code)      | **66** |
+| **Closed** (verified against enforcing code)      | **68** |
 | **Partial** (core closed, named path uncovered)   |  **2** |
-| **Open**                                          |  **8** |
+| **Open**                                          |  **6** |
 | Of the open/partial, requiring a product decision |      5 |
 
 **Verification standard.** Each entry was checked by reading the code that would
@@ -132,8 +132,6 @@ or state that the MCP surface is deliberately read-heavy with a narrow write set
 | **CLI-H**  | CLI tests are filesystem-shallow — no install, build, migrate, boot, login | Medium | L      |
 | **OPS-12** | One 902-line migration, misleadingly named `add_password_reset_token`      | Medium | L      |
 | **POL-10** | 58 unchecked Definition-of-Done and security-checklist boxes               | Low    | M      |
-| **POL-08** | Docs URLs split between `kastcms.com/docs` and `docs.kast.dev`             | Low    | S      |
-| **POL-15** | CI does not generate Next route types, so `typedRoutes` is unchecked       | Low    | S      |
 
 **CLI-H** is the one with real value. The eight scaffold tests assert file presence
 and string content; none installs dependencies, generates Prisma, builds, migrates,
@@ -151,8 +149,17 @@ recorded — so this is a "next major, with a documented reset" item, not a rout
 fix. Its practical cost today is that migration intent is unreadable and there is
 no exercised incremental upgrade history.
 
-**POL-10, POL-08, POL-15** are documentation and CI hygiene. Worth a single
-housekeeping pass, not individual attention.
+**POL-10** is planning-document hygiene: the phase Definitions of Done and the
+security checklist are unchecked even where the code exists, so they cannot be read
+as status. Checking them honestly means re-verifying each line, which is the work —
+not the ticking.
+
+`POL-08` and `POL-15` were carried as open and are not. The admin's typecheck script
+is `next typegen && tsc --noEmit`, so CI does generate route types. The remaining
+`kastcms.com` strings are example email addresses in the API spec plus one line in
+`KAST_VISION.md` offering `kastcms.com` **or** `kast.dev` as the marketing domain —
+an undecided branding question, not a documentation defect. Every docs URL resolves
+to `docs.kast.dev`.
 
 ---
 
