@@ -20,20 +20,27 @@ export class PluginService {
     return { data };
   }
 
-  async install(name: string, version: string): Promise<{ data: PluginRecord }> {
+  /**
+   * Records a plugin that is already bundled with this deployment. Nothing is
+   * fetched or written to disk — the loader only accepts a name it can discover
+   * under the plugins directory.
+   */
+  async register(name: string, version: string): Promise<{ data: PluginRecord }> {
     const existing = await this.repo.findByName(name);
-    if (existing?.isInstalled) throw new ConflictException(`Plugin "${name}" is already installed`);
-    const data = await this.loader.install(name, version);
+    if (existing?.isInstalled)
+      throw new ConflictException(`Plugin "${name}" is already registered`);
+    const data = await this.loader.register(name, version);
     return { data };
   }
 
-  async uninstall(name: string): Promise<void> {
+  /** Unloads the plugin and clears its registration. The code stays on disk. */
+  async deregister(name: string): Promise<void> {
     const existing = await this.repo.findByName(name);
     if (!existing?.isInstalled) throw new NotFoundException(`Plugin "${name}" not found`);
     if (existing.isSystemPlugin) {
-      throw new ForbiddenException('System plugins cannot be uninstalled');
+      throw new ForbiddenException('System plugins cannot be deregistered');
     }
-    await this.loader.uninstall(name);
+    await this.loader.deregister(name);
   }
 
   async enable(name: string): Promise<{ data: PluginRecord }> {

@@ -9,14 +9,20 @@ export class PluginsResource {
     return this.client.request('/api/v1/plugins');
   }
 
-  install(name: string, version: string): Promise<ApiResponse<PluginRecord>> {
-    return this.client.request('/api/v1/plugins/install', {
+  /**
+   * Records a plugin that is already bundled with the target deployment so it
+   * can be enabled. Nothing is downloaded: a plugin becomes available only by
+   * being placed in the deployment's `plugins/` directory before build.
+   */
+  register(name: string, version: string): Promise<ApiResponse<PluginRecord>> {
+    return this.client.request('/api/v1/plugins/register', {
       method: 'POST',
       body: { name, version },
     });
   }
 
-  async uninstall(name: string): Promise<void> {
+  /** Unloads the plugin and clears its registration. The code stays on disk. */
+  async deregister(name: string): Promise<void> {
     await this.client.request(`/api/v1/plugins/${encodeURIComponent(name)}`, {
       method: 'DELETE',
     });

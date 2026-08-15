@@ -126,7 +126,7 @@ describe('PluginLoaderService lifecycle', () => {
     const loader = new PluginLoaderService(emitter, repo, new PluginExtensionRegistry());
     await loader.enable('fixture-plugin');
 
-    const result = await loader.uninstall('fixture-plugin');
+    const result = await loader.deregister('fixture-plugin');
 
     expect(result.isInstalled).toBe(false);
     expect(emitter.listenerCount('content.created')).toBe(0);

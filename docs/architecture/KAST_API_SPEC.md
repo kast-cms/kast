@@ -2198,9 +2198,11 @@ List all installed plugins.
 
 ---
 
-### POST /api/v1/plugins/install 👑
+### POST /api/v1/plugins/register 👑
 
-Install a plugin by name and version.
+Register a plugin that is already bundled with this deployment, so it can be enabled.
+
+Nothing is fetched: there is no registry download, no artifact verification, and no write to disk. The name must match a directory the API can already discover under `plugins/`, or the call fails. To add a plugin that is not bundled, place it in `plugins/` and rebuild the image.
 
 **Request body:**
 

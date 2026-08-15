@@ -50,9 +50,15 @@ Every create, update, delete, publish, login, token creation, plugin install, an
 
 Security is not a single guard. It is layered: HTTP headers → CORS → rate limiting → authentication → authorization → field-level checks → input validation. Every layer must pass independently.
 
-### 6. Plugins are untrusted third-party code
+### 6. Plugins are trusted code, and must be treated as such
 
-Plugins are sandboxed. They declare permissions in their manifest. They only receive the data and capabilities they declared. A plugin cannot escalate its own permissions at runtime.
+Plugins are **not** sandboxed. They are `require()`d into the API process and run with full Node.js capability: `process.env`, the filesystem, and the network are all reachable from plugin code regardless of what its manifest declares.
+
+The `permissions` array is a compatibility declaration. The loader refuses to load a plugin requesting a permission it does not recognise, and skips a plugin whose module fails to load, so a bad plugin cannot silently take the API down. Neither check constrains what a loaded plugin then does.
+
+Consequently a plugin is inside every trust boundary this document describes. Operators must treat installing one as equivalent to merging its source: only bundle plugins you would run as your own code. Plugins reach the deployment by being present at build time — there is no registry fetch and no artifact verification to rely on.
+
+Real isolation (worker threads or a subprocess with a serialised context API) is not implemented. Until it is, no statement in this document about authorization, secret handling, or data access should be read as holding against plugin code.
 
 ---
 

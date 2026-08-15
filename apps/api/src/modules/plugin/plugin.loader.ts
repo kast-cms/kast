@@ -91,7 +91,13 @@ export class PluginLoaderService implements OnApplicationBootstrap {
     }
   }
 
-  async install(name: string, version: string): Promise<PluginRecord> {
+  /**
+   * Registers a plugin that is already on disk. `discoverByName` throws when the
+   * name is not present under the plugins directory, which is the whole contract:
+   * there is no registry, no download and no artifact verification, so a plugin
+   * only becomes available by being bundled into the deployment.
+   */
+  async register(name: string, version: string): Promise<PluginRecord> {
     const plugin = this.discoverByName(name);
     if (plugin.manifest.version !== version) {
       throw new ConflictException(
@@ -123,7 +129,7 @@ export class PluginLoaderService implements OnApplicationBootstrap {
     return this.repo.setActive(name, false);
   }
 
-  async uninstall(name: string): Promise<PluginRecord> {
+  async deregister(name: string): Promise<PluginRecord> {
     await this.deactivate(name);
     return this.repo.markInstalled(name, false);
   }
