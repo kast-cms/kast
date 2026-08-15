@@ -6,7 +6,8 @@ export class EnableDisablePluginDto {
   reason?: string;
 }
 
-export class InstallPluginDto {
+/** Names a plugin that is already present in the deployment's plugins/ directory. */
+export class RegisterPluginDto {
   @IsString()
   @MinLength(1)
   name!: string;

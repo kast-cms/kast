@@ -344,7 +344,7 @@ export class SeoService {
    * `seo.redirects.allowedHosts`; without that policy the redirect table is an
    * open redirect for whatever serves the rules.
    */
-  private async assertRedirectTargetAllowed(toPath: string): Promise<void> {
+  async assertRedirectTargetAllowed(toPath: string): Promise<void> {
     const settings = await this.repo.findSeoSettings();
     const verdict = checkRedirectTarget(toPath, settings.redirectAllowedHosts);
     if (!verdict.ok) throw new BadRequestException(verdict.reason);

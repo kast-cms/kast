@@ -25,6 +25,14 @@ export interface TemplateContext {
   pluginSentry: boolean;
   deployTarget: string;
   isPnpm: boolean;
+  /** pnpm >= 10: build permissions live in pnpm-workspace.yaml, not package.json. */
+  isPnpmWorkspaceConfig: boolean;
+  /** pnpm >= 11: the workspace file wants an `allowBuilds` map, not a list. */
+  isPnpmAllowBuilds: boolean;
+  /** pnpm 10 exactly: the workspace file wants `onlyBuiltDependencies`. */
+  isPnpmOnlyBuilt: boolean;
+  /** pnpm < 10: package.json `pnpm.onlyBuiltDependencies`, workspace file ignored. */
+  isPnpmLegacyConfig: boolean;
   isNpm: boolean;
   isYarn: boolean;
   isBun: boolean;
@@ -32,6 +40,24 @@ export interface TemplateContext {
   dbMigrateCmd: string;
   dbMigrateProdCmd: string;
   dbSeedCmd: string;
+}
+
+/**
+ * Where a project declares which dependencies may run build scripts has moved
+ * twice, and getting it wrong is silent: pnpm skips the build scripts for
+ * argon2, sharp and Prisma, the install looks clean, and the API fails at
+ * runtime on missing native bindings.
+ *
+ *   pnpm  <10  package.json  `pnpm.onlyBuiltDependencies`
+ *   pnpm  10   pnpm-workspace.yaml  `onlyBuiltDependencies:` (list)
+ *   pnpm >=11  pnpm-workspace.yaml  `allowBuilds:` (map, and an unlisted
+ *              package with a build script fails the install outright)
+ *
+ * `packageManager` pins the exact version a generated project will use, so the
+ * scaffolder emits the one form that version reads.
+ */
+function majorVersion(version: string): number {
+  return Number.parseInt(version.split('.')[0] ?? '', 10) || 0;
 }
 
 function installCmd(pm: PackageManager): string {
@@ -83,6 +109,10 @@ export function buildContext(opts: ProjectOptions, pmVersion: string): TemplateC
     pluginSentry: opts.plugins.includes('sentry'),
     deployTarget: opts.deployTarget,
     isPnpm: opts.packageManager === 'pnpm',
+    isPnpmWorkspaceConfig: opts.packageManager === 'pnpm' && majorVersion(pmVersion) >= 10,
+    isPnpmAllowBuilds: opts.packageManager === 'pnpm' && majorVersion(pmVersion) >= 11,
+    isPnpmOnlyBuilt: opts.packageManager === 'pnpm' && majorVersion(pmVersion) === 10,
+    isPnpmLegacyConfig: opts.packageManager === 'pnpm' && majorVersion(pmVersion) < 10,
     isNpm: opts.packageManager === 'npm',
     isYarn: opts.packageManager === 'yarn',
     isBun: opts.packageManager === 'bun',

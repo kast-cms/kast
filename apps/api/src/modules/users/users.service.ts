@@ -105,7 +105,12 @@ export class UsersService {
     return roles.map((r) => r.id);
   }
 
-  async invite(dto: InviteUserDto, actor: AuthUser): Promise<{ data: UserSummaryResponse }> {
+  /**
+   * Every check `invite` makes before it writes anything, in the same order.
+   * Split out so a dry run can be refused for the same reasons the real call
+   * would be, rather than reporting a success the write would reject.
+   */
+  async assertInvitable(dto: InviteUserDto, actor: AuthUser): Promise<void> {
     if (dto.email.toLowerCase() === actor.email.toLowerCase()) {
       throw new UnprocessableEntityException('Cannot invite your own email address');
     }
@@ -113,6 +118,11 @@ export class UsersService {
     if (existing) throw new ConflictException('A user with this email already exists');
 
     this.assertNoEscalation(actor, dto.roleNames);
+    await this.resolveRoleIds(dto.roleNames);
+  }
+
+  async invite(dto: InviteUserDto, actor: AuthUser): Promise<{ data: UserSummaryResponse }> {
+    await this.assertInvitable(dto, actor);
     const roleIds = await this.resolveRoleIds(dto.roleNames);
 
     const user = await this.repo.create({

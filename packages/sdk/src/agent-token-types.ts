@@ -17,10 +17,11 @@ export interface CreateAgentTokenBody {
   scopes: string[];
 }
 
-export interface AgentSessionSummary {
+/** One MCP tool invocation. The transport is stateless, so there is no session. */
+export interface AgentToolCallSummary {
   id: string;
   agentName: string | null;
-  toolsUsed: string[];
+  toolName: string;
   startedAt: string;
   endedAt: string | null;
   durationMs: number | null;

@@ -3,10 +3,11 @@ import type { PaginatedResult } from '../../common/types/auth.types';
 import { AgentTokenRepository } from './agent-token.repository';
 import type { AgentTokenCreatedResponse, AgentTokenRecord } from './dto/agent-token.dto';
 
-export interface AgentSessionRecord {
+/** One MCP tool invocation. The transport is stateless, so there is no session. */
+export interface AgentToolCallRecord {
   id: string;
   agentName: string | null;
-  toolsUsed: string[];
+  toolName: string;
   startedAt: string;
   endedAt: string | null;
   durationMs: number | null;
@@ -56,26 +57,26 @@ export class AgentTokenService {
     if (!ok) throw new NotFoundException('Agent token not found or already revoked');
   }
 
-  async listSessions(
+  async listToolCalls(
     id: string,
     limit: number,
     cursor?: string,
-  ): Promise<PaginatedResult<AgentSessionRecord>> {
+  ): Promise<PaginatedResult<AgentToolCallRecord>> {
     const token = await this.repo.findByIdAny(id);
     if (!token) throw new NotFoundException('Agent token not found');
-    const { items, total } = await this.repo.listSessions(id, limit, cursor);
+    const { items, total } = await this.repo.listToolCalls(id, limit, cursor);
     const hasNextPage = items.length > limit;
     const page = hasNextPage ? items.slice(0, limit) : items;
     const nextCursor = hasNextPage ? (page[page.length - 1]?.id ?? null) : null;
     return {
-      data: page.map((s) => ({
-        id: s.id,
-        agentName: s.agentName,
-        toolsUsed: Array.isArray(s.toolsUsed) ? (s.toolsUsed as string[]) : [],
-        startedAt: s.startedAt.toISOString(),
-        endedAt: s.endedAt?.toISOString() ?? null,
-        durationMs: s.durationMs,
-        outcome: s.outcome,
+      data: page.map((call) => ({
+        id: call.id,
+        agentName: call.agentName,
+        toolName: call.toolName,
+        startedAt: call.startedAt.toISOString(),
+        endedAt: call.endedAt?.toISOString() ?? null,
+        durationMs: call.durationMs,
+        outcome: call.outcome,
       })),
       meta: { total, limit, cursor: nextCursor, hasNextPage },
     };

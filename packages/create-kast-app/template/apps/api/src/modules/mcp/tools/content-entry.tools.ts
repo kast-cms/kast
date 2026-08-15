@@ -247,4 +247,36 @@ export class McpContentEntryTools {
     await this.contentService.trash(args['typeSlug'] as string, args['entryId'] as string);
     return { deleted: true };
   }
+
+  @McpTool({
+    name: 'unpublish_content_entry',
+    description: 'Return a published entry to draft, removing it from the delivery API',
+    role: 'editor',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        typeSlug: { type: 'string' },
+        entryId: { type: 'string' },
+        dryRun: { type: 'boolean' },
+      },
+      required: ENTRY_SCHEMA_REQUIRED,
+    },
+    dryRunable: true,
+  })
+  async unpublishContentEntry(
+    args: Record<string, unknown>,
+    _user: AuthUser,
+    ctx: ToolContext,
+  ): Promise<unknown> {
+    const typeSlug = args['typeSlug'] as string;
+    const entryId = args['entryId'] as string;
+    if (ctx.dryRun) {
+      return {
+        action: 'unpublish_content_entry',
+        entryId,
+        ...(await this.contentService.previewUnpublish(typeSlug, entryId)),
+      };
+    }
+    return this.contentService.unpublish(typeSlug, entryId);
+  }
 }

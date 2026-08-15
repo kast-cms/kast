@@ -36,8 +36,7 @@ const TRAILING_ACTIONS: Record<string, string> = {
   test: 'test',
   enable: 'enable',
   disable: 'disable',
-  install: 'install',
-  uninstall: 'uninstall',
+  register: 'register',
 };
 
 // Path segments that are API plumbing rather than resource names.

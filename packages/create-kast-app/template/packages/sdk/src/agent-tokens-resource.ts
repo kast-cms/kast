@@ -1,7 +1,7 @@
 import type {
-  AgentSessionSummary,
   AgentTokenCreated,
   AgentTokenSummary,
+  AgentToolCallSummary,
   CreateAgentTokenBody,
 } from './agent-token-types.js';
 import type { KastClient } from './client.js';
@@ -22,14 +22,14 @@ export class AgentTokensResource {
     return this.client.request(`/api/v1/agent-tokens/${id}`, { method: 'DELETE' });
   }
 
-  sessions(
+  toolCalls(
     id: string,
     query: { limit?: number; cursor?: string } = {},
-  ): Promise<ApiListResponse<AgentSessionSummary>> {
+  ): Promise<ApiListResponse<AgentToolCallSummary>> {
     const search = new URLSearchParams();
     if (query.limit !== undefined) search.set('limit', String(query.limit));
     if (query.cursor) search.set('cursor', query.cursor);
     const suffix = search.size > 0 ? `?${search.toString()}` : '';
-    return this.client.request(`/api/v1/agent-tokens/${id}/sessions${suffix}`);
+    return this.client.request(`/api/v1/agent-tokens/${id}/tool-calls${suffix}`);
   }
 }

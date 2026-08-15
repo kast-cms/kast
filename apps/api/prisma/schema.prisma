@@ -549,7 +549,7 @@ model AgentToken {
   lastUsedAt  DateTime?
   revokedAt   DateTime?
 
-  sessions    AgentSession[]
+  toolCalls   AgentToolCall[]
 
   createdAt   DateTime  @default(now())
 
@@ -557,20 +557,23 @@ model AgentToken {
   @@map("agent_tokens")
 }
 
-model AgentSession {
+/// One row per MCP tool invocation, not per connection. The transport is
+/// stateless Streamable HTTP, so there is no connection lifecycle to record;
+/// naming this a session implied one that never existed.
+model AgentToolCall {
   id           String     @id @default(cuid())
   agentTokenId String
   agentToken   AgentToken @relation(fields: [agentTokenId], references: [id], onDelete: Cascade)
 
   agentName    String?
-  toolsUsed    Json       @default("[]")
+  toolName     String
   startedAt    DateTime   @default(now())
   endedAt      DateTime?
   durationMs   Int?
   outcome      String?
 
   @@index([agentTokenId])
-  @@map("agent_sessions")
+  @@map("agent_tool_calls")
 }
 
 

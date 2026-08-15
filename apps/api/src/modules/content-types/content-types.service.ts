@@ -132,6 +132,22 @@ export class ContentTypesService {
     await this.repo.delete(name);
   }
 
+  /**
+   * The checks `createField` makes before writing, so a dry run is refused for
+   * the same reasons the write would be — an unknown type or a duplicate field
+   * name should fail the preview, not surface at approval time.
+   */
+  async previewCreateField(
+    typeName: string,
+    dto: CreateFieldDto,
+  ): Promise<{ wouldCreate: true; typeName: string; field: string; type: string }> {
+    const ct = await this.findByName(typeName);
+    const existing = await this.repo.findFieldByNameAndType(ct.id, dto.name);
+    if (existing)
+      throw new ConflictException(`Field '${dto.name}' already exists on '${typeName}'`);
+    return { wouldCreate: true, typeName, field: dto.name, type: dto.type };
+  }
+
   async createField(typeName: string, dto: CreateFieldDto): Promise<ContentField> {
     const ct = await this.findByName(typeName);
     const existing = await this.repo.findFieldByNameAndType(ct.id, dto.name);

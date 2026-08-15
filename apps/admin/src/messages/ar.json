@@ -442,8 +442,7 @@
         "duplicate": "تكرار",
         "enable": "تمكين",
         "disable": "تعطيل",
-        "install": "تثبيت",
-        "uninstall": "إلغاء التثبيت",
+        "register": "تسجيل",
         "test": "اختبار",
         "validate": "تحقق",
         "import": "استيراد",
@@ -715,6 +714,7 @@
       "groupContentTypes": "أنواع المحتوى",
       "groupContentEntries": "إدخالات المحتوى",
       "groupMediaSeo": "الوسائط وتحسين محركات البحث",
+      "groupPlatform": "الإضافات والمستخدمون",
       "cancel": "إلغاء",
       "submit": "إنشاء الرمز",
       "submitting": "جارٍ الإنشاء…"

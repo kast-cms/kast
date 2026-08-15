@@ -6,6 +6,7 @@ import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { buildContext, resolvePmVersion, type TemplateContext } from './template-context.js';
 import {
+  API_ONLY_WORKSPACE_TEMPLATE,
   DOCKER_COMPOSE_TEMPLATE,
   ENV_EXAMPLE_TEMPLATE,
   GITIGNORE_TEMPLATE,
@@ -76,14 +77,30 @@ interface FileEntry {
  * like pnpm/yarn/bun. Yarn Berry defaults to PnP, which breaks Prisma and
  * native modules, so pin it to the node_modules linker.
  */
-function getPmConfigFiles(opts: ProjectOptions): FileEntry[] {
+function getPmConfigFiles(ctx: TemplateContext, opts: ProjectOptions): FileEntry[] {
   if (opts.packageManager === 'npm') {
     return [{ path: '.npmrc', content: 'legacy-peer-deps=true\n' }];
   }
   if (opts.packageManager === 'yarn') {
     return [{ path: '.yarnrc.yml', content: 'nodeLinker: node-modules\n' }];
   }
-  return [];
+  // Matches the Kast monorepo: the NestJS ecosystem still publishes Nest 10 peer
+  // ranges against a Nest 11 runtime, so install leniently rather than failing on
+  // peers nobody can satisfy yet.
+  const lines = ['auto-install-peers=true', 'strict-peer-dependencies=false'];
+  if (ctx.isPnpmLegacyConfig) {
+    lines.push(
+      '',
+      "# pnpm 9 does not link a package's optional dependencies into a peer-suffixed",
+      '# instance. sharp lands in one (via @types/node), finds its platform binding,',
+      '# and then dies on the libvips shared object that should sit beside it:',
+      '#   ERR_DLOPEN_FAILED: libvips-cpp.so: cannot open shared object file',
+      '# The install itself succeeds, so this only shows up on first boot. pnpm 10',
+      '# fixed the linking; hoisting is the workaround for projects pinned below it.',
+      'node-linker=hoisted',
+    );
+  }
+  return [{ path: '.npmrc', content: `${lines.join('\n')}\n` }];
 }
 
 async function keepSelectedPlugins(targetDir: string, selected: string[]): Promise<void> {
@@ -110,7 +127,7 @@ function getMonorepoGeneratedFiles(ctx: TemplateContext, opts: ProjectOptions): 
     { path: '.env.example', content: render(ENV_EXAMPLE_TEMPLATE, ctx) },
     { path: 'README.md', content: render(README_TEMPLATE, ctx) },
     { path: '.gitignore', content: GITIGNORE_TEMPLATE },
-    ...getPmConfigFiles(opts),
+    ...getPmConfigFiles(ctx, opts),
   ];
 
   const workspaceContent = render(WORKSPACE_TEMPLATE, ctx);
@@ -132,11 +149,14 @@ function getMonorepoGeneratedFiles(ctx: TemplateContext, opts: ProjectOptions): 
 function getApiOnlyGeneratedFiles(ctx: TemplateContext, opts: ProjectOptions): FileEntry[] {
   const files: FileEntry[] = [
     { path: 'package.json', content: render(PACKAGE_JSON_API_ONLY_TEMPLATE, ctx) },
+    ...(ctx.isPnpmWorkspaceConfig
+      ? [{ path: 'pnpm-workspace.yaml', content: render(API_ONLY_WORKSPACE_TEMPLATE, ctx) }]
+      : []),
     { path: 'docker-compose.yml', content: render(DOCKER_COMPOSE_TEMPLATE, ctx) },
     { path: '.env.example', content: render(ENV_EXAMPLE_TEMPLATE, ctx) },
     { path: 'README.md', content: render(README_TEMPLATE, ctx) },
     { path: '.gitignore', content: GITIGNORE_TEMPLATE },
-    ...getPmConfigFiles(opts),
+    ...getPmConfigFiles(ctx, opts),
   ];
 
   if (opts.deployTarget === 'railway') {

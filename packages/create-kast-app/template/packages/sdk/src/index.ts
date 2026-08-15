@@ -74,9 +74,9 @@ export { TrashResource } from './trash-resource.js';
 export type { TrashListParams, TrashListResponse, TrashModel, TrashedItem } from './trash-types.js';
 export type {
   AddFieldBody,
-  AgentSessionSummary,
   AgentTokenCreated,
   AgentTokenSummary,
+  AgentToolCallSummary,
   ApiListResponse,
   ApiResponse,
   ApiTokenCreated,

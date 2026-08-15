@@ -12,7 +12,7 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
 import { Roles } from '../../common/decorators/roles.decorator';
-import { InstallPluginDto, type PluginListResponse, type PluginRecord } from './dto/plugin.dto';
+import { RegisterPluginDto, type PluginListResponse, type PluginRecord } from './dto/plugin.dto';
 import { PluginService } from './plugin.service';
 
 @ApiTags('plugins')
@@ -28,19 +28,31 @@ export class PluginController {
     return this.service.list();
   }
 
-  @Post('install')
+  @Post('register')
   @Roles(SYSTEM_ROLES.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Install a plugin by name and version' })
-  install(@Body() dto: InstallPluginDto): Promise<{ data: PluginRecord }> {
-    return this.service.install(dto.name, dto.version);
+  @ApiOperation({
+    summary: 'Register a plugin already bundled with this deployment',
+    description:
+      "Records a plugin that is present in the deployment's plugins/ directory so it can be " +
+      'enabled. This endpoint fetches nothing: there is no registry download, no artifact ' +
+      'verification, and no write to disk. To add a plugin that is not bundled, place it in ' +
+      'plugins/ and rebuild the image.',
+  })
+  register(@Body() dto: RegisterPluginDto): Promise<{ data: PluginRecord }> {
+    return this.service.register(dto.name, dto.version);
   }
 
   @Delete(':name')
   @Roles(SYSTEM_ROLES.SUPER_ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Uninstall a plugin' })
-  async uninstall(@Param('name') name: string): Promise<void> {
-    await this.service.uninstall(name);
+  @ApiOperation({
+    summary: 'Deregister a plugin',
+    description:
+      'Unloads the plugin and clears its registration. The code stays on disk; only the record ' +
+      'and the running instance are removed.',
+  })
+  async deregister(@Param('name') name: string): Promise<void> {
+    await this.service.deregister(name);
   }
 
   @Post(':name/enable')

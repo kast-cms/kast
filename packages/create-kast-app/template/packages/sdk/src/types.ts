@@ -329,8 +329,8 @@ export type {
 } from './seo-types.js';
 
 export type {
-  AgentSessionSummary,
   AgentTokenCreated,
   AgentTokenSummary,
+  AgentToolCallSummary,
   CreateAgentTokenBody,
 } from './agent-token-types.js';

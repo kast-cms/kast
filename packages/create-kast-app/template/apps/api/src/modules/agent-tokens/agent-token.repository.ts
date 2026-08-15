@@ -88,7 +88,7 @@ export class AgentTokenRepository {
     return this.prisma.agentToken.findUnique({ where: { id }, select: { id: true } });
   }
 
-  async listSessions(
+  async listToolCalls(
     agentTokenId: string,
     limit: number,
     cursor?: string,
@@ -96,7 +96,7 @@ export class AgentTokenRepository {
     items: {
       id: string;
       agentName: string | null;
-      toolsUsed: Prisma.JsonValue;
+      toolName: string;
       startedAt: Date;
       endedAt: Date | null;
       durationMs: number | null;
@@ -106,12 +106,12 @@ export class AgentTokenRepository {
   }> {
     const where = { agentTokenId };
     const [items, total] = await Promise.all([
-      this.prisma.agentSession.findMany({
+      this.prisma.agentToolCall.findMany({
         where,
         select: {
           id: true,
           agentName: true,
-          toolsUsed: true,
+          toolName: true,
           startedAt: true,
           endedAt: true,
           durationMs: true,
@@ -121,7 +121,7 @@ export class AgentTokenRepository {
         take: limit + 1,
         ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       }),
-      this.prisma.agentSession.count({ where }),
+      this.prisma.agentToolCall.count({ where }),
     ]);
     return { items, total };
   }
@@ -169,11 +169,11 @@ export class AgentTokenRepository {
     outcome: string,
   ): void {
     const endedAt = new Date();
-    void this.prisma.agentSession.create({
+    void this.prisma.agentToolCall.create({
       data: {
         agentTokenId,
         agentName: agentName ?? null,
-        toolsUsed: [toolName],
+        toolName,
         startedAt: new Date(endedAt.getTime() - durationMs),
         endedAt,
         durationMs,

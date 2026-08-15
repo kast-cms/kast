@@ -88,7 +88,7 @@ In scope:
 - 107 REST API endpoints
 - 38 database models
 - 4 system roles + custom roles
-- MCP server with 15 tools
+- MCP server with 23 tools
 - Docker Compose deployment
 
 Out of scope for v1:
@@ -210,7 +210,7 @@ Goal: Everything that makes Kast unique. Admin UI ships here.
 | PH2-01 | Next.js admin panel — content modeling UI | Schema   |
 | PH2-02 | Next.js admin panel — editorial UI        | Content  |
 | PH2-03 | SEO module + live MCP validation panel    | SEO      |
-| PH2-04 | MCP server — 15 tools                     | MCP      |
+| PH2-04 | MCP server — 23 tools                     | MCP      |
 | PH2-05 | i18n module + RTL admin UI                | i18n     |
 | PH2-06 | Draft/Publish/Schedule workflow           | Content  |
 | PH2-07 | Version history + revert                  | Content  |
@@ -226,7 +226,7 @@ Phase 2 Exit Criteria:
 
 - Admin panel works end-to-end for creating types, entries, and publishing
 - SEO score appears before publish
-- MCP server responds to all 15 tools from Claude.ai
+- MCP server responds to all 23 tools from Claude.ai
 - RTL content types display correctly in Arabic
 - Webhooks deliver with HMAC signature
 - Trashed items recoverable within 30 days
@@ -1834,7 +1834,7 @@ Every Kast installation ships with a built-in MCP server at /mcp. AI agents (Cla
 | ---------- | ------------------------------------------------------------------------------------------ |
 | BR-MCP-001 | The MCP server must be available at /api/v1/mcp on every Kast installation                 |
 | BR-MCP-002 | Authentication must use agent tokens (kastagent\_...) with allow-listed tool-name scopes   |
-| BR-MCP-003 | The MCP server must expose exactly 15 tools (see tool list in Business Requirements below) |
+| BR-MCP-003 | The MCP server must expose exactly 23 tools (see tool list in Business Requirements below) |
 | BR-MCP-004 | Every mutating tool must support dryRun=true and run the same validation as the real write |
 | BR-MCP-005 | Every tool call must be written to AuditLog with agentTokenId and agentName                |
 | BR-MCP-006 | Tool calls outside the agent token's scope must return SCOPE_DENIED                        |

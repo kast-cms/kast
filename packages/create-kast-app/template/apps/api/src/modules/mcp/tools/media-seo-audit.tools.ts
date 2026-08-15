@@ -4,6 +4,7 @@ import type { AuthUser } from '../../../common/types/auth.types';
 import { AuditService } from '../../audit/audit.service';
 import type { AuditQueryDto } from '../../audit/dto/audit-query.dto';
 import { MediaService } from '../../media/media.service';
+import type { CreateRedirectDto } from '../../seo/dto/redirect.dto';
 import { SeoService } from '../../seo/seo.service';
 import { McpTool } from '../mcp-tool.decorator';
 import type { ToolContext } from '../types/mcp.types';
@@ -121,5 +122,80 @@ export class McpMediaSeoAuditTools {
     _ctx: ToolContext,
   ): Promise<unknown> {
     return this.auditService.findAll(args as AuditQueryDto);
+  }
+
+  @McpTool({
+    name: 'upload_media_from_url',
+    description:
+      'Fetch a remote file and store it as media. The URL goes through the same SSRF guard ' +
+      'and MIME allow-list as the REST upload-from-URL route.',
+    role: 'editor',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', format: 'uri' },
+        folderId: { type: 'string' },
+        altText: { type: 'string' },
+        dryRun: { type: 'boolean' },
+      },
+      required: ['url'],
+    },
+    dryRunable: true,
+  })
+  async uploadMediaFromUrl(
+    args: Record<string, unknown>,
+    user: AuthUser,
+    ctx: ToolContext,
+  ): Promise<unknown> {
+    const url = args['url'] as string;
+    if (ctx.dryRun) {
+      // Resolves and screens the URL without fetching the body, so the preview
+      // fails on a blocked host exactly as the real call would.
+      return {
+        action: 'upload_media_from_url',
+        url,
+        ...(await this.mediaService.previewUploadFromUrl(url)),
+      };
+    }
+    return this.mediaService.uploadFromUrl(url, user.id, {
+      ...(args['folderId'] !== undefined ? { folderId: args['folderId'] as string } : {}),
+      ...(args['altText'] !== undefined ? { altText: args['altText'] as string } : {}),
+    });
+  }
+
+  @McpTool({
+    name: 'create_redirect',
+    description: 'Create an SEO redirect from one path to another',
+    role: 'editor',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        fromPath: { type: 'string' },
+        toPath: { type: 'string' },
+        type: { type: 'string', enum: ['PERMANENT', 'TEMPORARY'] },
+        dryRun: { type: 'boolean' },
+      },
+      required: ['fromPath', 'toPath'],
+    },
+    dryRunable: true,
+  })
+  async createRedirect(
+    args: Record<string, unknown>,
+    user: AuthUser,
+    ctx: ToolContext,
+  ): Promise<unknown> {
+    const dto = args as unknown as CreateRedirectDto;
+    if (ctx.dryRun) {
+      // The same open-redirect policy the write applies, so a preview cannot
+      // report a create the real call would refuse.
+      await this.seoService.assertRedirectTargetAllowed(dto.toPath);
+      return {
+        action: 'create_redirect',
+        wouldCreate: true,
+        fromPath: dto.fromPath,
+        toPath: dto.toPath,
+      };
+    }
+    return this.seoService.createRedirect(dto, user.id);
   }
 }

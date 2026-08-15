@@ -2,6 +2,7 @@ export { DOCKER_COMPOSE_TEMPLATE } from './docker-compose.js';
 export { ENV_EXAMPLE_TEMPLATE } from './env-example.js';
 export { GITIGNORE_TEMPLATE } from './gitignore.js';
 export {
+  API_ONLY_WORKSPACE_TEMPLATE,
   PACKAGE_JSON_API_ONLY_TEMPLATE,
   PACKAGE_JSON_TEMPLATE,
   WORKSPACE_TEMPLATE,

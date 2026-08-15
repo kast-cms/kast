@@ -18,7 +18,13 @@ import { useState, type JSX } from 'react';
 const TOOL_GROUPS = [
   {
     key: 'groupContentTypes',
-    tools: ['list_content_types', 'get_content_type', 'create_content_type', 'update_content_type'],
+    tools: [
+      'list_content_types',
+      'get_content_type',
+      'create_content_type',
+      'update_content_type',
+      'add_content_type_field',
+    ],
   },
   {
     key: 'groupContentEntries',
@@ -28,12 +34,25 @@ const TOOL_GROUPS = [
       'create_content_entry',
       'update_content_entry',
       'publish_content_entry',
+      'unpublish_content_entry',
       'delete_content_entry',
     ],
   },
   {
     key: 'groupMediaSeo',
-    tools: ['list_media', 'get_media_file', 'get_seo_score', 'validate_seo', 'get_audit_log'],
+    tools: [
+      'list_media',
+      'get_media_file',
+      'upload_media_from_url',
+      'get_seo_score',
+      'validate_seo',
+      'create_redirect',
+      'get_audit_log',
+    ],
+  },
+  {
+    key: 'groupPlatform',
+    tools: ['list_plugins', 'enable_plugin', 'disable_plugin', 'invite_user'],
   },
 ] as const;
 

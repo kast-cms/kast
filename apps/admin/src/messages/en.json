@@ -442,8 +442,7 @@
         "duplicate": "Duplicate",
         "enable": "Enable",
         "disable": "Disable",
-        "install": "Install",
-        "uninstall": "Uninstall",
+        "register": "Register",
         "test": "Test",
         "validate": "Validate",
         "import": "Import",
@@ -715,6 +714,7 @@
       "groupContentTypes": "Content Types",
       "groupContentEntries": "Content Entries",
       "groupMediaSeo": "Media & SEO",
+      "groupPlatform": "Plugins & Users",
       "cancel": "Cancel",
       "submit": "Create token",
       "submitting": "Creating…"

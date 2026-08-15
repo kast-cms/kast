@@ -54,7 +54,7 @@ describe('routeTargetFromPath', () => {
     ['/api/v1/webhooks/:id/test', 'POST', 'webhooks', 'test'],
     ['/api/v1/webhooks/:id/deliveries', 'GET', 'webhooks', 'read'],
     ['/api/v1/webhooks/:id/deliveries/:deliveryId/redeliver', 'POST', 'webhooks', 'create'],
-    ['/api/v1/plugins/install', 'POST', 'plugins', 'install'],
+    ['/api/v1/plugins/register', 'POST', 'plugins', 'register'],
     ['/api/v1/plugins/:name/enable', 'POST', 'plugins', 'enable'],
     ['/api/v1/plugins/:name/disable', 'POST', 'plugins', 'disable'],
     ['/api/v1/plugins/:name/config', 'PATCH', 'plugins', 'update'],
