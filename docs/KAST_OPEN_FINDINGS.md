@@ -24,13 +24,15 @@ five were decided on 2026-08-15 and acted on — §1 records the reasoning. **Tw
 entries remain open**, both housekeeping: the initial migration's name, and the
 unchecked boxes in the phase plans.
 
-Two live defects surfaced while acting on those decisions, neither of them on any
+Four live defects surfaced while acting on those decisions, none of them on any
 list. **The MCP server registered no tools at all** — the registry read decorator
 metadata from the wrong slot, so `tools/list` was empty and no call could be
-dispatched, and the conformance test missed it by stubbing the registry. And **a
-freshly generated project did not compile**, because the repo's lockfile pins a
-BullMQ old enough to still expose the Redis commands the code calls. Both are
-fixed, and both now have a test that would catch the recurrence.
+dispatched, and the conformance test missed it by stubbing the registry. The other
+three were all in freshly generated projects, which **did not compile** (the repo's
+lockfile pins a BullMQ old enough to still expose the Redis commands the code
+calls), **wrote build permissions where the pinned pnpm does not read them**, and
+**could not load sharp on pnpm 9**. All four are fixed, and each has a test that
+would catch the recurrence.
 
 The honest summary of the release posture: the security and data-integrity spine is
 done and tested, and the two subsystems the last register called structural gaps —
@@ -47,7 +49,7 @@ Re-verified entry by entry against the branch head.
 | **Closed** (verified against enforcing code)      | **74** |
 | **Accepted** (decided, documented, not built)     |  **2** |
 | **Open**                                          |  **2** |
-| Defects found while closing them, not on any list |      2 |
+| Defects found while closing them, not on any list |      4 |
 
 **Verification standard.** Each entry was checked by reading the code that would
 have to enforce it, not by re-running the original probe. Behavioural claims about
@@ -140,8 +142,9 @@ create the first owner, model a content type, publish an entry, read it back
 through the anonymous delivery API, and confirm the management API still answers 401. `.github/workflows/nightly-scaffold.yml` runs it on a schedule, on demand, and
 on PRs that touch the scaffolder or its template.
 
-**It found two shipped defects before it was even committed**, both invisible to
-every other test because both need a real install of a real generated project.
+**It found three shipped defects before it went green once**, every one invisible
+to the rest of the suite because each needs a real install of a real generated
+project on the platform a user is actually on.
 
 _Build permissions were written where the pinned pnpm does not read them._ The
 location has moved twice: package.json `pnpm.onlyBuiltDependencies` below pnpm 10,
@@ -162,8 +165,27 @@ its lockfile. The commands we rely on are now declared in `queue/redis-commands.
 and asserted in one place, so a future narrowing is a compile error there rather
 than a surprise for the next person to run `create-kast-app`.
 
-That second one is the argument for this test in one paragraph: a lockfile makes a
-monorepo immune to the drift its own users are exposed to on day one.
+_sharp could not load libvips on pnpm 9._ The generated project installed and built
+cleanly and then died on its first boot with `ERR_DLOPEN_FAILED`. pnpm 9 does not
+link a package's optional dependencies into a peer-suffixed instance; sharp lands
+in one via `@types/node`, resolves its platform binding by walking up to the
+workspace root, and then cannot find the libvips shared object that should sit
+beside it. Every `@img/*` package is present in the store — a linking bug, not a
+missing download — and the install exits 0, so nothing before first boot notices.
+Reproduced in a `linux/amd64` container across majors (9 broken, 10 and 11 fine),
+so projects pinned below pnpm 10 now get `node-linker=hoisted` and later ones keep
+the strict layout.
+
+Worth recording how that one was diagnosed, because the first attempt was a guess:
+`auto-install-peers` looked like a plausible cause, shipped, and failed in exactly
+the same place. The container matrix took one run to answer what two CI round-trips
+had not.
+
+Together these are the argument for this test in one paragraph. A monorepo is
+structurally immune to most of what its own users hit on day one — a lockfile hides
+dependency drift, a committed `.npmrc` hides configuration gaps, and the maintainer's
+package-manager version hides everything version-specific. Only generating a project
+and running it exercises the path a user takes.
 
 ---
 
