@@ -43,6 +43,13 @@ export class PluginService {
     await this.loader.deregister(name);
   }
 
+  /** The registration state, or 404. Used by previews that must not mutate. */
+  async requireRegistered(name: string): Promise<{ isActive: boolean; isSystemPlugin: boolean }> {
+    const existing = await this.repo.findByName(name);
+    if (!existing?.isInstalled) throw new NotFoundException(`Plugin "${name}" is not registered`);
+    return { isActive: existing.isActive, isSystemPlugin: existing.isSystemPlugin };
+  }
+
   async enable(name: string): Promise<{ data: PluginRecord }> {
     const data = await this.loader.enable(name);
     return { data };

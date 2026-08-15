@@ -19,7 +19,7 @@ import { QUEUE_NAMES } from '../queue/queue.constants';
 import { ListMediaDto } from './dto/list-media.dto';
 import type { MediaJobData } from './media.processor';
 import { MediaRepository, type MediaDetailRow, type MediaListRow } from './media.repository';
-import { fetchRemoteMedia } from './remote-media-fetcher';
+import { assertRemoteMediaUrlAllowed, fetchRemoteMedia } from './remote-media-fetcher';
 import { derivedStorageKeys } from './storage/derived-keys.util';
 import { safeExtension } from './storage/storage-key.util';
 import type { StorageAdapter } from './storage/storage.adapter';
@@ -166,14 +166,18 @@ export class MediaService {
   ): Promise<void> {
     if (!OPTIMIZE_RASTER_TYPES.has(mimeType)) return;
     const jobData: MediaJobData = { mediaFileId, storageKey, mimeType };
-    // One job, not two: optimize and thumbnailing both consume the uploaded
-    // object, and running them in sequence is what lets the processor delete it
-    // afterwards instead of leaving an unreferenced original behind.
-    await this.queue.enqueue(QUEUE_NAMES.MEDIA, 'derive', jobData, {
-      attempts: 3,
-      jobId: `media-derive-${mediaFileId}`,
-      removeOnComplete: true,
-    });
+    await Promise.all([
+      this.queue.enqueue(QUEUE_NAMES.MEDIA, 'optimize', jobData, {
+        attempts: 3,
+        jobId: `media-optimize-${mediaFileId}`,
+        removeOnComplete: true,
+      }),
+      this.queue.enqueue(QUEUE_NAMES.MEDIA, 'thumbnail', jobData, {
+        attempts: 3,
+        jobId: `media-thumbnail-${mediaFileId}`,
+        removeOnComplete: true,
+      }),
+    ]);
   }
 
   async findAll(query: ListMediaDto): Promise<PaginatedResult<MediaFileView>> {
@@ -244,6 +248,19 @@ export class MediaService {
     const code = (err as Partial<NodeJS.ErrnoException> | null)?.code ?? '';
     const text = `${code} ${err instanceof Error ? err.message : String(err)}`;
     return /NoSuchKey|NotFound|ENOENT|\b404\b/i.test(text);
+  }
+
+  /**
+   * Screens the URL without downloading it, so a dry run is refused for a
+   * blocked host exactly as the real upload would be. Size and MIME can only be
+   * known from the response, so they are named as still-unchecked rather than
+   * silently implied to have passed.
+   */
+  async previewUploadFromUrl(
+    url: string,
+  ): Promise<{ wouldUpload: true; host: string; checkedOnFetch: string[] }> {
+    const { host } = await assertRemoteMediaUrlAllowed(url);
+    return { wouldUpload: true, host, checkedOnFetch: ['mimeType', 'size', 'magicBytes'] };
   }
 
   /**

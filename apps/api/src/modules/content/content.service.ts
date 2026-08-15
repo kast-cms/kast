@@ -19,6 +19,12 @@ import {
   writeLocale,
 } from './content-entry.helpers';
 import { addEntryLocale } from './content-locale.ops';
+import {
+  previewEntryPublish,
+  previewEntryTrash,
+  previewEntryUnpublish,
+  type PublishPreview,
+} from './content-preview.ops';
 import { revertEntryToVersion } from './content-revert.ops';
 import { cancelEntrySchedule, scheduleEntryPublish } from './content-schedule.ops';
 import { resolveEntrySlug } from './content-slug';
@@ -212,31 +218,23 @@ export class ContentService {
   }
 
   /** Runs every publish gate and returns its decision without changing entry status. */
-  async previewPublish(
-    typeSlug: string,
-    id: string,
-    force = false,
-  ): Promise<{
-    wouldPublish: boolean;
-    seoScore: number;
-    warnings: unknown[];
-    errors: unknown[];
-  }> {
+  async previewPublish(typeSlug: string, id: string, force = false): Promise<PublishPreview> {
     const { ct, entry } = await this.requireWritableEntry(typeSlug, id);
-    await this.gate.assertStoredPublishable(ct, entry);
-    const validation = await this.seoService.validateNow(id);
-    return {
-      wouldPublish: validation.errors.length === 0 && (force || validation.warnings.length === 0),
-      seoScore: validation.score,
-      warnings: validation.warnings,
-      errors: validation.errors,
-    };
+    return previewEntryPublish(this.gate, this.seoService, ct, entry, force);
   }
 
   /** Checks that trashing would address a live entry, without touching it. */
   async previewTrash(typeSlug: string, id: string): Promise<{ wouldTrash: true; status: string }> {
     const { entry } = await this.requireWritableEntry(typeSlug, id);
-    return { wouldTrash: true, status: entry.status };
+    return previewEntryTrash(entry);
+  }
+
+  async previewUnpublish(
+    typeSlug: string,
+    id: string,
+  ): Promise<{ wouldUnpublish: boolean; status: string }> {
+    const { entry } = await this.requireWritableEntry(typeSlug, id);
+    return previewEntryUnpublish(entry);
   }
 
   async addLocale(

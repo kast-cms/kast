@@ -15,7 +15,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import type { AuthUser, PaginatedResult } from '../../common/types/auth.types';
-import { AgentTokenService, type AgentSessionRecord } from './agent-token.service';
+import { AgentTokenService, type AgentToolCallRecord } from './agent-token.service';
 import {
   CreateAgentTokenDto,
   type AgentTokenCreatedResponse,
@@ -51,13 +51,13 @@ export class AgentTokenController {
     await this.service.revoke(id, user.id);
   }
 
-  @Get(':id/sessions')
+  @Get(':id/tool-calls')
   @Roles(SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Get MCP session history for an agent token' })
-  sessions(
+  @ApiOperation({ summary: 'Get MCP tool-call history for an agent token' })
+  toolCalls(
     @Param('id') id: string,
     @Query() query: PaginationDto,
-  ): Promise<PaginatedResult<AgentSessionRecord>> {
-    return this.service.listSessions(id, query.limit ?? 20, query.cursor);
+  ): Promise<PaginatedResult<AgentToolCallRecord>> {
+    return this.service.listToolCalls(id, query.limit ?? 20, query.cursor);
   }
 }

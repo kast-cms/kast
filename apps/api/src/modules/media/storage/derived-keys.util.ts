@@ -10,14 +10,11 @@ const OPTIMIZED_SUFFIX = '.webp';
 /**
  * Every object a media row can own, given the key it currently points at.
  *
- * The `derive` job writes beside the uploaded object without recording what it
- * wrote: it uploads `<key>.webp`, repoints the row at it, and writes
- * `thumbs/<width>/<key>` under the *uploaded* key. Deleting only `storageKey`
- * would therefore leak the thumbnails, so the purge reconstructs the set.
- *
- * The uploaded key stays in the set even though `derive` now reclaims it: rows
- * written before that change still hold an original, and a derive that crashed
- * between upload and delete leaves one too.
+ * Two background jobs write beside the uploaded object and neither records what
+ * it wrote: `optimize` uploads `<key>.webp` and repoints the row at it, leaving
+ * the original behind, and `thumbnail` writes `thumbs/<width>/<key>` under the
+ * *uploaded* key. Deleting only `storageKey` therefore leaks up to three objects
+ * per file, so the purge reconstructs the set instead.
  *
  * Reconstruction over-approximates by design: a file uploaded as `.webp` yields
  * a base key that was never written. Deletes are best-effort and a missing key

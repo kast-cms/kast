@@ -714,6 +714,7 @@
       "groupContentTypes": "Content Types",
       "groupContentEntries": "Content Entries",
       "groupMediaSeo": "Media & SEO",
+      "groupPlatform": "Plugins & Users",
       "cancel": "Cancel",
       "submit": "Create token",
       "submitting": "Creating…"

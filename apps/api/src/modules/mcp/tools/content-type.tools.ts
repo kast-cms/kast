@@ -1,12 +1,17 @@
 import { Injectable } from '@nestjs/common';
+import { ContentFieldType } from '@prisma/client';
 import type { AuthUser } from '../../../common/types/auth.types';
 import { ContentTypesService } from '../../content-types/content-types.service';
 import type {
   CreateContentTypeDto,
+  CreateFieldDto,
   UpdateContentTypeDto,
 } from '../../content-types/dto/content-type.dto';
 import { McpTool } from '../mcp-tool.decorator';
 import type { ToolContext } from '../types/mcp.types';
+
+/** The advertised enum comes from Prisma, so it cannot drift from what writes accept. */
+const CONTENT_FIELD_TYPES = Object.values(ContentFieldType);
 
 @Injectable()
 export class McpContentTypeTools {
@@ -117,5 +122,52 @@ export class McpContentTypeTools {
       };
     }
     return this.contentTypesService.update(name as string, dto as unknown as UpdateContentTypeDto);
+  }
+
+  @McpTool({
+    name: 'add_content_type_field',
+    description: 'Add a field to an existing content type',
+    role: 'admin',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        typeName: { type: 'string' },
+        name: { type: 'string' },
+        displayName: { type: 'string' },
+        type: { type: 'string', enum: [...CONTENT_FIELD_TYPES] },
+        isRequired: { type: 'boolean' },
+        isLocalized: { type: 'boolean' },
+        isUnique: { type: 'boolean' },
+        isHidden: { type: 'boolean' },
+        position: { type: 'integer', minimum: 0 },
+        // Carries the per-field validation rules the content write gate enforces
+        // (minLength, regex, choices, allowedMimeTypes, ...).
+        config: { type: 'object' },
+        defaultValue: {},
+        dryRun: { type: 'boolean' },
+      },
+      required: ['typeName', 'name', 'displayName', 'type'],
+    },
+    dryRunable: true,
+  })
+  async addContentTypeField(
+    args: Record<string, unknown>,
+    _user: AuthUser,
+    ctx: ToolContext,
+  ): Promise<unknown> {
+    const { typeName, ...dto } = args;
+    if (ctx.dryRun) {
+      return {
+        action: 'add_content_type_field',
+        ...(await this.contentTypesService.previewCreateField(
+          typeName as string,
+          dto as unknown as CreateFieldDto,
+        )),
+      };
+    }
+    return this.contentTypesService.createField(
+      typeName as string,
+      dto as unknown as CreateFieldDto,
+    );
   }
 }

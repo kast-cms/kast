@@ -77,6 +77,17 @@ function fileNameFromUrl(parsed: URL, mimeType: string): string {
   return `${base}${extByMime[mimeType] ?? ''}`;
 }
 
+/**
+ * Screens a URL the way {@link fetchRemoteMedia} does — scheme, then DNS
+ * resolution against the private-address guard — without opening the body.
+ * Lets a dry run be refused for a blocked host without transferring anything.
+ */
+export async function assertRemoteMediaUrlAllowed(url: string): Promise<{ host: string }> {
+  const parsed = parseHttpUrl(url);
+  await assertPublicUrl(parsed);
+  return { host: parsed.hostname };
+}
+
 /** Downloads a remote file with bounded redirects, SSRF checks, size, MIME, and magic validation. */
 export async function fetchRemoteMedia(
   url: string,
