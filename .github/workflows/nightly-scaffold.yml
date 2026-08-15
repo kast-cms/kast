@@ -1,0 +1,75 @@
+name: Nightly scaffold boot
+
+# The per-PR CLI tests assert file presence and string content. This one
+# generates a project and actually runs it: install, migrate, build, boot,
+# create the first owner, publish an entry, read it back through delivery.
+# Too slow for every PR (a full install and build of the generated monorepo),
+# so it runs nightly and on demand.
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+  # Changes to the scaffolder or the template it copies can break the generated
+  # project without touching anything the PR suite covers.
+  pull_request:
+    paths:
+      - 'packages/create-kast-app/**'
+      - '.github/workflows/nightly-scaffold.yml'
+
+jobs:
+  scaffold-boot:
+    name: Generate · Install · Boot · Publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: kast
+          POSTGRES_PASSWORD: kast
+          POSTGRES_DB: kast_scaffold
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kast -d kast_scaffold"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build the CLI
+        run: pnpm --filter create-kast-app build
+
+      - name: Generate a project and run it end to end
+        env:
+          DATABASE_URL: postgresql://kast:kast@localhost:5432/kast_scaffold?schema=public
+          REDIS_HOST: localhost
+          REDIS_PORT: '6379'
+          JWT_SECRET: nightly-scaffold-jwt-secret-at-least-32-chars
+          KAST_SECRET_ENCRYPTION_KEY: nightly-scaffold-encryption-key-at-least-32
+        run: packages/create-kast-app/test/scaffold-boot.sh

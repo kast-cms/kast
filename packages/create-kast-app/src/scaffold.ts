@@ -6,6 +6,7 @@ import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { buildContext, resolvePmVersion, type TemplateContext } from './template-context.js';
 import {
+  API_ONLY_WORKSPACE_TEMPLATE,
   DOCKER_COMPOSE_TEMPLATE,
   ENV_EXAMPLE_TEMPLATE,
   GITIGNORE_TEMPLATE,
@@ -132,6 +133,9 @@ function getMonorepoGeneratedFiles(ctx: TemplateContext, opts: ProjectOptions): 
 function getApiOnlyGeneratedFiles(ctx: TemplateContext, opts: ProjectOptions): FileEntry[] {
   const files: FileEntry[] = [
     { path: 'package.json', content: render(PACKAGE_JSON_API_ONLY_TEMPLATE, ctx) },
+    ...(ctx.isPnpmWorkspaceConfig
+      ? [{ path: 'pnpm-workspace.yaml', content: render(API_ONLY_WORKSPACE_TEMPLATE, ctx) }]
+      : []),
     { path: 'docker-compose.yml', content: render(DOCKER_COMPOSE_TEMPLATE, ctx) },
     { path: '.env.example', content: render(ENV_EXAMPLE_TEMPLATE, ctx) },
     { path: 'README.md', content: render(README_TEMPLATE, ctx) },

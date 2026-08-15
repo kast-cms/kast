@@ -14,6 +14,7 @@ import { Public } from '../../common/decorators/public.decorator';
 import type { Env } from '../../config/env.schema';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QUEUE_NAMES } from '../queue/queue.constants';
+import { redisCommands } from '../queue/redis-commands';
 import { SettingsService } from '../settings/settings.service';
 
 @ApiTags('health')
@@ -58,7 +59,7 @@ export class HealthController {
   }
 
   private async checkRedis(): Promise<HealthIndicatorResult> {
-    const client = await this.redisProbeQueue.client;
+    const client = await redisCommands(this.redisProbeQueue);
     await client.ping();
     return { redis: { status: 'up' } };
   }

@@ -2,6 +2,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import type { Job, JobsOptions, Queue } from 'bullmq';
 import { QUEUE_NAMES, type QueueName } from './queue.constants';
+import { redisCommands } from './redis-commands';
 
 @Injectable()
 export class QueueAdapter {
@@ -36,7 +37,7 @@ export class QueueAdapter {
 
   /** Stores short-lived coordination state in the same shared Redis as BullMQ. */
   async setEphemeral(key: string, value: string, ttlMs: number): Promise<void> {
-    const redis = await this.map[QUEUE_NAMES.WEBHOOK].client;
+    const redis = await redisCommands(this.map[QUEUE_NAMES.WEBHOOK]);
     await redis.set(`kast:ephemeral:${key}`, value, 'PX', ttlMs);
   }
 
@@ -46,7 +47,7 @@ export class QueueAdapter {
    * semantics across every API replica.
    */
   async consumeEphemeral(key: string): Promise<string | null> {
-    const redis = await this.map[QUEUE_NAMES.WEBHOOK].client;
+    const redis = await redisCommands(this.map[QUEUE_NAMES.WEBHOOK]);
     const result = await redis.eval(
       "local value = redis.call('GET', KEYS[1]); if value then redis.call('DEL', KEYS[1]); end; return value",
       1,

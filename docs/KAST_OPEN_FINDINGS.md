@@ -1,6 +1,6 @@
 # Kast CMS — Open Findings Register
 
-**Commit audited:** `d0e707b` on `fix/close-remaining-gaps`, i.e. `b3b1669` (merge of PR #66) plus the media/reconciliation fixes and operations runbooks in this branch.
+**Commit audited:** the head of `fix/close-remaining-gaps` — `b3b1669` (merge of PR #66) plus this branch's reconciliation lock, operations runbooks, plugin honesty pass, MCP tools and scaffold boot test.
 **Date:** 2026-08-15
 **Supersedes:** the 2026-08-12 revision of this file, which was written against `40ef66f` and predates PR #66. It described 78 open entries, the large majority of which that PR closed.
 **Point-in-time audit record:** `docs/KAST_FULL_GAP_ANALYSIS_2026-08-10.md` (unchanged; historical).
@@ -19,29 +19,35 @@ not revoke, scoped tokens ignoring the content-type dimension, MCP accepting JWT
 `gcs` silently writing to ephemeral disk, an open Redis, unaudited denials — are
 closed with enforcement you can point at.
 
-What is left is **eight entries, five of which are product decisions rather than
-defects.** Nothing on the list is a security boundary failure, a data-loss path, or
-an advertised feature that silently does nothing. The largest remaining items are
-the two deliberate architectural commitments the previous register flagged as
-"decide, then build": whether plugins get a real isolation boundary and a real
-installer, and whether the MCP agent-session model should describe a connection
-rather than a call.
+That left eight entries, five of them product decisions rather than defects. All
+five were decided on 2026-08-15 and acted on — §1 records the reasoning. **Two
+entries remain open**, both housekeeping: the initial migration's name, and the
+unchecked boxes in the phase plans.
+
+Two live defects surfaced while acting on those decisions, neither of them on any
+list. **The MCP server registered no tools at all** — the registry read decorator
+metadata from the wrong slot, so `tools/list` was empty and no call could be
+dispatched, and the conformance test missed it by stubbing the registry. And **a
+freshly generated project did not compile**, because the repo's lockfile pins a
+BullMQ old enough to still expose the Redis commands the code calls. Both are
+fixed, and both now have a test that would catch the recurrence.
 
 The honest summary of the release posture: the security and data-integrity spine is
-done and tested. What remains is scope and depth — how far the plugin platform goes,
-how deep the scaffolder's tests go, and a documentation-hygiene tail.
+done and tested, and the two subsystems the last register called structural gaps —
+MCP and plugins — are now either working or honestly described. What remains is a
+documentation tail and whatever the nightly scaffold run turns up next.
 
 ## Coverage
 
-Re-verified entry by entry against the source at `d0e707b`.
+Re-verified entry by entry against the branch head.
 
 |                                                   |  Count |
 | ------------------------------------------------- | -----: |
 | Entries carried from the 2026-08-12 register      |     78 |
-| **Closed** (verified against enforcing code)      | **68** |
-| **Partial** (core closed, named path uncovered)   |  **2** |
-| **Open**                                          |  **6** |
-| Of the open/partial, requiring a product decision |      5 |
+| **Closed** (verified against enforcing code)      | **74** |
+| **Accepted** (decided, documented, not built)     |  **2** |
+| **Open**                                          |  **2** |
+| Defects found while closing them, not on any list |      2 |
 
 **Verification standard.** Each entry was checked by reading the code that would
 have to enforce it, not by re-running the original probe. Behavioural claims about
@@ -69,80 +75,106 @@ Three corrections to my own earlier reporting, made during this pass:
 
 ---
 
-## 1. Open — product or architecture decision required
+## 1. Decisions taken
 
-These are not defects with an obvious correct fix. Each needs a call on scope
-before any code is worth writing.
+The five entries that needed a product call were decided on 2026-08-15 and acted
+on in the same branch. Recorded here because the reasoning is the finding — the
+code that followed is small.
 
-| ID          | Gap                                                                          | Sev    | Effort | Migration |
-| ----------- | ---------------------------------------------------------------------------- | ------ | ------ | --------- |
-| **PLG-D**   | Install only inserts a database row — nothing is fetched, verified or placed | High   | L      | **Yes**   |
-| **SEC-23a** | Manifest permissions are a startup string check, not a sandbox               | High   | L      | No        |
-| **PLG-G**   | Manifest `adminPages` render as links; no packaged plugin UI is mounted      | Medium | L      | No        |
-| **MCP-L**   | `AgentSession` is one row per tool call, not a connection session            | Medium | M      | **Yes**   |
-| **MCP-C**   | Eight PRD tool capabilities are absent; the PRD was aligned to the code      | Medium | L      | No        |
+### Plugins are a trusted, build-time extension mechanism (`PLG-D`, `SEC-23a`, `PLG-G`)
 
-**PLG-D.** `PluginService.install` writes a row and nothing else: no npm install,
-no artifact download, no signature or integrity check, no copy onto disk. Plugins
-work only if their code is already on the filesystem at build time. This is
-internally consistent today — the loader scans `/plugins`, the image copies it, and
-first-party plugins ship in the tree — but it means the admin's Install button
-describes something the system cannot do for a plugin it does not already have.
-**Decision:** either build real artifact installation (registry, verification,
-placement, and a restart contract), or rename the operation to match what it does
-and document plugins as build-time extensions.
+**Decision: document what the system is, rather than build what the UI implied.**
+Real artifact installation, process isolation and plugin-supplied UI are each a
+multi-week commitment, and nothing in the product needs them before there is
+third-party demand.
 
-**SEC-23a.** The boot-crash half is fixed: `ALLOWED_PERMISSIONS` now includes
-`settings:write` so a permission the published SDK enum offers can no longer take
-the API down, and each plugin loads inside its own try/catch. The sandbox half is
-untouched by design — plugins are `require()`d into the API process with full Node
-capability, so a plugin declaring `content:read` can still read `process.env`, the
-filesystem and the network. The permission list is documentation, not enforcement.
-**Decision:** real isolation is a worker-thread or subprocess architecture and a
-serialised context API — a large commitment. The alternative is to say plainly in
-the plugin docs that plugins are trusted code, and stop implying otherwise.
+What changed:
 
-**PLG-G.** `adminPages` from the manifest are rendered as navigation entries by
-`plugins-page.tsx`; the pages themselves are hand-written core screens. A plugin
-cannot ship its own UI. **Decision:** module federation or an iframe contract, both
-substantial; or drop `adminPages` from the manifest schema.
+- `install`/`uninstall` became `register`/`deregister` across the route, DTO,
+  service, loader, SDK and admin. The operation records a plugin already present
+  in the deployment's `plugins/` directory; it fetches nothing and verifies
+  nothing, and the descriptions now say so.
+- `KAST_SECURITY_MODEL.md` §6 said "plugins are sandboxed … they only receive the
+  data and capabilities they declared". It now says the opposite, because the
+  opposite is true: plugins run in-process with full Node capability, and the
+  manifest permissions are a compatibility check. The section also states what
+  _is_ bounded — a failing plugin is skipped, a throwing hook handler is caught.
+- The plugin docs gained a trust model, the three real lifecycle states (bundled,
+  registered, enabled), and a note that `adminPages` links a built-in
+  configuration screen rather than mounting plugin-supplied UI.
 
-**MCP-L.** `AgentTokenRepository.logToolCall` writes one `AgentSession` row per tool
-call with a zero duration span. Attribution is now correct — `agentTokenId`,
-`agentName`, outcome and `durationMs` are all recorded, which is what made denials
-auditable — but "session" in the schema still means "call". **Decision:** either
-model a real connection lifecycle (open on transport connect, close on disconnect,
-with calls as children) — which needs a schema change — or rename the model to
-`AgentToolCall` and keep the flat shape.
+**Still true, and now stated rather than implied:** a plugin is inside every trust
+boundary the security model describes. Revisit isolation when third-party plugins
+become a real distribution channel.
 
-**MCP-C.** Fifteen tools are registered, and code, the admin scope selector and the
-docs site now all agree on the same fifteen names — the PRD was updated to match
-rather than the reverse. Eight capabilities the PRD previously required remain
-unimplemented: unpublish, add-field, three plugin control tools, media upload,
-redirect create, and user create. `ContentService.unpublish` exists and is simply
-not exposed. **Decision:** this is now a scope question, not drift. Add the tools,
-or state that the MCP surface is deliberately read-heavy with a narrow write set.
+### MCP gets the missing tools; the session model is renamed, not rebuilt (`MCP-C`, `MCP-L`)
+
+**Decision: add the eight absent capabilities, and rename `AgentSession` to
+`AgentToolCall` instead of modelling a connection lifecycle.** The transport is
+stateless Streamable HTTP, so there is no connection to model — the table was
+always one row per invocation, and the honest fix is the name.
+
+The tool count went from 15 to 23: `unpublish_content_entry`,
+`add_content_type_field`, `upload_media_from_url`, `create_redirect`,
+`list_plugins`, `enable_plugin`, `disable_plugin`, `invite_user`. Every mutating
+one has a dry run that runs the real checks rather than asserting success — the
+invite preview runs the escalation and duplicate checks, the redirect preview runs
+the open-redirect policy, and the upload preview resolves the URL through the SSRF
+guard without transferring a body. There is no create-user-with-password path in
+Kast, so the user tool invites.
+
+**Found while doing it — the whole tool surface was dead.** `McpRegistry` read tool
+metadata from `(prototype, methodName)`. Nest's `@SetMetadata` on a method writes to
+`descriptor.value`, the function itself, so that lookup returned `undefined` for
+every method and the registry registered nothing: an empty `tools/list` and no
+dispatchable call. `MCP-F`'s conformance test did not catch it because it stubs
+`McpRegistry` and injects a hand-built tool, leaving the decorator path with no
+coverage at all. Fixed, and `mcp-tool-catalog.spec.ts` now fails if the allow-list
+and the registry ever disagree again.
+
+### The scaffolder gets a real boot test (`CLI-H`)
+
+**Decision: build it, nightly-gated.** `packages/create-kast-app/test/scaffold-boot.sh`
+generates a project and runs it: install, Prisma generate, migrate, build, boot,
+create the first owner, model a content type, publish an entry, read it back
+through the anonymous delivery API, and confirm the management API still answers 401. `.github/workflows/nightly-scaffold.yml` runs it on a schedule, on demand, and
+on PRs that touch the scaffolder or its template.
+
+**It found two shipped defects before it was even committed**, both invisible to
+every other test because both need a real install of a real generated project.
+
+_Build permissions were written where the pinned pnpm does not read them._ The
+location has moved twice: package.json `pnpm.onlyBuiltDependencies` below pnpm 10,
+`onlyBuiltDependencies` in `pnpm-workspace.yaml` at 10, and an `allowBuilds` map at
+11 — which additionally **fails the install** when a dependency with a build script
+is listed neither way. The scaffolder always wrote the package.json form, so a
+project generated on pnpm 10 silently skipped the build scripts for `argon2`,
+`sharp` and Prisma (a clean-looking install, then a runtime failure on missing
+native bindings), and one generated on pnpm 11 could not install at all. The
+generated config now matches the version `packageManager` pins.
+
+_The generated project did not compile._ `apps/api` depends on `bullmq: ^5.39.0`.
+The repo's lockfile pins 5.76.1; a fresh install resolves 5.81.3, and between those
+releases BullMQ narrowed `IRedisClient` — `ping` and `eval` are no longer on it.
+The health check and the ephemeral-state helpers call both, so `nest build` failed
+with ten errors in any newly generated project while the monorepo stayed green on
+its lockfile. The commands we rely on are now declared in `queue/redis-commands.ts`
+and asserted in one place, so a future narrowing is a compile error there rather
+than a surprise for the next person to run `create-kast-app`.
+
+That second one is the argument for this test in one paragraph: a lockfile makes a
+monorepo immune to the drift its own users are exposed to on day one.
 
 ---
 
-## 2. Open — no decision needed
+## 2. Still open
 
-| ID         | Gap                                                                        | Sev    | Effort |
-| ---------- | -------------------------------------------------------------------------- | ------ | ------ |
-| **CLI-H**  | CLI tests are filesystem-shallow — no install, build, migrate, boot, login | Medium | L      |
-| **OPS-12** | One 902-line migration, misleadingly named `add_password_reset_token`      | Medium | L      |
-| **POL-10** | 58 unchecked Definition-of-Done and security-checklist boxes               | Low    | M      |
+| ID         | Gap                                                                   | Sev    | Effort |
+| ---------- | --------------------------------------------------------------------- | ------ | ------ |
+| **OPS-12** | One 902-line migration, misleadingly named `add_password_reset_token` | Medium | L      |
+| **POL-10** | 58 unchecked Definition-of-Done and security-checklist boxes          | Low    | M      |
 
-**CLI-H** is the one with real value. The eight scaffold tests assert file presence
-and string content; none installs dependencies, generates Prisma, builds, migrates,
-boots, or logs in. `CLI-A` — MinIO offered by the CLI and rejected by the API env
-schema, so the generated project crashed on first `pnpm dev` — is exactly the class
-of defect this catches, and it shipped. The Docker smoke test added in CI is the
-model to follow: generate a project into a temp dir, frozen install, build, start
-Postgres and Redis, migrate, boot, create the first owner, publish one entry,
-fetch it through delivery. Slow, so gate it to a nightly or a label.
-
-**OPS-12.** A second migration now exists, but the initial one still creates all 38
+**OPS-12.** Two more migrations now exist, but the initial one still creates all 38
 models under a name describing a password-reset column. Splitting it retroactively
 means rewriting applied migration history, which every existing deployment has
 recorded — so this is a "next major, with a documented reset" item, not a routine
@@ -235,9 +267,13 @@ seed and admin share the `site.name` namespace. `ADV-07` multipart upload honour
 emitted. `ADV-10` `media.deleted` is a real event. `ADV-11` webhook deliveries
 paginate by cursor. `ADV-12` version retention is enforced. `ADV-13` thumbnail URLs
 are carried on the media view. `ADV-15` the unused AI tables are gone. **`ADV-14`
-closed in this branch**: optimize and thumbnailing became one sequential `derive`
-job, so the uploaded original is reclaimed once its derivatives are durable
-instead of lingering unreferenced and uncounted.
+was already closed**, by the other option the gap analysis offered: the original is
+deliberately retained and tracked. `MediaFile` carries `originalStorageKey`,
+`originalUrl` and `originalSize`, and `toView` reports `totalSize` as original +
+optimized + thumbnails, so the footprint is accounted for rather than undercounted.
+Purge reclaims all of it. An attempt in this branch to delete the original after
+the WebP landed was reverted: it would have left `originalUrl` pointing at bytes
+that no longer existed.
 
 **Scaffolder (7 of 8).** `CLI-A` MinIO removed. `CLI-B` `/api/v1/mcp` corrected
 everywhere. `CLI-C` selected plugins are copied into the project. `CLI-D` the blog

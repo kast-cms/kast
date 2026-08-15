@@ -34,7 +34,7 @@ export const PACKAGE_JSON_TEMPLATE = `{
     "@commitlint/cli": "^19.8.0",
     "@commitlint/config-conventional": "^19.8.0",
     "@commitlint/types": "^19.8.0"
-  }{{#if isPnpm}},
+  }{{#if isPnpmLegacyConfig}},
   "pnpm": {
     "onlyBuiltDependencies": [
       "@parcel/watcher",
@@ -47,12 +47,12 @@ export const PACKAGE_JSON_TEMPLATE = `{
       "prisma",
       "sharp"
     ]
-  }{{else}},
+  }{{/if}}{{#unless isPnpm}},
   "workspaces": [
     "apps/*",
     "packages/*",
     "plugins/*"
-  ]{{/if}}
+  ]{{/unless}}
 }
 `;
 
@@ -172,7 +172,7 @@ export const PACKAGE_JSON_API_ONLY_TEMPLATE = `{
     "collectCoverageFrom": ["**/*.(t|j)s"],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
-  }{{#if isPnpm}},
+  }{{#if isPnpmLegacyConfig}},
   "pnpm": {
     "onlyBuiltDependencies": [
       "@prisma/client",
@@ -186,8 +186,57 @@ export const PACKAGE_JSON_API_ONLY_TEMPLATE = `{
 }
 `;
 
+/**
+ * A single-package pnpm 10+ project still needs pnpm-workspace.yaml, because
+ * that is the only place those versions read build permissions from.
+ */
+export const API_ONLY_WORKSPACE_TEMPLATE = `{{#if isPnpmOnlyBuilt}}onlyBuiltDependencies:
+  - '@prisma/client'
+  - '@prisma/engines'
+  - argon2
+  - esbuild
+  - prisma
+  - sharp
+{{/if}}{{#if isPnpmAllowBuilds}}allowBuilds:
+  '@prisma/client': true
+  '@prisma/engines': true
+  '@scarf/scarf': false
+  argon2: true
+  esbuild: true
+  prisma: true
+  sharp: true
+{{/if}}`;
+
 export const WORKSPACE_TEMPLATE = `{{#if isPnpm}}packages:
   - 'apps/*'
   - 'packages/*'
   - 'plugins/*'
-{{/if}}`;
+{{#if isPnpmOnlyBuilt}}
+# pnpm 10 reads this here rather than from package.json. Without it the build
+# scripts for argon2, sharp and Prisma are skipped and the API fails at runtime.
+onlyBuiltDependencies:
+  - '@parcel/watcher'
+  - '@prisma/client'
+  - '@prisma/engines'
+  - '@swc/core'
+  - argon2
+  - esbuild
+  - msgpackr-extract
+  - prisma
+  - sharp
+{{/if}}{{#if isPnpmAllowBuilds}}
+# pnpm 11 replaced onlyBuiltDependencies with this map, and fails the install if a
+# dependency with a build script is listed neither way. The native modules the API
+# needs are allowed; @scarf/scarf is telemetry and is declined.
+allowBuilds:
+  '@parcel/watcher': true
+  '@prisma/client': true
+  '@prisma/engines': true
+  '@scarf/scarf': false
+  '@swc/core': true
+  argon2: true
+  esbuild: true
+  msgpackr-extract: true
+  prisma: true
+  sharp: true
+{{/if}}{{/if}}`;
