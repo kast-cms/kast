@@ -98,6 +98,15 @@ test('the generated pnpm project carries the settings its dependencies need', as
   const major = Number.parseInt(pkg.packageManager.split('@')[1].split('.')[0], 10);
   const workspace = await readFile(join(projectDir, 'pnpm-workspace.yaml'), 'utf-8');
 
+  // pnpm 9 does not link a package's optional dependencies into a peer-suffixed
+  // instance, so sharp installs cleanly and then dies on first boot looking for
+  // libvips. Hoisting is the workaround, and only pnpm 9 should carry it.
+  if (major < 10) {
+    assert.match(npmrc, /^node-linker=hoisted$/m, 'pnpm 9 needs hoisting for sharp');
+  } else {
+    assert.doesNotMatch(npmrc, /node-linker=hoisted/, 'pnpm 10+ links optional deps correctly');
+  }
+
   if (major >= 11) {
     assert.match(workspace, /^allowBuilds:/m, 'pnpm 11 reads allowBuilds from the workspace file');
     assert.match(workspace, /^ {2}sharp: true$/m);
