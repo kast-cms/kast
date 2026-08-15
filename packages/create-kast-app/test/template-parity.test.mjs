@@ -23,6 +23,7 @@ const API = join(REPO, 'apps', 'api');
 const TEMPLATE_API = join(PKG, 'template', 'apps', 'api');
 const TEMPLATE_ADMIN = join(PKG, 'template', 'apps', 'admin');
 const TEMPLATE_SDK = join(PKG, 'template', 'packages', 'sdk');
+const TEMPLATE_PLUGIN_SDK = join(PKG, 'template', 'packages', 'plugin-sdk');
 
 /**
  * Trees the scaffolder ships verbatim. Every one of them is a second copy of a
@@ -49,6 +50,59 @@ const SYNCED_TREES = [
     template: join(TEMPLATE_SDK, 'src'),
     label: 'packages/sdk/src',
   },
+  {
+    source: join(REPO, 'packages', 'sdk', 'test'),
+    template: join(TEMPLATE_SDK, 'test'),
+    label: 'packages/sdk/test',
+  },
+  {
+    source: join(REPO, 'packages', 'plugin-sdk', 'src'),
+    template: join(TEMPLATE_PLUGIN_SDK, 'src'),
+    label: 'packages/plugin-sdk/src',
+  },
+  {
+    source: join(API, 'test'),
+    template: join(TEMPLATE_API, 'test'),
+    label: 'apps/api/test',
+  },
+  {
+    source: join(REPO, 'plugins'),
+    template: join(PKG, 'template', 'plugins'),
+    label: 'plugins',
+  },
+  {
+    source: join(REPO, 'apps', 'web-blog'),
+    template: join(PKG, 'template', 'starters', 'blog'),
+    label: 'apps/web-blog',
+  },
+  {
+    source: join(REPO, 'apps', 'web-docs'),
+    template: join(PKG, 'template', 'starters', 'docs'),
+    label: 'apps/web-docs',
+  },
+];
+
+const SYNCED_FILES = [
+  ['apps/api/package.json', 'template/apps/api/package.json'],
+  ['apps/api/Dockerfile', 'template/apps/api/Dockerfile'],
+  ['apps/api/prisma.config.ts', 'template/apps/api/prisma.config.ts'],
+  ['apps/api/nest-cli.json', 'template/apps/api/nest-cli.json'],
+  ['apps/api/tsconfig.build.json', 'template/apps/api/tsconfig.build.json'],
+  ['apps/api/tsconfig.json', 'template/apps/api/tsconfig.json'],
+  ['apps/admin/Dockerfile', 'template/apps/admin/Dockerfile'],
+  ['apps/admin/eslint.config.ts', 'template/apps/admin/eslint.config.ts'],
+  ['apps/admin/jest.config.cjs', 'template/apps/admin/jest.config.cjs'],
+  ['apps/admin/next.config.ts', 'template/apps/admin/next.config.ts'],
+  ['apps/admin/package.json', 'template/apps/admin/package.json'],
+  ['apps/admin/postcss.config.mjs', 'template/apps/admin/postcss.config.mjs'],
+  ['apps/admin/tsconfig.json', 'template/apps/admin/tsconfig.json'],
+  ['packages/sdk/package.json', 'template/packages/sdk/package.json'],
+  ['packages/sdk/tsconfig.json', 'template/packages/sdk/tsconfig.json'],
+  ['packages/sdk/tsup.config.ts', 'template/packages/sdk/tsup.config.ts'],
+  ['packages/plugin-sdk/package.json', 'template/packages/plugin-sdk/package.json'],
+  ['packages/plugin-sdk/tsconfig.json', 'template/packages/plugin-sdk/tsconfig.json'],
+  ['packages/plugin-sdk/tsup.config.ts', 'template/packages/plugin-sdk/tsup.config.ts'],
+  ['eslint.config.ts', 'template/eslint.config.ts'],
 ];
 
 /** `{ [tree label]: { [path relative to the tree]: why it may differ } }` */
@@ -60,10 +114,14 @@ const SYNCED_TREES = [
  * defines both, so the trees are back to strict byte parity.
  */
 const SYNC_EXCEPTIONS = {};
+const SKIP_DIRS = new Set(['node_modules', 'dist', '.next', '.turbo']);
+const SKIP_FILES = new Set(['.env.local', 'AGENTS.md', 'CLAUDE.md']);
 
 async function listFiles(dir, base = '') {
   const out = [];
   for (const entry of await readdir(dir, { withFileTypes: true })) {
+    if (SKIP_DIRS.has(entry.name)) continue;
+    if (SKIP_FILES.has(entry.name)) continue;
     const rel = base ? `${base}/${entry.name}` : entry.name;
     if (entry.isDirectory()) out.push(...(await listFiles(join(dir, entry.name), rel)));
     else out.push(rel);
@@ -152,6 +210,16 @@ for (const { source, template, label } of SYNCED_TREES) {
       [],
       `${label} sync exceptions name files that no longer exist`,
     );
+  });
+}
+
+for (const [source, template] of SYNCED_FILES) {
+  test(`template/${template.replace(/^template\//, '')} matches ${source}`, async () => {
+    const [actual, copied] = await Promise.all([
+      readFile(join(REPO, source)),
+      readFile(join(PKG, template)),
+    ]);
+    assert.ok(actual.equals(copied), `${template} has drifted from ${source}`);
   });
 }
 
@@ -251,7 +319,7 @@ test('P0-05: a scaffolded project has a reachable first login', async () => {
   }
 
   const middleware = await readFile(
-    join(PKG, 'template', 'apps', 'admin', 'src', 'middleware.ts'),
+    join(PKG, 'template', 'apps', 'admin', 'src', 'proxy.ts'),
     'utf-8',
   );
   assert.match(
@@ -263,14 +331,15 @@ test('P0-05: a scaffolded project has a reachable first login', async () => {
 
 test('P0-06: scaffolded settings never hand back a stored secret', async () => {
   await readTemplate('src/modules/settings/settings-secret.util.ts');
+  await readTemplate('src/common/security/secret-encryption.service.ts');
   await readTemplate('src/common/utils/secret-crypto.util.ts');
   await readTemplate('src/common/utils/secret-key.util.ts');
   await readTemplate('src/common/utils/redact.util.ts');
 
   const service = await readTemplate('src/modules/settings/settings.service.ts');
   assert.match(service, /toSafeSetting/, 'getAll returns raw rows, secrets included');
-  assert.match(service, /encryptSecret/, 'secret settings are stored in cleartext');
-  assert.match(service, /decryptSecret/);
+  assert.match(service, /\bsecrets\.encrypt\(/, 'secret settings are stored in cleartext');
+  assert.match(service, /decryptAndRotate/);
 
   const controller = await readTemplate('src/modules/settings/settings.controller.ts');
   assert.match(
@@ -438,7 +507,7 @@ test('AUTH-02/AUTH-05: every pre-session admin link the scaffolded API hands out
   );
 
   const routes = [...new Set([...PRE_SESSION_ROUTES, ...handedOut])];
-  const middleware = await readTemplateAdmin('src', 'middleware.ts');
+  const middleware = await readTemplateAdmin('src', 'proxy.ts');
   const publicPaths = publicPathsOf(middleware);
 
   const gated = routes.filter((route) => !publicPaths.includes(route));

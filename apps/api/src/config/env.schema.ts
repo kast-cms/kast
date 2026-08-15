@@ -15,12 +15,19 @@ const envSchema = z.object({
 
   // Database
   DATABASE_URL: z.string().url(),
+  // Compose consumes these from the same .env. Declaring them prevents
+  // @nestjs/config from stripping them when it replaces process.env.
+  POSTGRES_USER: z.string().optional(),
+  POSTGRES_PASSWORD: z.string().optional(),
+  POSTGRES_DB: z.string().optional(),
 
   // Redis — accepts either REDIS_URL (e.g. Railway/Render) or individual vars
   REDIS_URL: z.string().optional(),
   REDIS_HOST: z.string().default('localhost'),
   REDIS_PORT: z.coerce.number().int().default(6379),
   REDIS_PASSWORD: z.string().optional(),
+  QUEUE_BACKLOG_ALERT_THRESHOLD: z.coerce.number().int().positive().default(1000),
+  QUEUE_FAILED_ALERT_THRESHOLD: z.coerce.number().int().positive().default(100),
 
   // JWT
   JWT_SECRET: z.string().min(32),
@@ -31,6 +38,9 @@ const envSchema = z.object({
   // ciphertext unreadable — set this explicitly in production. The blank form is
   // accepted because .env.example ships the key with no value.
   KAST_SECRET_ENCRYPTION_KEY: z.union([z.string().min(32), z.literal('')]).optional(),
+  // Comma-separated retired keys used only to decrypt and lazily re-encrypt
+  // existing secrets during a controlled rotation.
+  KAST_SECRET_ENCRYPTION_PREVIOUS_KEYS: z.string().optional(),
 
   // Authorises the publicly documented admin@kast.local / writer@kast.local
   // logins, both for `db:seed` and for this API's startup credential check. Only
@@ -65,7 +75,7 @@ const envSchema = z.object({
   TRUST_PROXY: z.string().default('false'),
 
   // Storage
-  STORAGE_PROVIDER: z.enum(['local', 's3', 'r2', 'gcs']).default('local'),
+  STORAGE_PROVIDER: z.enum(['local', 's3', 'r2']).default('local'),
   STORAGE_LOCAL_DIR: z.string().default('./uploads'),
   // Public base URL for locally stored objects. The default points at the route
   // this API actually serves; override it only when a proxy or CDN fronts
@@ -164,11 +174,53 @@ const envSchema = z.object({
 
 export type Env = z.infer<typeof envSchema>;
 
+function assertProductionEnvironment(env: Env): void {
+  if (env.NODE_ENV !== 'production') return;
+  if (!env.KAST_SECRET_ENCRYPTION_KEY || env.KAST_SECRET_ENCRYPTION_KEY.length < 32) {
+    throw new Error(
+      'Environment validation failed:\n  KAST_SECRET_ENCRYPTION_KEY: required in production (minimum 32 characters)',
+    );
+  }
+  if (env.CORS_ORIGINS.trim() === '*') {
+    throw new Error(
+      'Environment validation failed:\n  CORS_ORIGINS: wildcard origins are forbidden in production',
+    );
+  }
+}
+
+function assertStorageEnvironment(env: Env): void {
+  const requirements: Record<Env['STORAGE_PROVIDER'], Array<[string, string | undefined]>> = {
+    local: [],
+    s3: [
+      ['AWS_REGION', env.AWS_REGION],
+      ['AWS_ACCESS_KEY_ID', env.AWS_ACCESS_KEY_ID],
+      ['AWS_SECRET_ACCESS_KEY', env.AWS_SECRET_ACCESS_KEY],
+      ['AWS_S3_BUCKET', env.AWS_S3_BUCKET],
+    ],
+    r2: [
+      ['R2_ACCOUNT_ID', env.R2_ACCOUNT_ID],
+      ['R2_ACCESS_KEY_ID', env.R2_ACCESS_KEY_ID],
+      ['R2_SECRET_ACCESS_KEY', env.R2_SECRET_ACCESS_KEY],
+      ['R2_BUCKET_NAME', env.R2_BUCKET_NAME],
+    ],
+  };
+  const missing = requirements[env.STORAGE_PROVIDER]
+    .filter(([, value]) => !value)
+    .map(([name]) => name);
+  if (missing.length > 0) {
+    throw new Error(
+      `Environment validation failed:\n  STORAGE_PROVIDER: ${env.STORAGE_PROVIDER} requires ${missing.join(', ')}`,
+    );
+  }
+}
+
 export function validateEnv(config: Record<string, unknown>): Env {
   const result = envSchema.safeParse(config);
   if (!result.success) {
-    const errors = result.error.errors.map((e) => `  ${e.path.join('.')}: ${e.message}`).join('\n');
+    const errors = result.error.issues.map((e) => `  ${e.path.join('.')}: ${e.message}`).join('\n');
     throw new Error(`Environment validation failed:\n${errors}`);
   }
+  assertProductionEnvironment(result.data);
+  assertStorageEnvironment(result.data);
   return result.data;
 }

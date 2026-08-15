@@ -609,14 +609,14 @@ How Phase 1 satisfies the [PRD §5 cross-cutting](../architecture/KAST_PRD.md) r
 A workstream is **done** only when every item below is true:
 
 - [ ] All endpoints implemented per [KAST_API_SPEC.md](../architecture/KAST_API_SPEC.md) shape.
-- [ ] Permissions enforced per [KAST_SECURITY_MODEL.md](../architecture/KAST_SECURITY_MODEL.md).
+- [x] Permissions enforced per [KAST_SECURITY_MODEL.md](../architecture/KAST_SECURITY_MODEL.md).
 - [ ] Unit tests for every service method with branching logic.
 - [ ] e2e tests covering happy path + at least 2 error paths per endpoint.
 - [ ] No `any`, no `@ts-ignore`, no `console.log` in production code.
 - [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e` all pass locally.
-- [ ] Audit interceptor verified to fire for new mutations.
+- [x] Audit interceptor verified to fire for new mutations.
 - [ ] OpenAPI doc updated; SDK regenerates without errors.
-- [ ] README / module-level `README.md` updated where developer-facing behavior changed.
+- [x] README / module-level `README.md` updated where developer-facing behavior changed.
 - [ ] PR reviewed by at least one other engineer; conventional commit on merge.
 
 ---

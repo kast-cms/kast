@@ -85,7 +85,7 @@ password untouched. Both variables are refused outright when
 | ------------- | ------------------------------------------ |
 | Admin Panel   | http://localhost:3001/admin                |
 | REST API      | http://localhost:{{apiPort}}/api/v1        |
-| MCP Server    | http://localhost:{{apiPort}}/mcp           |
+| MCP Server    | http://localhost:{{apiPort}}/api/v1/mcp    |
 | API Docs      | http://localhost:{{apiPort}}/api/docs      |
 | Health Check  | http://localhost:{{apiPort}}/api/v1/health |
 {{#if includeFrontend}}| Frontend      | http://localhost:3002                      |
@@ -127,7 +127,7 @@ Copy \`.env.example\` to \`.env\` and update:
 | \`JWT_SECRET\` | **Required.** Min 32 chars. Use \`openssl rand -hex 32\`. |
 | \`DATABASE_URL\` | PostgreSQL connection string. |
 | \`CORS_ORIGINS\` | Comma-separated allowed origins. |
-| \`STORAGE_PROVIDER\` | \`local\` / \`s3\` / \`r2\` / \`minio\`. |
+| \`STORAGE_PROVIDER\` | \`local\` / \`s3\` / \`r2\`. |
 
 ## Production with Docker
 

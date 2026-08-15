@@ -1,24 +1,28 @@
 import { Injectable } from '@nestjs/common';
-import type {
+import {
   ContentEntry,
   ContentEntryLocale,
-  ContentEntryVersion,
   ContentStatus,
   Prisma,
   User,
+  type ContentField,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { resolveLocaleFallbackChain } from './content-locale.ops';
+import { syncContentReferences } from './content-reference.repository';
 import { applyVersionRevert } from './content-revert.ops';
 import { deriveLocaleSlug } from './content-slug';
-import { allocateVersionNumber } from './content-version.ops';
+import { allocateVersionNumber, pruneContentVersions } from './content-version.ops';
+import {
+  findContentVersionForType,
+  listContentVersions,
+  type VersionWithAuthor,
+} from './content-version.repository';
 import type { ContentQueryDto } from './dto/content-query.dto';
 import type { UniqueCheck } from './validation/content-validation.types';
 import { assertUniqueFields } from './validation/unique-field.guard';
 
-export type VersionWithAuthor = ContentEntryVersion & {
-  savedBy: Pick<User, 'id' | 'firstName' | 'lastName'>;
-};
+export type { VersionWithAuthor } from './content-version.repository';
 
 export type EntryAuthor = Pick<User, 'id' | 'firstName' | 'lastName'>;
 
@@ -297,7 +301,16 @@ export class ContentRepository {
           savedById,
         },
       });
+      await pruneContentVersions(tx, entryId);
     });
+  }
+
+  /** Rebuilds queryable relation/media reference rows from all locale JSON values. */
+  async syncReferences(
+    entryId: string,
+    fields: Array<Pick<ContentField, 'name' | 'type'>>,
+  ): Promise<void> {
+    await syncContentReferences(this.prisma, entryId, fields);
   }
 
   async listVersions(
@@ -305,18 +318,7 @@ export class ContentRepository {
     limit: number,
     cursor?: string,
   ): Promise<{ items: VersionWithAuthor[]; total: number }> {
-    const where = { entryId };
-    const [items, total] = await Promise.all([
-      this.prisma.contentEntryVersion.findMany({
-        where,
-        include: { savedBy: { select: { id: true, firstName: true, lastName: true } } },
-        orderBy: { versionNumber: 'desc' },
-        take: limit + 1,
-        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-      }),
-      this.prisma.contentEntryVersion.count({ where }),
-    ]);
-    return { items: items as VersionWithAuthor[], total };
+    return listContentVersions(this.prisma, entryId, limit, cursor);
   }
 
   findVersionByIdForType(
@@ -324,10 +326,7 @@ export class ContentRepository {
     contentTypeId: string,
     versionId: string,
   ): Promise<VersionWithAuthor | null> {
-    return this.prisma.contentEntryVersion.findFirst({
-      where: { id: versionId, entryId, entry: { contentTypeId } },
-      include: { savedBy: { select: { id: true, firstName: true, lastName: true } } },
-    }) as Promise<VersionWithAuthor | null>;
+    return findContentVersionForType(this.prisma, entryId, contentTypeId, versionId);
   }
 
   revertToVersion(

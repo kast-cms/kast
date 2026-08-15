@@ -40,7 +40,7 @@ import { STORAGE_PROBE_ADAPTER } from './storage-probe.token';
       },
     },
   ],
-  exports: [SettingsService],
+  exports: [SettingsService, SettingsRepository],
 })
 export class SettingsModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {

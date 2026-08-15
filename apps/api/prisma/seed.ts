@@ -2,6 +2,10 @@ import { PrismaClient } from '@prisma/client';
 import * as argon2 from 'argon2';
 import { randomBytes } from 'crypto';
 import {
+  PERMISSION_ACTIONS,
+  PERMISSION_RESOURCES,
+} from '../src/common/authorization/permission-catalog';
+import {
   DEV_ACCOUNTS,
   DEV_ACCOUNTS_ENV_VAR,
   resolveDevAccountsDecision,
@@ -11,31 +15,39 @@ const prisma = new PrismaClient();
 
 const MIN_PASSWORD_LENGTH = 12;
 
+const LOCALES = {
+  en: { name: 'English', nativeName: 'English', direction: 'LTR' as const },
+  ar: { name: 'Arabic', nativeName: 'العربية', direction: 'RTL' as const },
+  fr: { name: 'French', nativeName: 'Français', direction: 'LTR' as const },
+  de: { name: 'German', nativeName: 'Deutsch', direction: 'LTR' as const },
+  es: { name: 'Spanish', nativeName: 'Español', direction: 'LTR' as const },
+  pt: { name: 'Portuguese', nativeName: 'Português', direction: 'LTR' as const },
+  zh: { name: 'Chinese', nativeName: '中文', direction: 'LTR' as const },
+  ja: { name: 'Japanese', nativeName: '日本語', direction: 'LTR' as const },
+};
+
 async function seedLocales(): Promise<void> {
-  await prisma.locale.upsert({
-    where: { code: 'en' },
-    update: {},
-    create: {
-      code: 'en',
-      name: 'English',
-      nativeName: 'English',
-      isDefault: true,
-      isActive: true,
-      direction: 'LTR',
-    },
-  });
-  await prisma.locale.upsert({
-    where: { code: 'ar' },
-    update: {},
-    create: {
-      code: 'ar',
-      name: 'Arabic',
-      nativeName: 'العربية',
-      isDefault: false,
-      isActive: true,
-      direction: 'RTL',
-    },
-  });
+  const defaultLocale = (process.env.KAST_DEFAULT_LOCALE ?? '').trim() || 'en';
+  const requested = (process.env.KAST_INITIAL_LOCALES ?? 'en,ar')
+    .split(',')
+    .map((code) => code.trim())
+    .filter((code) => Object.hasOwn(LOCALES, code));
+  const codes = [...new Set([defaultLocale, ...requested])].filter((code) =>
+    Object.hasOwn(LOCALES, code),
+  ) as Array<keyof typeof LOCALES>;
+  for (const code of codes) {
+    const locale = LOCALES[code];
+    await prisma.locale.upsert({
+      where: { code },
+      update: { isDefault: code === defaultLocale, isActive: true },
+      create: {
+        code,
+        ...locale,
+        isDefault: code === defaultLocale,
+        isActive: true,
+      },
+    });
+  }
 }
 
 async function seedRoles(): Promise<void> {
@@ -62,6 +74,18 @@ async function seedRoles(): Promise<void> {
   ];
   for (const r of roles) {
     await prisma.role.upsert({ where: { name: r.name }, update: {}, create: r });
+  }
+}
+
+async function seedPermissions(): Promise<void> {
+  for (const resource of PERMISSION_RESOURCES) {
+    for (const action of PERMISSION_ACTIONS) {
+      await prisma.permission.upsert({
+        where: { resource_action_scope: { resource, action, scope: '*' } },
+        create: { resource, action, scope: '*' },
+        update: {},
+      });
+    }
   }
 }
 
@@ -200,14 +224,9 @@ async function seedOwnerAccount(plan: OwnerPlan): Promise<void> {
 
 async function seedSettings(): Promise<void> {
   await prisma.globalSetting.upsert({
-    where: { key: 'site_name' },
+    where: { key: 'site.name' },
     update: {},
-    create: { key: 'site_name', value: 'Kast CMS', group: 'general', isPublic: true },
-  });
-  await prisma.globalSetting.upsert({
-    where: { key: 'default_locale' },
-    update: {},
-    create: { key: 'default_locale', value: 'en', group: 'general', isPublic: true },
+    create: { key: 'site.name', value: 'Kast CMS', group: 'site', isPublic: true },
   });
 }
 
@@ -215,6 +234,7 @@ async function main(): Promise<void> {
   const ownerPlan = resolveOwnerPlan();
   await seedLocales();
   await seedRoles();
+  await seedPermissions();
   await seedOwnerAccount(ownerPlan);
   await seedSettings();
   console.warn('✅ Seed complete');

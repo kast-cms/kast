@@ -38,6 +38,9 @@ export class TokenPolicyGuard implements CanActivate {
     const user = request.user;
 
     if (!user) return true;
+    if (targetIsMcp(context, request, this.reflector) && !user.isAgentToken) {
+      throw deny('MCP_AGENT_TOKEN_REQUIRED', 'The MCP transport requires an agent token');
+    }
     if (!user.isAgentToken && !user.isApiToken) return true;
 
     const target = deriveRouteTarget(context, request, this.reflector);
@@ -82,13 +85,23 @@ export class TokenPolicyGuard implements CanActivate {
   }
 }
 
+function targetIsMcp(context: ExecutionContext, request: Request, reflector: Reflector): boolean {
+  return deriveRouteTarget(context, request, reflector).isMcp;
+}
+
 /** `scopeData` maps a resource to the actions it grants; `*` is allowed on either side. */
 export function scopeDataAllows(
   scopeData: Record<string, string[]> | undefined,
   target: RouteTarget,
 ): boolean {
   if (!scopeData || typeof scopeData !== 'object') return false;
-  const actions = scopeData[target.resource] ?? scopeData['*'];
+  const scopedResource = target.scopeValue
+    ? `${target.resource}:${target.scopeValue}`
+    : target.resource;
+  const actions =
+    scopeData[scopedResource] ??
+    (target.scopeValue ? scopeData[`${target.resource}:*`] : scopeData[target.resource]) ??
+    scopeData['*'];
   if (!Array.isArray(actions)) return false;
   return actions.includes(target.action) || actions.includes('*');
 }

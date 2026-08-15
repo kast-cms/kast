@@ -3,8 +3,9 @@ import { ContentFieldType } from '@prisma/client';
 import type { PaginatedResult } from '../../common/types/auth.types';
 import type { ContentTypeWithFields } from '../content-types/content-types.repository';
 import { ContentTypesService } from '../content-types/content-types.service';
-import type { MenuDetail } from '../menus/menu.repository';
+import type { MenuDetail, MenuItemRecord } from '../menus/menu.repository';
 import { MenuService } from '../menus/menu.service';
+import type { PublicRedirect } from '../seo/seo.repository';
 import { SeoService } from '../seo/seo.service';
 import { buildSitemapXml } from '../seo/sitemap.builder';
 import { SettingsService } from '../settings/settings.service';
@@ -49,6 +50,20 @@ export interface DeliveryTypeSchema {
   fields: DeliveryFieldSchema[];
 }
 
+export interface DeliveryMenuItem {
+  label: string;
+  url: string | null;
+  target: string | null;
+  children: DeliveryMenuItem[];
+}
+
+export interface DeliveryMenu {
+  name: string;
+  slug: string;
+  localeCode: string | null;
+  items: DeliveryMenuItem[];
+}
+
 /**
  * `slug` is lifted onto the locale row by the editor but is also carried inside
  * `data` when the type has no slug field, and the starters read it from there.
@@ -86,19 +101,43 @@ export class DeliveryService {
     ct: ContentTypeWithFields,
     raw: unknown,
     mediaUrls: ReadonlyMap<string, string>,
+    relations: ReadonlyMap<string, { id: string; type: string; slug: string }>,
   ): unknown {
     if (!isJsonObject(raw)) return raw ?? null;
     const out: Record<string, unknown> = {};
     for (const field of ct.fields) {
       if (field.isHidden || !Object.hasOwn(raw, field.name)) continue;
       const value = raw[field.name];
-      out[field.name] =
-        field.type === ContentFieldType.MEDIA ? this.resolveMedia(value, mediaUrls) : value;
+      out[field.name] = this.projectFieldValue(field.type, value, mediaUrls, relations);
     }
     for (const key of RESERVED_PUBLIC_KEYS) {
       if (!Object.hasOwn(out, key) && Object.hasOwn(raw, key)) out[key] = raw[key];
     }
     return out;
+  }
+
+  private projectFieldValue(
+    type: ContentFieldType,
+    value: unknown,
+    mediaUrls: ReadonlyMap<string, string>,
+    relations: ReadonlyMap<string, { id: string; type: string; slug: string }>,
+  ): unknown {
+    if (type === ContentFieldType.MEDIA) return this.resolveMedia(value, mediaUrls);
+    if (type === ContentFieldType.RELATION) return this.resolveRelation(value, relations);
+    return value;
+  }
+
+  private resolveRelation(
+    value: unknown,
+    relations: ReadonlyMap<string, { id: string; type: string; slug: string }>,
+  ): unknown {
+    if (typeof value === 'string') return relations.get(value) ?? null;
+    if (Array.isArray(value)) {
+      return value.flatMap((item) =>
+        typeof item === 'string' && relations.has(item) ? [relations.get(item)] : [],
+      );
+    }
+    return null;
   }
 
   /** MEDIA fields store bare MediaFile ids; the public payload carries URLs only. */
@@ -134,10 +173,28 @@ export class DeliveryService {
     return this.repo.findMediaUrls([...ids]);
   }
 
+  private async resolveRelations(
+    ct: ContentTypeWithFields,
+    rows: PublishedEntryRow[],
+    locale: string,
+  ): Promise<ReadonlyMap<string, { id: string; type: string; slug: string }>> {
+    const fields = ct.fields.filter(
+      (field) => field.type === ContentFieldType.RELATION && !field.isHidden,
+    );
+    const ids = new Set<string>();
+    for (const row of rows) {
+      const data = row.locales[0]?.data;
+      if (!isJsonObject(data)) continue;
+      for (const field of fields) this.collectMediaIds(data[field.name], ids);
+    }
+    return this.repo.findPublishedRelations([...ids], locale);
+  }
+
   private toEntry(
     row: PublishedEntryRow,
     ct: ContentTypeWithFields,
     mediaUrls: ReadonlyMap<string, string>,
+    relations: ReadonlyMap<string, { id: string; type: string; slug: string }>,
     siteMeta: SiteMetaDefaults,
   ): DeliveryEntry {
     const locale = row.locales[0];
@@ -145,7 +202,7 @@ export class DeliveryService {
       id: row.id,
       slug: locale?.slug ?? '',
       publishedAt: row.publishedAt?.toISOString() ?? null,
-      data: this.projectData(ct, locale?.data ?? null, mediaUrls),
+      data: this.projectData(ct, locale?.data ?? null, mediaUrls, relations),
       seoMeta: this.toSeoMeta(row, siteMeta),
     };
   }
@@ -211,13 +268,33 @@ export class DeliveryService {
     };
   }
 
+  private toPublicMenuItem(item: MenuItemRecord): DeliveryMenuItem {
+    return {
+      label: item.label,
+      url: item.url,
+      target: item.target,
+      children: item.children
+        .filter((child) => child.isActive)
+        .map((child) => this.toPublicMenuItem(child)),
+    };
+  }
+
+  private toPublicMenu(menu: MenuDetail): DeliveryMenu {
+    return {
+      name: menu.name,
+      slug: menu.slug,
+      localeCode: menu.localeCode,
+      items: menu.items.filter((item) => item.isActive).map((item) => this.toPublicMenuItem(item)),
+    };
+  }
+
   async listSchemas(): Promise<{ data: DeliveryTypeSchema[] }> {
-    const types = await this.contentTypes.findAll();
+    const types = await this.contentTypes.findPubliclyDiscoverable();
     return { data: types.map((ct) => this.toSchema(ct)) };
   }
 
   async getSchema(typeSlug: string): Promise<{ data: DeliveryTypeSchema }> {
-    const ct = await this.contentTypes.findByName(typeSlug);
+    const ct = await this.contentTypes.findPubliclyDiscoverableByName(typeSlug);
     return { data: this.toSchema(ct) };
   }
 
@@ -234,12 +311,13 @@ export class DeliveryService {
     const hasNextPage = items.length > limit;
     const page = hasNextPage ? items.slice(0, limit) : items;
     const nextCursor = hasNextPage ? (page[page.length - 1]?.id ?? null) : null;
-    const [mediaUrls, siteMeta] = await Promise.all([
+    const [mediaUrls, relations, siteMeta] = await Promise.all([
       this.resolveMediaUrls(ct, page),
+      this.resolveRelations(ct, page, locale),
       this.seo.getSiteMetaDefaults(),
     ]);
     return {
-      data: page.map((r) => this.toEntry(r, ct, mediaUrls, siteMeta)),
+      data: page.map((r) => this.toEntry(r, ct, mediaUrls, relations, siteMeta)),
       meta: { total, limit, cursor: nextCursor, hasNextPage },
     };
   }
@@ -255,20 +333,25 @@ export class DeliveryService {
     if (!entry) {
       throw new NotFoundException(`No published entry "${slug}" for locale "${locale}"`);
     }
-    const [mediaUrls, siteMeta] = await Promise.all([
+    const [mediaUrls, relations, siteMeta] = await Promise.all([
       this.resolveMediaUrls(ct, [entry]),
+      this.resolveRelations(ct, [entry], locale),
       this.seo.getSiteMetaDefaults(),
     ]);
-    return { data: this.toEntry(entry, ct, mediaUrls, siteMeta) };
+    return { data: this.toEntry(entry, ct, mediaUrls, relations, siteMeta) };
   }
 
-  async getMenu(slug: string): Promise<{ data: MenuDetail }> {
+  async getMenu(slug: string): Promise<{ data: DeliveryMenu }> {
     const menu = await this.menus.findBySlug(slug);
-    return { data: menu };
+    return { data: this.toPublicMenu(menu) };
   }
 
   async getPublicSettings(): Promise<{ data: Record<string, unknown> }> {
     return { data: await this.settings.getPublicSettings() };
+  }
+
+  listRedirects(): Promise<{ data: PublicRedirect[] }> {
+    return this.seo.listPublicRedirects();
   }
 
   async getSitemap(): Promise<string> {

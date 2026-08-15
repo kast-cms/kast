@@ -4,6 +4,7 @@ import type { GlobalSetting } from '@prisma/client';
 import { promises as fs } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import { SecretEncryptionService } from '../../common/security/secret-encryption.service';
 import type { AuthUser } from '../../common/types/auth.types';
 import { decryptSecret } from '../../common/utils/secret-crypto.util';
 import type { Env } from '../../config/env.schema';
@@ -40,6 +41,7 @@ describe('SettingsService', () => {
   let repo: {
     findAll: jest.Mock;
     findPublic: jest.Mock;
+    upsert: jest.Mock;
     upsertMany: jest.Mock;
   };
   let service: SettingsService;
@@ -53,9 +55,11 @@ describe('SettingsService', () => {
   let storageProvider: string;
 
   const config = {
-    get: jest.fn((key: string) =>
-      key === 'STORAGE_PROVIDER' ? storageProvider : 'jwt-secret-fallback-0123456789abcdef',
-    ),
+    get: jest.fn((key: string) => {
+      if (key === 'STORAGE_PROVIDER') return storageProvider;
+      if (key === 'KAST_SECRET_ENCRYPTION_KEY') return ENCRYPTION_KEY;
+      return 'jwt-secret-fallback-0123456789abcdef';
+    }),
   } as unknown as ConfigService<Env>;
 
   beforeEach(() => {
@@ -76,6 +80,7 @@ describe('SettingsService', () => {
     repo = {
       findAll: jest.fn().mockResolvedValue([]),
       findPublic: jest.fn().mockResolvedValue([]),
+      upsert: jest.fn().mockResolvedValue(buildRow()),
       // Echo the patch back the way the database would.
       upsertMany: jest.fn().mockImplementation((patches: SettingPatch[]) =>
         Promise.resolve(
@@ -93,6 +98,7 @@ describe('SettingsService', () => {
       repo as unknown as SettingsRepository,
       config,
       storage as unknown as StorageAdapter,
+      new SecretEncryptionService(config),
     );
   });
 
@@ -149,7 +155,7 @@ describe('SettingsService', () => {
 
       const rows = await service.getAll(buildUser(['super_admin']));
 
-      expect(rows.map((r) => r.key)).toEqual(['site.name']);
+      expect(rows.map((r) => r.key)).toEqual(['site.name', 'content.versionRetention']);
     });
 
     it('says which runtime path reads each setting it does return', async () => {
@@ -375,13 +381,13 @@ describe('SettingsService', () => {
       await expect(service.testStorage()).rejects.toThrow(BadRequestException);
     });
 
-    it('reports the adapter actually in use when the provider has none', async () => {
-      storageProvider = 'gcs';
+    it('reports the configured adapter', async () => {
+      storageProvider = 'local';
 
       const result = await service.testStorage();
 
       expect(result.provider).toBe('LOCAL');
-      expect(result.warning).toContain('gcs');
+      expect(result.warning).toBeUndefined();
     });
   });
 
@@ -396,7 +402,12 @@ describe('SettingsService', () => {
       const adapter = new LocalStorageAdapter({
         get: (key: string) => (key === 'STORAGE_LOCAL_DIR' ? dir : ''),
       } as unknown as ConfigService<Env>);
-      local = new SettingsService(repo as unknown as SettingsRepository, config, adapter);
+      local = new SettingsService(
+        repo as unknown as SettingsRepository,
+        config,
+        adapter,
+        new SecretEncryptionService(config),
+      );
     });
 
     afterEach(async () => {

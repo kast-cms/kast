@@ -83,7 +83,7 @@ export function useWebhooks(): UseWebhooksReturn {
   const getDeliveries = useCallback(
     async (id: string): Promise<WebhookDeliverySummary[]> => {
       const res = await client.webhooks.deliveries(id);
-      return res as WebhookDeliverySummary[];
+      return res.data;
     },
     [client],
   );

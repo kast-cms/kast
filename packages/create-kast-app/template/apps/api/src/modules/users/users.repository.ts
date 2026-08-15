@@ -135,11 +135,21 @@ export class UsersRepository {
   }
 
   async softDelete(id: string, trashedByUserId: string): Promise<{ trashedAt: Date | null }> {
-    const updated = await this.prisma.user.update({
-      where: { id },
-      data: { trashedAt: new Date(), trashedByUserId, isActive: false },
-      select: { trashedAt: true },
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.user.findUniqueOrThrow({
+        where: { id },
+        select: { isActive: true },
+      });
+      return tx.user.update({
+        where: { id },
+        data: {
+          trashedAt: new Date(),
+          trashedByUserId,
+          preTrashIsActive: existing.isActive,
+          isActive: false,
+        },
+        select: { trashedAt: true },
+      });
     });
-    return updated;
   }
 }

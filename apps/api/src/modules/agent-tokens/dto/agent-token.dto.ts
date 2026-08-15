@@ -1,4 +1,5 @@
-import { IsArray, IsString, MinLength } from 'class-validator';
+import { ArrayNotEmpty, ArrayUnique, IsArray, IsIn, IsString, MinLength } from 'class-validator';
+import { MCP_TOOL_NAMES } from '../../mcp/mcp-tool-catalog';
 
 export class CreateAgentTokenDto {
   @IsString()
@@ -6,7 +7,9 @@ export class CreateAgentTokenDto {
   name!: string;
 
   @IsArray()
-  @IsString({ each: true })
+  @ArrayNotEmpty()
+  @ArrayUnique()
+  @IsIn(MCP_TOOL_NAMES, { each: true })
   scopes!: string[];
 }
 

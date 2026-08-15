@@ -1,4 +1,4 @@
-# Full-stack Docker deployment (Postgres + Redis + API).
+# Full-stack Docker deployment (Postgres + Redis + API + admin).
 # Copy .env.example to .env, fill in your values, then `docker compose up`.
 # The API is pointed at the compose service names automatically — see the
 # `environment` block on the api service.
@@ -7,15 +7,15 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: kast
-      POSTGRES_PASSWORD: kast_secret
-      POSTGRES_DB: kast_db
+      POSTGRES_USER: ${POSTGRES_USER:-kast}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-kast_db}
     ports:
-      - '5432:5432'
+      - '127.0.0.1:5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U kast -d kast_db']
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER:-kast} -d $${POSTGRES_DB:-kast_db}']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -23,12 +23,15 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    ports:
-      - '6379:6379'
+    command: redis-server --appendonly yes --requirepass "$${REDIS_PASSWORD}"
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+    expose:
+      - '6379'
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
+      test: ['CMD-SHELL', 'redis-cli -a "$${REDIS_PASSWORD}" --no-auth-warning ping']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -49,14 +52,26 @@ services:
       # copied .env happens to carry — env_file must not be able to downgrade it.
       # KAST_DOCKER_NODE_ENV=development opts a throwaway local stack back out.
       NODE_ENV: ${KAST_DOCKER_NODE_ENV:-production}
-      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql://kast:kast_secret@postgres:5432/kast_db}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-kast}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@${POSTGRES_HOST:-postgres}:5432/${POSTGRES_DB:-kast_db}
       REDIS_HOST: ${DOCKER_REDIS_HOST:-redis}
       REDIS_PORT: ${DOCKER_REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
     # Apply migrations before serving, so `docker compose up` on a fresh volume
     # yields a working API rather than one querying tables that do not exist.
     command: sh -c "node_modules/.bin/prisma migrate deploy && node dist/main.js"
     ports:
       - '3000:3000'
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/api/v1/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
     depends_on:
       postgres:
         condition: service_healthy
@@ -64,6 +79,24 @@ services:
         condition: service_healthy
     volumes:
       - uploads:/tmp/kast-uploads
+
+  admin:
+    build:
+      context: .
+      dockerfile: apps/admin/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:3000}
+        NEXT_PUBLIC_ADMIN_BASE_PATH: ${ADMIN_BASE_PATH:-/admin}
+    restart: unless-stopped
+    environment:
+      INTERNAL_API_URL: http://api:3000
+      NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:3000}
+      NEXT_PUBLIC_ADMIN_BASE_PATH: ${ADMIN_BASE_PATH:-/admin}
+    ports:
+      - '3001:3001'
+    depends_on:
+      api:
+        condition: service_healthy
 
 volumes:
   postgres_data:

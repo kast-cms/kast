@@ -17,7 +17,9 @@ import { useApiClient, useSession } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import type { PluginRecord } from '@kast-cms/sdk';
 import { Cloud, CreditCard, Mail, Puzzle, Search, ShieldAlert } from 'lucide-react';
+import type { Route } from 'next';
 import { useTranslations } from 'next-intl';
+import Link from 'next/link';
 import { useCallback, useEffect, useState, type ComponentType, type JSX } from 'react';
 
 /** One icon per known plugin so the grid can be scanned by shape, not just by name. */
@@ -90,15 +92,22 @@ function PluginCard({ plugin, busy, onToggle }: PluginCardProps): JSX.Element {
         <span className="min-w-0 truncate text-xs text-muted-foreground">
           {t('table.installed')} · {formatDate(plugin.installedAt)}
         </span>
-        <Button
-          variant={plugin.isActive ? 'outline' : 'subtle'}
-          size="sm"
-          loading={busy}
-          disabled={plugin.isSystemPlugin}
-          onClick={onToggle}
-        >
-          {plugin.isActive ? t('actions.disable') : t('actions.enable')}
-        </Button>
+        <div className="flex items-center gap-2">
+          {plugin.adminPages.map((page) => (
+            <Button key={page.path} variant="ghost" size="sm" asChild>
+              <Link href={page.path as Route}>{page.label}</Link>
+            </Button>
+          ))}
+          <Button
+            variant={plugin.isActive ? 'outline' : 'subtle'}
+            size="sm"
+            loading={busy}
+            disabled={plugin.isSystemPlugin}
+            onClick={onToggle}
+          >
+            {plugin.isActive ? t('actions.disable') : t('actions.enable')}
+          </Button>
+        </div>
       </CardFooter>
     </Card>
   );

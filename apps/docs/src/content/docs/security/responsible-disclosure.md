@@ -42,7 +42,7 @@ Kast addresses each OWASP Top 10 category:
 | OWASP ID | Vulnerability             | Kast mitigation                                                                 |
 | -------- | ------------------------- | ------------------------------------------------------------------------------- |
 | A01      | Broken Access Control     | `RbacGuard` + `@RequirePermission` on every endpoint                            |
-| A02      | Cryptographic Failures    | bcrypt(12) passwords; SHA-256 token hashes; AES-256-GCM plugin config           |
+| A02      | Cryptographic Failures    | Argon2id passwords; SHA-256 token hashes; AES-256-GCM plugin config             |
 | A03      | Injection                 | Prisma parameterized queries; DOMPurify rich text; `whitelist: true` DTOs       |
 | A04      | Insecure Design           | Soft delete; append-only audit log; least-privilege RBAC                        |
 | A05      | Security Misconfiguration | Helmet + CSP; env validated at startup; no default secrets                      |

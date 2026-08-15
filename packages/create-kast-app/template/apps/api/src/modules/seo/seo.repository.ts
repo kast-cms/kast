@@ -21,6 +21,7 @@ export interface SeoIssueInput {
 
 export type SeoScoreWithIssues = SeoScore & { issues: SeoIssue[] };
 export type SeoMetaFull = SeoMeta & { scores: SeoScoreWithIssues[] };
+export type PublicRedirect = Pick<Redirect, 'fromPath' | 'toPath' | 'type'>;
 
 @Injectable()
 export class SeoRepository {
@@ -129,6 +130,22 @@ export class SeoRepository {
     const data = hasNextPage ? items.slice(0, limit) : items;
     const cursor = hasNextPage ? (data[data.length - 1]?.id ?? null) : null;
     return { data, meta: { total, limit, cursor, hasNextPage } };
+  }
+
+  findActiveRedirects(): Promise<PublicRedirect[]> {
+    return this.prisma.redirect.findMany({
+      where: { isActive: true },
+      select: { fromPath: true, toPath: true, type: true },
+      orderBy: { fromPath: 'asc' },
+    });
+  }
+
+  async findGlobalSettingString(key: string): Promise<string | null> {
+    const row = await this.prisma.globalSetting.findUnique({
+      where: { key },
+      select: { value: true },
+    });
+    return typeof row?.value === 'string' && row.value.trim() ? row.value.trim() : null;
   }
 
   async createRedirect(data: CreateRedirectDto, userId: string): Promise<Redirect> {

@@ -5,6 +5,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import type { Env } from '../../config/env.schema';
 import { createBullBoardAuthMiddleware } from './bull-board-auth.middleware';
+import { QueueBoardSessionController } from './queue-board-session.controller';
 import { QUEUE_NAMES } from './queue.constants';
 
 @Module({
@@ -25,10 +26,10 @@ import { QUEUE_NAMES } from './queue.constants';
       { name: QUEUE_NAMES.MEDIA, adapter: BullMQAdapter },
       { name: QUEUE_NAMES.SEO, adapter: BullMQAdapter },
       { name: QUEUE_NAMES.PUBLISH, adapter: BullMQAdapter },
-      { name: QUEUE_NAMES.AUDIT, adapter: BullMQAdapter },
       { name: QUEUE_NAMES.EMAIL, adapter: BullMQAdapter },
       { name: QUEUE_NAMES.TRASH, adapter: BullMQAdapter },
     ),
   ],
+  controllers: [QueueBoardSessionController],
 })
 export class QueueBoardModule {}

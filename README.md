@@ -25,7 +25,7 @@
 
 Kast is a modern headless CMS built on **NestJS + Next.js** with a built-in **MCP server** for AI agent control, first-class **SEO tooling**, and **RTL/i18n** support from day one.
 
-[**Docs**](https://kastcms.com/docs) · [**Quick Start**](#quick-start) · [**Screenshots**](#screenshots) · [**SDK**](https://www.npmjs.com/package/@kast-cms/sdk) · [**Plugins**](#plugins) · [**Deploy**](#deploy)
+[**Docs**](https://docs.kast.dev) · [**Quick Start**](#quick-start) · [**Screenshots**](#screenshots) · [**SDK**](https://www.npmjs.com/package/@kast-cms/sdk) · [**Plugins**](#plugins) · [**Deploy**](#deploy)
 
 </div>
 
@@ -68,12 +68,12 @@ and it closes permanently once the first owner exists.
 
 > **Production with Docker?** A `docker-compose.yml` is included in the generated project. Run `docker-compose up` after filling in `.env`.
 
-| Service            | URL                            |
-| ------------------ | ------------------------------ |
-| Admin Panel        | http://localhost:3001/admin    |
-| REST API           | http://localhost:3000/api/v1   |
-| MCP Server         | http://localhost:3000/mcp      |
-| API Docs (Swagger) | http://localhost:3000/api/docs |
+| Service            | URL                              |
+| ------------------ | -------------------------------- |
+| Admin Panel        | http://localhost:3001/admin      |
+| REST API           | http://localhost:3000/api/v1     |
+| MCP Server         | http://localhost:3000/api/v1/mcp |
+| API Docs (Swagger) | http://localhost:3000/api/docs   |
 
 ---
 
@@ -180,7 +180,7 @@ Most headless CMSes were built for an era before AI agents, before Arabic-first 
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│                  Kast CMS v1.0.2                    │
+│                  Kast CMS v1.2.0                    │
 ├──────────────┬──────────────┬───────────────────────┤
 │   API        │   Admin      │   Frontend            │
 │   NestJS     │   Next.js 16 │   Next.js / Any       │
@@ -242,7 +242,8 @@ kast/
 │   ├── api/             # NestJS backend
 │   ├── admin/           # Next.js 16 admin panel
 │   ├── web-blog/        # Next.js blog frontend starter
-│   └── web-docs/        # Astro documentation site
+│   ├── docs/            # Astro/Starlight documentation site
+│   └── web-docs/        # Next.js public-site starter
 ├── packages/
 │   ├── sdk/             # @kast-cms/sdk — TypeScript client
 │   ├── plugin-sdk/      # @kast-cms/plugin-sdk — plugin interface
@@ -427,14 +428,14 @@ quality gate re-runs the full suite on the merge commit before anything publishe
 
 ## Documentation
 
-Full docs at [kastcms.com/docs](https://kastcms.com/docs)
+Full docs at [docs.kast.dev](https://docs.kast.dev)
 
-- [Getting Started](https://kastcms.com/docs/getting-started)
-- [API Reference](https://kastcms.com/docs/api)
-- [SDK Guide](https://kastcms.com/docs/sdk)
-- [Plugin Development](https://kastcms.com/docs/plugins)
-- [MCP Server](https://kastcms.com/docs/mcp)
-- [SEO Tooling](https://kastcms.com/docs/seo)
+- [Getting Started](https://docs.kast.dev/getting-started/installation/)
+- [API Reference](https://docs.kast.dev/api-reference/authentication/)
+- [SDK Guide](https://docs.kast.dev/sdk/installation/)
+- [Plugin Development](https://docs.kast.dev/plugins/what-is-a-plugin/)
+- [MCP Server](https://docs.kast.dev/mcp/connecting-claude/)
+- [SEO Tooling](https://docs.kast.dev/concepts/seo-module/)
 
 In this repository:
 

@@ -338,14 +338,14 @@ The installation experience is Kast's "easy like WordPress" moment. A developer 
 
 ### Acceptance Criteria
 
-| ID         | Given                                  | When                                 | Then                                                                                                                  |
-| ---------- | -------------------------------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
-| AC-INS-001 | Developer has Node.js >=20 installed   | They run npx create-kast-app my-site | CLI prompts: project name, DB port, admin port, enable i18n, default languages, storage provider, optional plugins    |
-| AC-INS-002 | CLI completes successfully             | Developer runs docker-compose up     | All services start, admin accessible at localhost:3001/admin, API at localhost:3001/api/v1, MCP at localhost:3001/mcp |
-| AC-INS-003 | Developer has Node.js 18               | They run npx create-kast-app         | CLI prints "Kast requires Node.js >= 20. You have 18.x." and exits with code 1                                        |
-| AC-INS-004 | Setup completes                        | Developer opens admin URL            | First-run setup wizard shown (create SUPER_ADMIN account)                                                             |
-| AC-INS-005 | Developer uses --skip-interactive flag | Running the CLI                      | Project generated with all defaults (English only, local storage, no plugins)                                         |
-| AC-INS-006 | Developer selects Railway deploy       | CLI completes                        | railway.json included and "Deploy to Railway" link printed                                                            |
+| ID         | Given                                  | When                                 | Then                                                                                                                         |
+| ---------- | -------------------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| AC-INS-001 | Developer has Node.js >=20 installed   | They run npx create-kast-app my-site | CLI prompts: project name, DB port, admin port, enable i18n, default languages, storage provider, optional plugins           |
+| AC-INS-002 | CLI completes successfully             | Developer runs docker-compose up     | All services start, admin accessible at localhost:3001/admin, API at localhost:3001/api/v1, MCP at localhost:3001/api/v1/mcp |
+| AC-INS-003 | Developer has Node.js 18               | They run npx create-kast-app         | CLI prints "Kast requires Node.js >= 20. You have 18.x." and exits with code 1                                               |
+| AC-INS-004 | Setup completes                        | Developer opens admin URL            | First-run setup wizard shown (create SUPER_ADMIN account)                                                                    |
+| AC-INS-005 | Developer uses --skip-interactive flag | Running the CLI                      | Project generated with all defaults (English only, local storage, no plugins)                                                |
+| AC-INS-006 | Developer selects Railway deploy       | CLI completes                        | railway.json included and "Deploy to Railway" link printed                                                                   |
 
 ### CLI Interaction Flow
 
@@ -378,7 +378,7 @@ Next steps:
 
   Admin:  http://localhost:3001/admin
   API:    http://localhost:3001/api/v1
-  MCP:    http://localhost:3001/mcp
+  MCP:    http://localhost:3001/api/v1/mcp
 ```
 
 ### Error States
@@ -410,18 +410,18 @@ Handles all identity: login, logout, OAuth, JWT tokens, password management, and
 
 ### Business Requirements
 
-| ID         | Requirement                                                                                |
-| ---------- | ------------------------------------------------------------------------------------------ |
-| BR-AUT-001 | The system must support email/password authentication with bcrypt hashing (cost factor 12) |
-| BR-AUT-002 | JWT access tokens must expire in 15 minutes. Refresh tokens in 30 days.                    |
-| BR-AUT-003 | Refresh tokens must rotate on every use — old token immediately revoked                    |
-| BR-AUT-004 | The system must support OAuth login with Google and GitHub                                 |
-| BR-AUT-005 | On first install with no users, system must show setup wizard to create SUPER_ADMIN        |
-| BR-AUT-006 | Failed login attempts must be rate-limited to 20 per 15 minutes per IP                     |
-| BR-AUT-007 | Password reset must work via email with a 1-hour TTL token                                 |
-| BR-AUT-008 | Password reset endpoint must never reveal whether an email exists                          |
-| BR-AUT-009 | All auth events must be written to the audit log with IP address                           |
-| BR-AUT-010 | The system must support concurrent sessions from multiple devices                          |
+| ID         | Requirement                                                                          |
+| ---------- | ------------------------------------------------------------------------------------ |
+| BR-AUT-001 | The system must support email/password authentication with Argon2id password hashing |
+| BR-AUT-002 | JWT access tokens must expire in 15 minutes. Refresh tokens in 30 days.              |
+| BR-AUT-003 | Refresh tokens must rotate on every use — old token immediately revoked              |
+| BR-AUT-004 | The system must support OAuth login with Google and GitHub                           |
+| BR-AUT-005 | On first install with no users, system must show setup wizard to create SUPER_ADMIN  |
+| BR-AUT-006 | Failed login attempts must be rate-limited to 20 per 15 minutes per IP               |
+| BR-AUT-007 | Password reset must work via email with a 1-hour TTL token                           |
+| BR-AUT-008 | Password reset endpoint must never reveal whether an email exists                    |
+| BR-AUT-009 | All auth events must be written to the audit log with IP address                     |
+| BR-AUT-010 | The system must support concurrent sessions from multiple devices                    |
 
 ### User Stories
 
@@ -529,12 +529,12 @@ Screen 2 (/admin/reset-password?token=...):
 
 ### Performance Requirements
 
-| ID         | Requirement                   | Target                                         |
-| ---------- | ----------------------------- | ---------------------------------------------- |
-| PF-AUT-001 | Login API response time       | Under 500ms p95 (bcrypt is intentionally slow) |
-| PF-AUT-002 | JWT verification time         | Under 5ms p99                                  |
-| PF-AUT-003 | Login page load               | Under 1.5s LCP                                 |
-| PF-AUT-004 | Session refresh (transparent) | Under 200ms p95 — user must not notice         |
+| ID         | Requirement                   | Target                                           |
+| ---------- | ----------------------------- | ------------------------------------------------ |
+| PF-AUT-001 | Login API response time       | Under 500ms p95 (Argon2id is intentionally slow) |
+| PF-AUT-002 | JWT verification time         | Under 5ms p99                                    |
+| PF-AUT-003 | Login page load               | Under 1.5s LCP                                   |
+| PF-AUT-004 | Session refresh (transparent) | Under 200ms p95 — user must not notice           |
 
 ---
 
@@ -1832,54 +1832,53 @@ Every Kast installation ships with a built-in MCP server at /mcp. AI agents (Cla
 
 | ID         | Requirement                                                                                |
 | ---------- | ------------------------------------------------------------------------------------------ |
-| BR-MCP-001 | The MCP server must be available at /mcp on every Kast installation                        |
-| BR-MCP-002 | Authentication must use agent tokens (kastagent\_...) with JSON scope objects              |
+| BR-MCP-001 | The MCP server must be available at /api/v1/mcp on every Kast installation                 |
+| BR-MCP-002 | Authentication must use agent tokens (kastagent\_...) with allow-listed tool-name scopes   |
 | BR-MCP-003 | The MCP server must expose exactly 15 tools (see tool list in Business Requirements below) |
-| BR-MCP-004 | Every tool must support a dryRun=true parameter that previews without applying             |
+| BR-MCP-004 | Every mutating tool must support dryRun=true and run the same validation as the real write |
 | BR-MCP-005 | Every tool call must be written to AuditLog with agentTokenId and agentName                |
 | BR-MCP-006 | Tool calls outside the agent token's scope must return SCOPE_DENIED                        |
 | BR-MCP-007 | ADMIN and SUPER_ADMIN must be able to create, view, and revoke agent tokens                |
 | BR-MCP-008 | Agent session history must be queryable per token                                          |
-| BR-MCP-009 | The MCP server must expose Agent Skills metadata describing all available operations       |
 
 Required MCP tools:
 
-- kast_content_list
-- kast_content_create
-- kast_content_update
-- kast_content_publish
-- kast_content_unpublish
-- kast_schema_create_type
-- kast_schema_add_field
-- kast_seo_validate
-- kast_plugin_install
-- kast_plugin_enable
-- kast_plugin_disable
-- kast_media_upload
-- kast_redirect_create
-- kast_user_create
-- kast_audit_log
+- list_content_types
+- get_content_type
+- create_content_type
+- update_content_type
+- list_content_entries
+- get_content_entry
+- create_content_entry
+- update_content_entry
+- publish_content_entry
+- delete_content_entry
+- list_media
+- get_media_file
+- get_seo_score
+- validate_seo
+- get_audit_log
 
 ### User Stories
 
 | ID         | Story                                                                                                                    |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------ |
 | US-MCP-001 | As a Developer, I want to connect Claude.ai to my Kast installation via MCP so I can manage content by talking to Claude |
-| US-MCP-002 | As a Developer, I want to give Claude a scoped token so it can only publish content but not install plugins              |
+| US-MCP-002 | As a Developer, I want to give Claude a scoped token so it can publish content but cannot delete it                      |
 | US-MCP-003 | As an ADMIN, I want to see every action Claude took in the audit log so I can verify its changes                         |
 | US-MCP-004 | As a Developer, I want Claude to preview changes before applying them (dry-run) so I can approve before committing       |
 | US-MCP-005 | As a Developer, I want to revoke an agent token immediately so I can stop an AI agent from making changes                |
 
 ### Acceptance Criteria
 
-| ID         | Given                                             | When                             | Then                                                                                                                               |
-| ---------- | ------------------------------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| AC-MCP-001 | Developer connects Claude.ai to Kast MCP at /mcp  | Claude calls kast_content_list   | List of entries returned. AgentSession record created.                                                                             |
-| AC-MCP-002 | Agent token has scope {content: ["read"]}         | Agent calls kast_content_publish | SCOPE_DENIED returned. Publish not attempted. Audit log records the denied attempt.                                                |
-| AC-MCP-003 | Agent calls kast_content_publish with dryRun=true | Tool executes                    | Preview returned: {wouldPublish: "entry-id", seoScore: 78, warnings: [...]}. Entry NOT published. Audit log records isDryRun=true. |
-| AC-MCP-004 | Agent calls kast_plugin_install                   | Scope includes plugins:install   | Plugin install initiated. Agent session records tool call.                                                                         |
-| AC-MCP-005 | ADMIN revokes an agent token                      | Revoke confirmed                 | Token marked revoked. Immediately rejected on next use.                                                                            |
-| AC-MCP-006 | Agent calls kast_audit_log                        | Scope includes audit:read        | Returns recent audit log entries filtered by what agent has access to view                                                         |
+| ID         | Given                                                | When                                              | Then                                                                                                                   |
+| ---------- | ---------------------------------------------------- | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| AC-MCP-001 | Developer connects an MCP client to `/api/v1/mcp`    | Client calls `list_content_entries`               | List of entries returned. AgentSession record created.                                                                 |
+| AC-MCP-002 | Agent token omits `publish_content_entry`            | Agent calls `publish_content_entry`               | SCOPE_DENIED returned. Publish not attempted. Audit log records the denied attempt.                                    |
+| AC-MCP-003 | Agent calls `publish_content_entry` with dryRun=true | Tool executes                                     | Preview returns `{wouldPublish, seoScore, warnings, errors}`. Entry is not published. Audit log records isDryRun=true. |
+| AC-MCP-004 | Agent sends invalid or oversized tool arguments      | Tool call is validated                            | INVALID_PARAMS is returned before any handler or database query runs.                                                  |
+| AC-MCP-005 | ADMIN revokes an agent token                         | Revoke confirmed                                  | Token marked revoked. Immediately rejected on next use.                                                                |
+| AC-MCP-006 | Agent calls `get_audit_log`                          | Token includes that tool and owner has audit:read | Returns recent audit log entries the owner is authorized to view.                                                      |
 
 ### Admin UI — Agent Tokens
 

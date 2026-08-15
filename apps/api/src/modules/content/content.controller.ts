@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
+import { AuditAction } from '../../common/decorators/audit-action.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import type { AuthUser, PaginatedResult } from '../../common/types/auth.types';
@@ -72,6 +73,7 @@ export class ContentController {
   }
 
   @Post('bulk/trash')
+  @AuditAction('content.bulk_trash')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @Roles(SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
@@ -89,6 +91,7 @@ export class ContentController {
   }
 
   @Post('bulk/publish')
+  @AuditAction('content.bulk_publish')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @Roles(SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
@@ -105,6 +108,7 @@ export class ContentController {
   }
 
   @Post('bulk/unpublish')
+  @AuditAction('content.bulk_unpublish')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @Roles(SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
@@ -147,6 +151,7 @@ export class ContentController {
   }
 
   @Post(':id/publish')
+  @AuditAction('content.publish')
   @ApiBearerAuth()
   @Roles(SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Publish a content entry (runs SEO gate)' })
@@ -159,6 +164,7 @@ export class ContentController {
   }
 
   @Post(':id/locale')
+  @AuditAction('content.add_locale')
   @ApiBearerAuth()
   @Roles(SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Add a locale to an existing entry' })
@@ -172,6 +178,7 @@ export class ContentController {
   }
 
   @Post(':id/unpublish')
+  @AuditAction('content.unpublish')
   @ApiBearerAuth()
   @Roles(SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Unpublish a content entry' })
@@ -183,6 +190,7 @@ export class ContentController {
   }
 
   @Post(':id/archive')
+  @AuditAction('content.archive')
   @ApiBearerAuth()
   @Roles(SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Archive a content entry' })
@@ -194,6 +202,7 @@ export class ContentController {
   }
 
   @Post(':id/unarchive')
+  @AuditAction('content.unarchive')
   @ApiBearerAuth()
   @Roles(SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @ApiOperation({
@@ -209,6 +218,7 @@ export class ContentController {
   }
 
   @Post(':id/restore')
+  @AuditAction('content.unarchive')
   @ApiBearerAuth()
   @Roles(SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @ApiOperation({
@@ -224,6 +234,7 @@ export class ContentController {
   }
 
   @Post(':id/schedule')
+  @AuditAction('content.schedule')
   @ApiBearerAuth()
   @Roles(SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Schedule a content entry for future publication' })
@@ -236,6 +247,7 @@ export class ContentController {
   }
 
   @Delete(':id/schedule')
+  @AuditAction('content.cancel_schedule')
   @ApiBearerAuth()
   @Roles(SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Cancel a scheduled publication' })
@@ -285,6 +297,7 @@ export class ContentController {
   }
 
   @Post(':id/versions/:versionId/revert')
+  @AuditAction('content.revert')
   @ApiBearerAuth()
   @Roles(SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Revert a content entry to a previous version' })

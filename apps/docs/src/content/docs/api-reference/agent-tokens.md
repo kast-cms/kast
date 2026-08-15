@@ -50,7 +50,7 @@ Configure your MCP client with:
 {
   "mcpServers": {
     "kast": {
-      "url": "http://localhost:3000/mcp",
+      "url": "http://localhost:3000/api/v1/mcp",
       "headers": {
         "Authorization": "Bearer <agent-token>"
       }

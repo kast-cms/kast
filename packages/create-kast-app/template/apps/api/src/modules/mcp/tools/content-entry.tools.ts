@@ -41,7 +41,7 @@ export class McpContentEntryTools {
       type: 'object',
       properties: {
         typeSlug: { type: 'string' },
-        limit: { type: 'number' },
+        limit: { type: 'integer', minimum: 1, maximum: 100 },
         cursor: { type: 'string' },
         locale: { type: 'string' },
       },
@@ -199,7 +199,15 @@ export class McpContentEntryTools {
     ctx: ToolContext,
   ): Promise<unknown> {
     if (ctx.dryRun) {
-      return { action: 'publish_content_entry', entryId: args['entryId'], wouldPublish: true };
+      return {
+        action: 'publish_content_entry',
+        entryId: args['entryId'],
+        ...(await this.contentService.previewPublish(
+          args['typeSlug'] as string,
+          args['entryId'] as string,
+          (args['force'] as boolean | undefined) ?? false,
+        )),
+      };
     }
     return this.contentService.publish(args['typeSlug'] as string, args['entryId'] as string, {
       force: (args['force'] as boolean | undefined) ?? false,
@@ -227,7 +235,14 @@ export class McpContentEntryTools {
     ctx: ToolContext,
   ): Promise<unknown> {
     if (ctx.dryRun) {
-      return { action: 'delete_content_entry', entryId: args['entryId'], wouldTrash: true };
+      return {
+        action: 'delete_content_entry',
+        entryId: args['entryId'],
+        ...(await this.contentService.previewTrash(
+          args['typeSlug'] as string,
+          args['entryId'] as string,
+        )),
+      };
     }
     await this.contentService.trash(args['typeSlug'] as string, args['entryId'] as string);
     return { deleted: true };

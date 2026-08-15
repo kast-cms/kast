@@ -22,6 +22,21 @@ export class ContentTypesRepository {
     });
   }
 
+  findPubliclyDiscoverable(): Promise<ContentTypeWithFields[]> {
+    return this.prisma.contentType.findMany({
+      where: { isPubliclyDiscoverable: true },
+      include: { fields: { orderBy: { position: 'asc' } } },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  findPubliclyDiscoverableByName(name: string): Promise<ContentTypeWithFields | null> {
+    return this.prisma.contentType.findFirst({
+      where: { name, isPubliclyDiscoverable: true },
+      include: { fields: { orderBy: { position: 'asc' } } },
+    });
+  }
+
   /**
    * Counts are deliberately absent here: this is the hot lookup every content
    * write goes through. Use `findByNameWithCounts` for the management responses.

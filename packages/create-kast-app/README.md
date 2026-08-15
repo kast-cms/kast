@@ -63,11 +63,11 @@ nano .env               # Set JWT_SECRET and review settings
 docker-compose up       # Start the full stack
 ```
 
-| Service      | URL                          |
-| ------------ | ---------------------------- |
-| Admin UI     | http://localhost:3001/admin  |
-| REST API     | http://localhost:3000/api/v1 |
-| MCP endpoint | http://localhost:3000/mcp    |
+| Service      | URL                              |
+| ------------ | -------------------------------- |
+| Admin UI     | http://localhost:3001/admin      |
+| REST API     | http://localhost:3000/api/v1     |
+| MCP endpoint | http://localhost:3000/api/v1/mcp |
 
 ---
 

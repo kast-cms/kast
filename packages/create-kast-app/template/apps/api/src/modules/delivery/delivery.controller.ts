@@ -3,9 +3,13 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Public } from '../../common/decorators/public.decorator';
 import { SortOrder } from '../../common/dto/pagination.dto';
 import type { PaginatedResult } from '../../common/types/auth.types';
-import type { MenuDetail } from '../menus/menu.repository';
 import { CacheOnSuccessInterceptor } from './cache-on-success.interceptor';
-import { DeliveryService, type DeliveryEntry, type DeliveryTypeSchema } from './delivery.service';
+import {
+  DeliveryService,
+  type DeliveryEntry,
+  type DeliveryMenu,
+  type DeliveryTypeSchema,
+} from './delivery.service';
 
 const SCHEMA_CACHE_CONTROL = 'public, max-age=60';
 
@@ -35,6 +39,14 @@ export class DeliveryController {
     return this.service.listSchemas();
   }
 
+  @Get('redirects')
+  @ApiOperation({ summary: 'Public active redirect rules for split-origin front ends' })
+  listRedirects(): Promise<{
+    data: Array<{ fromPath: string; toPath: string; type: 'PERMANENT' | 'TEMPORARY' }>;
+  }> {
+    return this.service.listRedirects();
+  }
+
   @Get('schema/:type')
   @UseInterceptors(new CacheOnSuccessInterceptor(SCHEMA_CACHE_CONTROL))
   @ApiOperation({ summary: 'Public field schema for a single content type' })
@@ -44,7 +56,7 @@ export class DeliveryController {
 
   @Get('menus/:slug')
   @ApiOperation({ summary: 'Public menu tree by slug' })
-  getMenu(@Param('slug') slug: string): Promise<{ data: MenuDetail }> {
+  getMenu(@Param('slug') slug: string): Promise<{ data: DeliveryMenu }> {
     return this.service.getMenu(slug);
   }
 

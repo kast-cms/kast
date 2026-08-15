@@ -18,6 +18,6 @@
       "@kast-cms/api/*": ["src/*"]
     }
   },
-  "include": ["src/**/*", "test/**/*", "prisma/**/*"],
+  "include": ["src/**/*", "test/**/*", "prisma/**/*", "prisma.config.ts"],
   "exclude": ["node_modules", "dist"]
 }

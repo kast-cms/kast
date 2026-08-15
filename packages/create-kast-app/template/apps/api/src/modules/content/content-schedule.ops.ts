@@ -29,8 +29,18 @@ export async function scheduleEntryPublish(
   }
   await gate.assertStoredPublishable(ct, entry);
   const delay = publishAt.getTime() - Date.now();
-  await queue.add('publish', { entryId: entry.id, typeSlug }, { delay, jobId: jobId(entry.id) });
-  assertApplied(await repo.updateSchedule(entry.id, ct.id, publishAt, 'SCHEDULED'), entry.id);
+  const id = jobId(entry.id);
+  const existing = await queue.getJob(id);
+  await existing?.remove();
+  const queued = await queue.add('publish', { entryId: entry.id, typeSlug }, { delay, jobId: id });
+  try {
+    assertApplied(await repo.updateSchedule(entry.id, ct.id, publishAt, 'SCHEDULED'), entry.id);
+  } catch (error) {
+    // Do not leave a live delayed job behind when the authoritative database
+    // state could not be changed.
+    await queued.remove().catch(() => undefined);
+    throw error;
+  }
 }
 
 export async function cancelEntrySchedule(

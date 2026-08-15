@@ -56,6 +56,7 @@ export class StripeController {
     const event = this.verifyStripeSignature(rawBody, signature, webhookSecret);
 
     this.logger.log(`Stripe webhook received: ${event.type} (${event.id})`);
+    this.emitter.emit('stripe.event', event);
     this.emitter.emit(`stripe.${event.type}`, event.data.object);
 
     return { received: true };
@@ -88,7 +89,12 @@ export class StripeController {
     const payload = `${timestamp}.${rawBody.toString('utf8')}`;
     const expected = crypto.createHmac('sha256', secret).update(payload).digest('hex');
 
-    if (!crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(v1))) {
+    const expectedBuffer = Buffer.from(expected);
+    const receivedBuffer = Buffer.from(v1);
+    if (
+      expectedBuffer.length !== receivedBuffer.length ||
+      !crypto.timingSafeEqual(expectedBuffer, receivedBuffer)
+    ) {
       throw new BadRequestException('Stripe webhook signature mismatch');
     }
 

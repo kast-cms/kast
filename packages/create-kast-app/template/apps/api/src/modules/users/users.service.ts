@@ -4,8 +4,10 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
   UnprocessableEntityException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { assertCanManageUser, highestRoleRank } from '../../common/authorization/role-rank.util';
 import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
 import type { AuthUser, PaginatedResult } from '../../common/types/auth.types';
@@ -28,6 +30,7 @@ export class UsersService {
   constructor(
     private readonly repo: UsersRepository,
     private readonly queue: QueueAdapter,
+    @Optional() private readonly eventEmitter?: EventEmitter2,
   ) {}
 
   private toSummary(row: UserRow): UserSummaryResponse {
@@ -122,6 +125,12 @@ export class UsersService {
     if (dto.sendInvite !== false) {
       await this.issueInvite(user);
     }
+
+    this.eventEmitter?.emit('user.created', {
+      userId: user.id,
+      email: user.email,
+      roles: user.roles.map(({ role }) => role.name),
+    });
 
     return { data: this.toSummary(user) };
   }

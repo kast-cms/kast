@@ -12,6 +12,7 @@ interface Delegate {
   findMany: jest.Mock;
   count: jest.Mock;
   findFirst: jest.Mock;
+  findUniqueOrThrow: jest.Mock;
   update: jest.Mock;
   delete: jest.Mock;
 }
@@ -21,6 +22,7 @@ function delegate(): Delegate {
     findMany: jest.fn().mockResolvedValue([]),
     count: jest.fn().mockResolvedValue(0),
     findFirst: jest.fn().mockResolvedValue({ id: 'x', roles: [] }),
+    findUniqueOrThrow: jest.fn().mockResolvedValue({ preTrashIsActive: true }),
     update: jest.fn().mockResolvedValue({}),
     delete: jest.fn().mockResolvedValue({}),
   };
@@ -223,7 +225,12 @@ describe('TrashService', () => {
 
       expect(prisma.user.update).toHaveBeenCalledWith({
         where: { id: 'u1' },
-        data: { trashedAt: null, trashedByUserId: null, isActive: true },
+        data: {
+          trashedAt: null,
+          trashedByUserId: null,
+          isActive: true,
+          preTrashIsActive: null,
+        },
       });
     });
 
@@ -258,7 +265,12 @@ describe('TrashService', () => {
 
       expect(prisma.user.update).toHaveBeenCalledWith({
         where: { id: 'u1' },
-        data: { trashedAt: null, trashedByUserId: null, isActive: true },
+        data: {
+          trashedAt: null,
+          trashedByUserId: null,
+          isActive: true,
+          preTrashIsActive: null,
+        },
       });
     });
 

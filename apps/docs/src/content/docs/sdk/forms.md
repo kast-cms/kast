@@ -8,24 +8,25 @@ sidebar:
 ## List forms
 
 ```ts
-const { data: forms } = await kast.forms.list();
+const forms = await kast.forms.list();
 ```
 
 ## Get form
 
 ```ts
-const { data: form } = await kast.forms.get(formId);
+const form = await kast.forms.get(formId);
 ```
 
 ## Create form
 
 ```ts
-const { data: form } = await kast.forms.create({
+const form = await kast.forms.create({
   name: 'Contact Us',
+  slug: 'contact-us',
   fields: [
-    { key: 'name', label: 'Your Name', type: 'text', required: true },
-    { key: 'email', label: 'Email', type: 'email', required: true },
-    { key: 'message', label: 'Message', type: 'textarea', required: true },
+    { name: 'name', label: 'Your Name', type: 'TEXT', isRequired: true },
+    { name: 'email', label: 'Email', type: 'EMAIL', isRequired: true },
+    { name: 'message', label: 'Message', type: 'TEXTAREA', isRequired: true },
   ],
   notifyEmail: 'hello@example.com',
 });
@@ -49,16 +50,23 @@ Use this from your frontend — no API key needed:
 
 ```ts
 await kast.forms.submit(formId, {
-  name: 'Oday Bakkour',
-  email: 'oday@example.com',
-  message: 'Hello!',
+  data: {
+    name: 'Oday Bakkour',
+    email: 'oday@example.com',
+    message: 'Hello!',
+  },
 });
 ```
 
 ## List submissions
 
 ```ts
-const { data: submissions, meta } = await kast.forms.listSubmissions(formId, {
+const {
+  data: submissions,
+  total,
+  page,
+  limit,
+} = await kast.forms.listSubmissions(formId, {
   limit: 50,
 });
 ```
@@ -79,9 +87,11 @@ import { kast } from '@/lib/kast';
 
 export async function submitContact(formData: FormData) {
   await kast.forms.submit(process.env.CONTACT_FORM_ID!, {
-    name: formData.get('name') as string,
-    email: formData.get('email') as string,
-    message: formData.get('message') as string,
+    data: {
+      name: formData.get('name') as string,
+      email: formData.get('email') as string,
+      message: formData.get('message') as string,
+    },
   });
 }
 ```

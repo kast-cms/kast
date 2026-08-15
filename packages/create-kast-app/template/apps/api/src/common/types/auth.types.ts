@@ -10,6 +10,7 @@ export interface AuthUser {
   apiTokenScopeData?: Record<string, string[]>;
   isAgentToken?: boolean;
   agentTokenId?: string;
+  agentTokenName?: string;
   agentTokenScopes?: string[];
 }
 

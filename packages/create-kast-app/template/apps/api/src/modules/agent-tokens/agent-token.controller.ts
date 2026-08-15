@@ -25,6 +25,7 @@ import {
 @ApiTags('agent-tokens')
 @Controller({ path: 'agent-tokens', version: '1' })
 @ApiBearerAuth()
+@Roles(SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
 export class AgentTokenController {
   constructor(private readonly service: AgentTokenService) {}
 

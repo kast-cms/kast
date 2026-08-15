@@ -8,11 +8,27 @@ export type FolderWithCounts = MediaFolder & {
   _count: { files: number; children: number };
 };
 
+export type MediaListRow = MediaFile & {
+  folder: Pick<MediaFolder, 'id' | 'name'> | null;
+  _count: { usages: number };
+};
+
+export type MediaDetailRow = MediaListRow & {
+  usages: Array<{
+    entryId: string;
+    fieldName: string;
+    entry: {
+      contentType: { name: string };
+      locales: Array<{ data: Prisma.JsonValue }>;
+    };
+  }>;
+};
+
 @Injectable()
 export class MediaRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(query: ListMediaDto): Promise<{ items: MediaFile[]; total: number }> {
+  async findAll(query: ListMediaDto): Promise<{ items: MediaListRow[]; total: number }> {
     const limit = query.limit ?? 20;
     const search = query.search?.trim();
     const where: Prisma.MediaFileWhereInput = {
@@ -39,14 +55,46 @@ export class MediaRepository {
         orderBy: { [sortField]: order } as Prisma.MediaFileOrderByWithRelationInput,
         take: limit + 1,
         ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
+        include: {
+          folder: { select: { id: true, name: true } },
+          _count: { select: { usages: true } },
+        },
       }),
       this.prisma.mediaFile.count({ where }),
     ]);
-    return { items, total };
+    return { items: items as MediaListRow[], total };
   }
 
-  findById(id: string): Promise<MediaFile | null> {
-    return this.prisma.mediaFile.findFirst({ where: { id, trashedAt: null } });
+  findById(id: string): Promise<MediaDetailRow | null> {
+    return this.prisma.mediaFile.findFirst({
+      where: { id, trashedAt: null },
+      include: {
+        folder: { select: { id: true, name: true } },
+        _count: { select: { usages: true } },
+        usages: {
+          select: {
+            entryId: true,
+            fieldName: true,
+            entry: {
+              select: {
+                contentType: { select: { name: true } },
+                locales: { take: 1, select: { data: true } },
+              },
+            },
+          },
+        },
+      },
+    }) as Promise<MediaDetailRow | null>;
+  }
+
+  findActiveByStorageKey(storageKey: string): Promise<Pick<MediaFile, 'id'> | null> {
+    return this.prisma.mediaFile.findFirst({
+      where: {
+        trashedAt: null,
+        OR: [{ storageKey }, { storageKey: `${storageKey}.webp` }],
+      },
+      select: { id: true },
+    });
   }
 
   /** Used by permanent delete, which has to reach rows already in the trash. */

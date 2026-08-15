@@ -62,14 +62,14 @@ export const PACKAGE_JSON_API_ONLY_TEMPLATE = `{
   "version": "0.0.1",
   "scripts": {
     "dev": "nest start --watch",
-    "build": "nest build",
+    "build": "nest build{{#if pluginMeilisearch}} && tsc -p plugins/kast-plugin-meilisearch/tsconfig.json{{/if}}{{#if pluginStripe}} && tsc -p plugins/kast-plugin-stripe/tsconfig.json{{/if}}{{#if pluginResend}} && tsc -p plugins/kast-plugin-resend/tsconfig.json{{/if}}{{#if pluginR2}} && tsc -p plugins/kast-plugin-r2/tsconfig.json{{/if}}{{#if pluginSentry}} && tsc -p plugins/kast-plugin-sentry/tsconfig.json{{/if}}",
     "start": "node dist/main.js",
     "start:debug": "nest start --debug --watch",
     "lint": "eslint \\"src/**/*.ts\\" \\"test/**/*.ts\\" --no-error-on-unmatched-pattern",
     "lint:fix": "eslint \\"src/**/*.ts\\" \\"test/**/*.ts\\" --fix",
     "typecheck": "tsc --noEmit",
     "test": "jest --passWithNoTests",
-    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:e2e": "node test/prepare-e2e-db.mjs && jest --config ./test/jest-e2e.json",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:migrate:prod": "prisma migrate deploy",
@@ -91,6 +91,8 @@ export const PACKAGE_JSON_API_ONLY_TEMPLATE = `{
     "@bull-board/nestjs": "^7.0.0",
     "@bull-board/ui": "^7.0.0",
     "@kast-cms/plugin-sdk": "^0.1.0",
+    "@modelcontextprotocol/node": "^2.0.0",
+    "@modelcontextprotocol/server": "^2.0.0",
     "@nestjs/bullmq": "^10.2.3",
     "@nestjs/common": "^11.0.11",
     "@nestjs/config": "^3.3.0",
@@ -104,6 +106,7 @@ export const PACKAGE_JSON_API_ONLY_TEMPLATE = `{
     "@nestjs/terminus": "^10.2.3",
     "@nestjs/throttler": "^6.2.1",
     "@prisma/client": "^6.5.0",
+    "@sentry/node": "^10.58.0",
     "argon2": "^0.41.1",
     "bullmq": "^5.39.0",
     "class-transformer": "^0.5.1",
@@ -112,6 +115,7 @@ export const PACKAGE_JSON_API_ONLY_TEMPLATE = `{
     "ioredis": "^5.3.2",
     "isomorphic-dompurify": "^3.10.0",
     "jsonwebtoken": "^9.0.3",
+    "meilisearch": "^0.58.0",
     "multer": "^2.2.0",
     "nodemailer": "^9.0.1",
     "passport": "^0.7.0",
@@ -120,9 +124,11 @@ export const PACKAGE_JSON_API_ONLY_TEMPLATE = `{
     "passport-jwt": "^4.0.1",
     "prisma": "^6.5.0",
     "reflect-metadata": "^0.2.2",
+    "resend": "^6.14.0",
     "rxjs": "^7.8.2",
     "sharp": "^0.35.0",
-    "zod": "^3.23.8"
+    "stripe": "^22.2.2",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.6",
@@ -166,9 +172,6 @@ export const PACKAGE_JSON_API_ONLY_TEMPLATE = `{
     "collectCoverageFrom": ["**/*.(t|j)s"],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
-  },
-  "prisma": {
-    "seed": "ts-node -r tsconfig-paths/register prisma/seed.ts"
   }{{#if isPnpm}},
   "pnpm": {
     "onlyBuiltDependencies": [

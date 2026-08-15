@@ -9,23 +9,26 @@ description: Check the operational status of the Kast API and its dependencies.
 GET /api/v1/health
 ```
 
-No authentication required. Returns `200 OK` when the service is healthy.
+No authentication required. This liveness endpoint checks PostgreSQL and Redis.
 
 **Response:**
 
 ```json
 {
   "status": "ok",
-  "version": "1.0.0",
-  "uptime": 3600,
-  "checks": {
-    "database": "ok",
-    "redis": "ok"
-  }
+  "status": "ok",
+  "info": {
+    "database": { "status": "up" },
+    "redis": { "status": "up" }
+  },
+  "error": {},
+  "details": {}
 }
 ```
 
-If any dependency is unavailable, the status is `"degraded"` and the HTTP response code is `503`.
+For traffic readiness, use `GET /api/v1/health/ready`. It also performs a
+write/read/delete storage probe, checks every background worker, and enforces the
+configured queue backlog and failed-job thresholds. A failed check returns 503.
 
 ## Use cases
 
@@ -53,8 +56,6 @@ echo "API is ready"
 
 **Uptime monitoring:**
 
-Point your uptime monitor (UptimeRobot, Betterstack, etc.) at `GET /api/v1/health`. Alerts fire if the endpoint returns non-200 or times out.
-
-## Version information
-
-The `version` field reflects the `package.json` version of `apps/api`. This matches the GitHub release tag and Docker image tag.
+Point uptime monitoring at `/health` and orchestration/readiness alerts at
+`/health/ready`. The latter intentionally becomes unavailable for storage,
+worker, backlog, or dead-letter incidents.

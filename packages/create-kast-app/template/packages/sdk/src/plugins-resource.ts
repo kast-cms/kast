@@ -9,6 +9,19 @@ export class PluginsResource {
     return this.client.request('/api/v1/plugins');
   }
 
+  install(name: string, version: string): Promise<ApiResponse<PluginRecord>> {
+    return this.client.request('/api/v1/plugins/install', {
+      method: 'POST',
+      body: { name, version },
+    });
+  }
+
+  async uninstall(name: string): Promise<void> {
+    await this.client.request(`/api/v1/plugins/${encodeURIComponent(name)}`, {
+      method: 'DELETE',
+    });
+  }
+
   enable(name: string): Promise<ApiResponse<PluginRecord>> {
     return this.client.request(`/api/v1/plugins/${encodeURIComponent(name)}/enable`, {
       method: 'POST',

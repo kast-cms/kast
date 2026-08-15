@@ -40,6 +40,16 @@ export class ContentTypesService {
     return this.repo.findAll();
   }
 
+  findPubliclyDiscoverable(): Promise<ContentTypeWithFields[]> {
+    return this.repo.findPubliclyDiscoverable();
+  }
+
+  async findPubliclyDiscoverableByName(name: string): Promise<ContentTypeWithFields> {
+    const ct = await this.repo.findPubliclyDiscoverableByName(name);
+    if (!ct) throw new NotFoundException(`Public content type '${name}' not found`);
+    return ct;
+  }
+
   async findByName(name: string): Promise<ContentTypeWithFields> {
     const ct = await this.repo.findByName(name);
     if (!ct) throw new NotFoundException(`Content type '${name}' not found`);
@@ -63,12 +73,28 @@ export class ContentTypesService {
       // Entry writes branch on this at runtime, so a type created through the API
       // has to be able to declare it.
       isLocalized: dto.isLocalized ?? false,
+      isPubliclyDiscoverable: dto.isPubliclyDiscoverable ?? false,
     });
+  }
+
+  async previewCreate(dto: CreateContentTypeDto): Promise<Record<string, unknown>> {
+    const existing = await this.repo.findByName(dto.name);
+    if (existing) throw new ConflictException(`Content type '${dto.name}' already exists`);
+    return {
+      ...dto,
+      isLocalized: dto.isLocalized ?? false,
+      isPubliclyDiscoverable: dto.isPubliclyDiscoverable ?? false,
+    };
   }
 
   async update(name: string, dto: UpdateContentTypeDto): Promise<ContentTypeWithCounts> {
     await this.findByName(name);
     return this.repo.update(name, dto);
+  }
+
+  async previewUpdate(name: string, dto: UpdateContentTypeDto): Promise<Record<string, unknown>> {
+    await this.findByName(name);
+    return { name, ...dto };
   }
 
   /**

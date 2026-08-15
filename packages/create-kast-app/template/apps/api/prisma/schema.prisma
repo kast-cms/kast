@@ -86,20 +86,6 @@ enum FormFieldType {
   DATE
 }
 
-enum AiJobStatus {
-  PENDING
-  PROCESSING
-  COMPLETED
-  FAILED
-}
-
-enum AiTriggerType {
-  MANUAL
-  AGENT
-  AUTO
-}
-
-
 // ============================================================
 // CONTENT MODULE
 // ============================================================
@@ -112,6 +98,7 @@ model ContentType {
   icon        String?
   isSystem      Boolean  @default(false)
   isLocalized   Boolean  @default(false)
+  isPubliclyDiscoverable Boolean @default(false)
 
   fields      ContentField[]
   entries     ContentEntry[]
@@ -157,21 +144,19 @@ model ContentEntry {
 
   isAiGenerated Boolean       @default(false)
 
-  createdById   String
-  createdBy     User          @relation("CreatedEntries", fields: [createdById], references: [id])
+  createdById   String?
+  createdBy     User?         @relation("CreatedEntries", fields: [createdById], references: [id], onDelete: SetNull)
   updatedById   String?
-  updatedBy     User?         @relation("UpdatedEntries", fields: [updatedById], references: [id])
+  updatedBy     User?         @relation("UpdatedEntries", fields: [updatedById], references: [id], onDelete: SetNull)
 
   trashedAt        DateTime?
   trashedByUserId  String?
-  trashedByUser    User?      @relation("TrashedEntries", fields: [trashedByUserId], references: [id])
+  trashedByUser    User?      @relation("TrashedEntries", fields: [trashedByUserId], references: [id], onDelete: SetNull)
 
   locales       ContentEntryLocale[]
   versions      ContentEntryVersion[]
   seoMeta       SeoMeta?
   mediaUsages   MediaUsage[]
-  aiGenerations AiContentGeneration[]
-
   relatedFrom   ContentRelation[] @relation("RelationFrom")
   relatedTo     ContentRelation[] @relation("RelationTo")
 
@@ -214,8 +199,8 @@ model ContentEntryVersion {
   localesData   Json
   isAiGenerated Boolean      @default(false)
 
-  savedById     String
-  savedBy       User         @relation(fields: [savedById], references: [id])
+  savedById     String?
+  savedBy       User?        @relation(fields: [savedById], references: [id], onDelete: SetNull)
 
   createdAt     DateTime     @default(now())
 
@@ -280,8 +265,8 @@ model Redirect {
   isActive    Boolean      @default(true)
   hitCount    Int          @default(0)
 
-  createdById String
-  createdBy   User         @relation(fields: [createdById], references: [id])
+  createdById String?
+  createdBy   User?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
 
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
@@ -336,6 +321,7 @@ model User {
 
   trashedAt        DateTime?
   trashedByUserId  String?
+  preTrashIsActive Boolean?
 
   roles            UserRole[]
   oauthAccounts    OAuthAccount[]
@@ -499,20 +485,26 @@ model MediaFile {
   url           String
   storageKey    String
   provider      String
+  originalStorageKey String?
+  originalUrl        String?
+  originalSize       Int?
+  optimizedSize      Int?
+  thumbnailSize      Int          @default(0)
+  thumbnails         Json         @default("{}")
 
   width         Int?
   height        Int?
   altText       String?
+  caption       String?
   isAiAltText   Boolean      @default(false)
 
   isAiGenerated  Boolean     @default(false)
-  aiGenerations  AiImageGeneration[]
 
   trashedAt        DateTime?
   trashedByUserId  String?
 
-  uploadedById  String
-  uploadedBy    User         @relation(fields: [uploadedById], references: [id])
+  uploadedById  String?
+  uploadedBy    User?        @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
 
   usages        MediaUsage[]
   seoMetaOg     SeoMeta[]   @relation("OgImage")
@@ -574,6 +566,8 @@ model AgentSession {
   toolsUsed    Json       @default("[]")
   startedAt    DateTime   @default(now())
   endedAt      DateTime?
+  durationMs   Int?
+  outcome      String?
 
   @@index([agentTokenId])
   @@map("agent_sessions")
@@ -693,7 +687,9 @@ model Plugin {
   version        String
   description    String?
   isActive       Boolean      @default(false)
+  isInstalled    Boolean      @default(true)
   isSystemPlugin Boolean      @default(false)
+  manifest       Json         @default("{}")
   installedAt    DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
@@ -833,58 +829,3 @@ model GlobalSetting {
   @@map("global_settings")
 }
 
-
-// ============================================================
-// AI MODULE
-// ============================================================
-
-model AiContentGeneration {
-  id           String       @id @default(cuid())
-  entryId      String?
-  entry        ContentEntry? @relation(fields: [entryId], references: [id])
-
-  prompt       String
-  model        String
-  provider     String
-  result       String?
-  tokensUsed   Int?
-  durationMs   Int?
-  status       AiJobStatus
-  errorMessage String?
-
-  fieldName    String?
-  localeCode   String?
-
-  triggeredBy  String?
-  triggerType  AiTriggerType
-
-  createdAt    DateTime     @default(now())
-
-  @@index([entryId])
-  @@index([status])
-  @@index([triggeredBy])
-  @@map("ai_content_generations")
-}
-
-model AiImageGeneration {
-  id           String     @id @default(cuid())
-  mediaFileId  String?
-  mediaFile    MediaFile? @relation(fields: [mediaFileId], references: [id])
-
-  prompt       String
-  model        String
-  provider     String
-  resultUrl    String?
-  status       AiJobStatus
-  errorMessage String?
-  durationMs   Int?
-
-  triggeredBy  String?
-  triggerType  AiTriggerType
-
-  createdAt    DateTime   @default(now())
-
-  @@index([mediaFileId])
-  @@index([status])
-  @@map("ai_image_generations")
-}

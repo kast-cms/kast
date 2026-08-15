@@ -2,6 +2,7 @@ import type { ConfigService } from '@nestjs/config';
 import { UnrecoverableError, type Job } from 'bullmq';
 import { createHmac } from 'crypto';
 import { lookup } from 'dns/promises';
+import { SecretEncryptionService } from '../../common/security/secret-encryption.service';
 import { encryptSecret } from '../../common/utils/secret-crypto.util';
 import { WebhookProcessor, type WebhookFireJobData } from './webhook.processor';
 import type { EndpointWithSecret, WebhookRepository } from './webhook.repository';
@@ -9,7 +10,7 @@ import type { EndpointWithSecret, WebhookRepository } from './webhook.repository
 jest.mock('dns/promises', () => ({ lookup: jest.fn() }));
 
 const mockedLookup = lookup as unknown as jest.Mock;
-const APP_SECRET = 'unit-test-app-secret-0123456789';
+const APP_SECRET = 'unit-test-app-secret-0123456789-extra';
 const SIGNING_KEY = 'whsec_unit_test';
 
 type Mocked<T> = { [K in keyof T]: jest.Mock };
@@ -58,9 +59,13 @@ describe('WebhookProcessor', () => {
       findByIdWithSecret: jest.fn(),
       findDelivery: jest.fn().mockResolvedValue(DELIVERY),
       updateDelivery: jest.fn().mockResolvedValue(undefined),
+      rotateSecret: jest.fn().mockResolvedValue(undefined),
     } as unknown as Mocked<WebhookRepository>;
     const config = { get: jest.fn().mockReturnValue(APP_SECRET) } as unknown as ConfigService;
-    processor = new WebhookProcessor(repo as unknown as WebhookRepository, config);
+    processor = new WebhookProcessor(
+      repo as unknown as WebhookRepository,
+      new SecretEncryptionService(config),
+    );
   });
 
   afterAll(() => {

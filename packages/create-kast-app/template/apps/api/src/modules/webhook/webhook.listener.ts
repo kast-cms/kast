@@ -45,6 +45,11 @@ export class WebhookListener {
     await this.dispatch('media.uploaded', payload);
   }
 
+  @OnEvent('media.deleted')
+  async onMediaDeleted(payload: WebhookEventPayload): Promise<void> {
+    await this.dispatch('media.deleted', payload);
+  }
+
   @OnEvent('user.created')
   async onUserCreated(payload: WebhookEventPayload): Promise<void> {
     await this.dispatch('user.created', payload);
@@ -60,7 +65,10 @@ export class WebhookListener {
           payload: payload as Record<string, unknown>,
         });
         const jobData: WebhookFireJobData = { endpointId: ep.id, deliveryId: delivery.id };
-        await this.queue.enqueue(QUEUE_NAMES.WEBHOOK, 'fire', jobData, FIRE_OPTS);
+        await this.queue.enqueue(QUEUE_NAMES.WEBHOOK, 'fire', jobData, {
+          ...FIRE_OPTS,
+          jobId: `webhook-${delivery.id}`,
+        });
       }),
     );
   }

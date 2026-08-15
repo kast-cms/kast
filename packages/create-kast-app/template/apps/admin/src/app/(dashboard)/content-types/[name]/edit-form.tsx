@@ -19,7 +19,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { clearable } from '@/lib/nullable-field';
 import { useApiClient, useSession } from '@/lib/session';
-import type { ContentTypeDetail } from '@kast-cms/sdk';
+import type { ContentTypeDetail, KastClient } from '@kast-cms/sdk';
 import { Lock, Trash2 } from 'lucide-react';
 import { useCallback, useState, type ChangeEvent, type FormEvent, type JSX } from 'react';
 
@@ -32,6 +32,59 @@ interface SettingsCardProps {
   onUpdated: (next: ContentTypeDetail) => void;
 }
 
+interface SettingsDraft {
+  displayName: string;
+  description: string;
+  icon: string;
+  isLocalized: boolean;
+  isPubliclyDiscoverable: boolean;
+}
+
+/** Persists the settings draft and returns the updated type. */
+async function updateSettings(
+  client: KastClient,
+  name: string,
+  draft: SettingsDraft,
+): Promise<ContentTypeDetail> {
+  const result = await client.contentTypes.update(name, {
+    displayName: draft.displayName.trim(),
+    isLocalized: draft.isLocalized,
+    isPubliclyDiscoverable: draft.isPubliclyDiscoverable,
+    // Emptied means emptied: a dropped key leaves the old description or
+    // icon on the type, so the screen and the stored row disagree.
+    description: clearable(draft.description),
+    icon: clearable(draft.icon),
+  });
+  return result.data;
+}
+
+/** A labelled switch with its explanatory hint, boxed like a form row. */
+function ToggleRow({
+  id,
+  label,
+  hint,
+  checked,
+  onCheckedChange,
+  disabled,
+}: {
+  id: string;
+  label: string;
+  hint: string;
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+  disabled: boolean;
+}): JSX.Element {
+  return (
+    <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-4">
+      <div className="space-y-1">
+        <Label htmlFor={id}>{label}</Label>
+        <FieldHint>{hint}</FieldHint>
+      </div>
+      <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} disabled={disabled} />
+    </div>
+  );
+}
+
 /** Name, API ID, description and icon — everything editable about the type itself. */
 function SettingsCard({ contentType, onUpdated }: SettingsCardProps): JSX.Element {
   const client = useApiClient();
@@ -39,6 +92,9 @@ function SettingsCard({ contentType, onUpdated }: SettingsCardProps): JSX.Elemen
   const [displayName, setDisplayName] = useState(contentType.displayName);
   const [description, setDescription] = useState(contentType.description ?? '');
   const [isLocalized, setIsLocalized] = useState(contentType.isLocalized);
+  const [isPubliclyDiscoverable, setIsPubliclyDiscoverable] = useState(
+    contentType.isPubliclyDiscoverable,
+  );
   const [icon, setIcon] = useState(contentType.icon ?? '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -52,21 +108,8 @@ function SettingsCard({ contentType, onUpdated }: SettingsCardProps): JSX.Elemen
       setSaveSuccess(false);
 
       try {
-        const body: {
-          displayName: string;
-          description?: string | null;
-          icon?: string | null;
-          isLocalized: boolean;
-        } = {
-          displayName: displayName.trim(),
-          isLocalized,
-          // Emptied means emptied: a dropped key leaves the old description or
-          // icon on the type, so the screen and the stored row disagree.
-          description: clearable(description),
-          icon: clearable(icon),
-        };
-        const result = await client.contentTypes.update(contentType.name, body);
-        onUpdated(result.data);
+        const draft = { displayName, description, icon, isLocalized, isPubliclyDiscoverable };
+        onUpdated(await updateSettings(client, contentType.name, draft));
         setSaveSuccess(true);
         setTimeout(() => {
           setSaveSuccess(false);
@@ -77,7 +120,17 @@ function SettingsCard({ contentType, onUpdated }: SettingsCardProps): JSX.Elemen
         setIsSubmitting(false);
       }
     },
-    [session, contentType.name, displayName, description, icon, isLocalized, onUpdated, client],
+    [
+      session,
+      contentType.name,
+      displayName,
+      description,
+      icon,
+      isLocalized,
+      isPubliclyDiscoverable,
+      onUpdated,
+      client,
+    ],
   );
 
   return (
@@ -166,21 +219,23 @@ function SettingsCard({ contentType, onUpdated }: SettingsCardProps): JSX.Elemen
             />
           </div>
 
-          <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-4">
-            <div className="space-y-1">
-              <Label htmlFor="edit-isLocalized">Localized</Label>
-              <FieldHint>
-                Creates a row per active locale for every entry, so the same entry can be
-                translated. Turning this off does not delete translations already stored.
-              </FieldHint>
-            </div>
-            <Switch
-              id="edit-isLocalized"
-              checked={isLocalized}
-              onCheckedChange={setIsLocalized}
-              disabled={isSubmitting}
-            />
-          </div>
+          <ToggleRow
+            id="edit-isLocalized"
+            label="Localized"
+            hint="Creates a row per active locale for every entry, so the same entry can be translated. Turning this off does not delete translations already stored."
+            checked={isLocalized}
+            onCheckedChange={setIsLocalized}
+            disabled={isSubmitting}
+          />
+
+          <ToggleRow
+            id="edit-isPubliclyDiscoverable"
+            label="Public schema discovery"
+            hint="Exposes this type and its visible field definitions through the anonymous delivery API."
+            checked={isPubliclyDiscoverable}
+            onCheckedChange={setIsPubliclyDiscoverable}
+            disabled={isSubmitting}
+          />
         </CardContent>
 
         <CardFooter className="justify-end">

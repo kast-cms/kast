@@ -40,6 +40,20 @@ function buildPolicy(): OAuthPolicy {
   } as unknown as OAuthPolicy;
 }
 
+function buildQueue(): QueueAdapter {
+  const values = new Map<string, { value: string; expiresAt: number }>();
+  return {
+    setEphemeral: jest.fn(async (key: string, value: string, ttlMs: number) => {
+      values.set(key, { value, expiresAt: Date.now() + ttlMs });
+    }),
+    consumeEphemeral: jest.fn(async (key: string) => {
+      const stored = values.get(key);
+      values.delete(key);
+      return stored && stored.expiresAt > Date.now() ? stored.value : null;
+    }),
+  } as unknown as QueueAdapter;
+}
+
 function buildResponse(): Response & { redirect: jest.Mock } {
   return { redirect: jest.fn() } as unknown as Response & { redirect: jest.Mock };
 }
@@ -55,7 +69,7 @@ describe('OAuth authorization-code exchange', () => {
     service = new AuthService(
       {} as unknown as AuthRepository,
       {} as unknown as JwtService,
-      {} as unknown as QueueAdapter,
+      buildQueue(),
       buildPolicy(),
     );
   });
@@ -63,12 +77,12 @@ describe('OAuth authorization-code exchange', () => {
   afterEach(() => jest.useRealTimers());
 
   describe('callback redirect', () => {
-    it('never puts access or refresh tokens in the redirect URL', () => {
+    it('never puts access or refresh tokens in the redirect URL', async () => {
       const controller = new AuthController(service, buildConfig('http://localhost:3001'));
       const res = buildResponse();
       const pair = buildTokenPair();
 
-      controller.googleCallback({ user: pair } as never, res);
+      await controller.googleCallback({ user: pair } as never, res);
 
       const target = redirectedTo(res);
       const raw = target.toString();
@@ -79,38 +93,38 @@ describe('OAuth authorization-code exchange', () => {
       expect(target.searchParams.get('code')).toEqual(expect.any(String));
     });
 
-    it('redirects to the configured admin origin, not an API-relative path', () => {
+    it('redirects to the configured admin origin, not an API-relative path', async () => {
       const controller = new AuthController(service, buildConfig('https://cms.example.com/admin'));
       const res = buildResponse();
 
-      controller.githubCallback({ user: buildTokenPair() } as never, res);
+      await controller.githubCallback({ user: buildTokenPair() } as never, res);
 
       const target = redirectedTo(res);
       expect(target.origin).toBe('https://cms.example.com');
       expect(target.pathname).toBe('/admin/oauth-callback');
     });
 
-    it('fails closed when ADMIN_URL is not a usable absolute URL', () => {
+    it('fails closed when ADMIN_URL is not a usable absolute URL', async () => {
       const res = buildResponse();
 
-      expect(() =>
+      await expect(
         new AuthController(service, buildConfig('/oauth-callback')).googleCallback(
           { user: buildTokenPair() } as never,
           res,
         ),
-      ).toThrow(InternalServerErrorException);
-      expect(() =>
+      ).rejects.toThrow(InternalServerErrorException);
+      await expect(
         new AuthController(service, buildConfig('javascript:alert(1)')).googleCallback(
           { user: buildTokenPair() } as never,
           res,
         ),
-      ).toThrow(InternalServerErrorException);
+      ).rejects.toThrow(InternalServerErrorException);
       expect(res.redirect).not.toHaveBeenCalled();
     });
 
-    it('rejects a callback that carries no authenticated token pair', () => {
+    it('rejects a callback that carries no authenticated token pair', async () => {
       const controller = new AuthController(service, buildConfig('http://localhost:3001'));
-      expect(() => controller.googleCallback({} as never, buildResponse())).toThrow(
+      await expect(controller.googleCallback({} as never, buildResponse())).rejects.toThrow(
         BadRequestException,
       );
     });
@@ -121,14 +135,14 @@ describe('OAuth authorization-code exchange', () => {
       const controller = new AuthController(service, buildConfig('http://localhost:3001'));
       const res = buildResponse();
       const pair = buildTokenPair();
-      controller.googleCallback({ user: pair } as never, res);
+      await controller.googleCallback({ user: pair } as never, res);
       const code = redirectedTo(res).searchParams.get('code') as string;
 
       await expect(controller.exchangeOAuthCode(code)).resolves.toEqual({ data: pair });
     });
 
     it('refuses a replayed code (single use)', async () => {
-      const code = service.issueOAuthAuthorizationCode(buildTokenPair());
+      const code = await service.issueOAuthAuthorizationCode(buildTokenPair());
 
       await expect(service.exchangeOAuthCode(code)).resolves.toMatchObject({
         refreshToken: 'refresh-raw-secret',
@@ -138,7 +152,7 @@ describe('OAuth authorization-code exchange', () => {
 
     it('refuses a code that has aged past its short lifetime', async () => {
       jest.useFakeTimers({ now: Date.now() });
-      const code = service.issueOAuthAuthorizationCode(buildTokenPair());
+      const code = await service.issueOAuthAuthorizationCode(buildTokenPair());
 
       jest.advanceTimersByTime(61_000);
 
@@ -163,7 +177,7 @@ describe('OAuth authorization-code exchange', () => {
     it('never mints a code for an unverified provider email claiming an existing account', async () => {
       const repo = {
         findOAuthAccount: jest.fn().mockResolvedValue(null),
-        findUserByEmail: jest.fn(),
+        findUserByEmail: jest.fn().mockResolvedValue({ id: 'u1' }),
         createRefreshToken: jest.fn(),
         upsertOAuthAccount: jest.fn(),
         updateLastLogin: jest.fn(),
@@ -171,7 +185,7 @@ describe('OAuth authorization-code exchange', () => {
       const linking = new AuthService(
         repo,
         {} as unknown as JwtService,
-        {} as unknown as QueueAdapter,
+        buildQueue(),
         buildPolicy(),
       );
 
@@ -182,13 +196,13 @@ describe('OAuth authorization-code exchange', () => {
           emails: [{ value: 'admin@kast.local', verified: false }],
         }),
       ).rejects.toThrow(UnauthorizedException);
-      expect(repo.findUserByEmail).not.toHaveBeenCalled();
+      expect(repo.findUserByEmail).toHaveBeenCalledWith('admin@kast.local');
     });
 
-    it('issues an unguessable code that is not derived from the tokens', () => {
+    it('issues an unguessable code that is not derived from the tokens', async () => {
       const pair = buildTokenPair();
-      const first = service.issueOAuthAuthorizationCode(pair);
-      const second = service.issueOAuthAuthorizationCode(pair);
+      const first = await service.issueOAuthAuthorizationCode(pair);
+      const second = await service.issueOAuthAuthorizationCode(pair);
 
       expect(first).not.toBe(second);
       expect(first).not.toContain(pair.accessToken);

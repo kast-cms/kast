@@ -38,7 +38,7 @@ It then generates a complete project, installs dependencies, and prints next ste
 
   Admin:  http://localhost:3001/admin
   API:    http://localhost:3000/api/v1
-  MCP:    http://localhost:3000/mcp
+  MCP:    http://localhost:3000/api/v1/mcp
 ```
 
 ### Skip interactive mode

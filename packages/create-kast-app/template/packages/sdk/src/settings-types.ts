@@ -12,11 +12,14 @@ export interface GlobalSetting {
   isSecret?: boolean;
   /** Whether a secret is stored, so the UI can distinguish set from unset. */
   configured?: boolean;
+  /** Runtime component that consumes this setting, when it is a built-in key. */
+  enforcedBy?: string | null;
 }
 
 export interface SettingPatchEntry {
   key: string;
   value: unknown;
+  isPublic?: boolean;
 }
 
 export interface UpdateSettingsBody {

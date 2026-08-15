@@ -26,6 +26,8 @@ interface OptionalFieldsProps {
   setIcon: (v: string) => void;
   isLocalized: boolean;
   setIsLocalized: (v: boolean) => void;
+  isPubliclyDiscoverable: boolean;
+  setIsPubliclyDiscoverable: (v: boolean) => void;
   disabled: boolean;
 }
 
@@ -36,6 +38,8 @@ function OptionalFields({
   setIcon,
   isLocalized,
   setIsLocalized,
+  isPubliclyDiscoverable,
+  setIsPubliclyDiscoverable,
   disabled,
 }: OptionalFieldsProps): JSX.Element {
   return (
@@ -85,6 +89,21 @@ function OptionalFields({
           disabled={disabled}
         />
       </div>
+
+      <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-4">
+        <div className="space-y-1">
+          <Label htmlFor="isPubliclyDiscoverable">Public schema discovery</Label>
+          <FieldHint>
+            Exposes this type and its visible field definitions through the anonymous delivery API.
+          </FieldHint>
+        </div>
+        <Switch
+          id="isPubliclyDiscoverable"
+          checked={isPubliclyDiscoverable}
+          onCheckedChange={setIsPubliclyDiscoverable}
+          disabled={disabled}
+        />
+      </div>
     </>
   );
 }
@@ -100,6 +119,7 @@ export function CreateContentTypeForm(): JSX.Element {
   const [description, setDescription] = useState('');
   const [icon, setIcon] = useState('');
   const [isLocalized, setIsLocalized] = useState(false);
+  const [isPubliclyDiscoverable, setIsPubliclyDiscoverable] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -134,10 +154,12 @@ export function CreateContentTypeForm(): JSX.Element {
           description?: string;
           icon?: string;
           isLocalized: boolean;
+          isPubliclyDiscoverable: boolean;
         } = {
           displayName: displayName.trim(),
           name: apiId.trim(),
           isLocalized,
+          isPubliclyDiscoverable,
         };
         if (description.trim() !== '') body.description = description.trim();
         if (icon.trim() !== '') body.icon = icon.trim();
@@ -149,7 +171,17 @@ export function CreateContentTypeForm(): JSX.Element {
         setIsSubmitting(false);
       }
     },
-    [session, displayName, apiId, description, icon, isLocalized, router, client],
+    [
+      session,
+      displayName,
+      apiId,
+      description,
+      icon,
+      isLocalized,
+      isPubliclyDiscoverable,
+      router,
+      client,
+    ],
   );
 
   return (
@@ -207,6 +239,8 @@ export function CreateContentTypeForm(): JSX.Element {
             setIcon={setIcon}
             isLocalized={isLocalized}
             setIsLocalized={setIsLocalized}
+            isPubliclyDiscoverable={isPubliclyDiscoverable}
+            setIsPubliclyDiscoverable={setIsPubliclyDiscoverable}
             disabled={isSubmitting}
           />
         </CardContent>

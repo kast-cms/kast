@@ -6,6 +6,7 @@ const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 const nextConfig: NextConfig = {
   basePath: '/admin',
   output: 'standalone',
+  typedRoutes: true,
   images: {
     remotePatterns: [
       {
@@ -13,9 +14,6 @@ const nextConfig: NextConfig = {
         hostname: 'localhost',
       },
     ],
-  },
-  experimental: {
-    typedRoutes: true,
   },
 };
 

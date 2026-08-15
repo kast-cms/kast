@@ -2,6 +2,7 @@ import starlight from '@astrojs/starlight';
 import { defineConfig } from 'astro/config';
 
 export default defineConfig({
+  site: 'https://docs.kast.dev',
   integrations: [
     starlight({
       title: 'Kast CMS',
@@ -142,6 +143,8 @@ export default defineConfig({
             { slug: 'deploy/vercel-railway' },
             { slug: 'deploy/docker-compose' },
             { slug: 'deploy/environment-variables' },
+            { slug: 'deploy/scaling' },
+            { slug: 'deploy/operations-runbook' },
           ],
         },
         {

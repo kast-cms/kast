@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { MulterModule } from '@nestjs/platform-express';
 import type { Env } from '../../config/env.schema';
+import { PluginExtensionRegistry } from '../plugin/plugin-extension.registry';
 import { QueueAdapter } from '../queue/queue.adapter';
 import { QUEUE_NAMES } from '../queue/queue.constants';
 import { MediaFileController } from './media-file.controller';
@@ -13,6 +14,7 @@ import { MediaProcessor, STORAGE_ADAPTER } from './media.processor';
 import { MediaRepository } from './media.repository';
 import { MediaService } from './media.service';
 import { LocalStorageAdapter } from './storage/local-storage.adapter';
+import { PluginAwareStorageAdapter } from './storage/plugin-aware-storage.adapter';
 import { R2StorageAdapter } from './storage/r2-storage.adapter';
 import { S3StorageAdapter } from './storage/s3-storage.adapter';
 import { buildMulterOptions } from './upload.options';
@@ -37,17 +39,23 @@ import { buildMulterOptions } from './upload.options';
     R2StorageAdapter,
     {
       provide: STORAGE_ADAPTER,
-      inject: [ConfigService, LocalStorageAdapter, S3StorageAdapter, R2StorageAdapter],
+      inject: [
+        ConfigService,
+        LocalStorageAdapter,
+        S3StorageAdapter,
+        R2StorageAdapter,
+        PluginExtensionRegistry,
+      ],
       useFactory: (
         config: ConfigService<Env>,
         local: LocalStorageAdapter,
         s3: S3StorageAdapter,
         r2: R2StorageAdapter,
+        extensions: PluginExtensionRegistry,
       ) => {
         const provider = config.get('STORAGE_PROVIDER', { infer: true });
-        if (provider === 'r2') return r2;
-        if (provider === 's3') return s3;
-        return local;
+        const fallback = provider === 'r2' ? r2 : provider === 's3' ? s3 : local;
+        return new PluginAwareStorageAdapter(provider ?? 'local', fallback, extensions);
       },
     },
     {
@@ -55,7 +63,7 @@ import { buildMulterOptions } from './upload.options';
       inject: [MediaRepository, STORAGE_ADAPTER, ConfigService, QueueAdapter, EventEmitter2],
       useFactory: (
         repo: MediaRepository,
-        storage: LocalStorageAdapter | S3StorageAdapter | R2StorageAdapter,
+        storage: PluginAwareStorageAdapter,
         config: ConfigService<Env>,
         queue: QueueAdapter,
         eventEmitter: EventEmitter2,

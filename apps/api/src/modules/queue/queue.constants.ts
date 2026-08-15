@@ -3,7 +3,6 @@ export const QUEUE_NAMES = {
   MEDIA: 'kast.media',
   SEO: 'kast.seo',
   PUBLISH: 'kast.publish',
-  AUDIT: 'kast.audit',
   EMAIL: 'kast.email',
   TRASH: 'kast.trash',
 } as const;

@@ -1,16 +1,14 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { UnrecoverableError, type Job } from 'bullmq';
 import { createHmac } from 'crypto';
-import { decryptSecret } from '../../common/utils/secret-crypto.util';
+import { SecretEncryptionService } from '../../common/security/secret-encryption.service';
 import {
   BlockedUrlError,
   fetchGuarded,
   parseHostAllowList,
   type BlockedUrlReason,
 } from '../../common/utils/ssrf-guard.util';
-import type { Env } from '../../config/env.schema';
 import { QUEUE_NAMES } from '../queue/queue.constants';
 import { WebhookRepository } from './webhook.repository';
 
@@ -20,6 +18,7 @@ export interface WebhookFireJobData {
 }
 
 interface DeliveryPayload {
+  version: '1';
   id: string;
   event: string;
   timestamp: string;
@@ -77,14 +76,12 @@ function describeBlock(err: BlockedUrlError): string {
 @Processor(QUEUE_NAMES.WEBHOOK, { concurrency: 10 })
 export class WebhookProcessor extends WorkerHost {
   private readonly logger = new Logger(WebhookProcessor.name);
-  private readonly appSecret: string;
 
   constructor(
     private readonly repo: WebhookRepository,
-    config: ConfigService<Env>,
+    private readonly secrets: SecretEncryptionService,
   ) {
     super();
-    this.appSecret = config.get('JWT_SECRET', { infer: true }) ?? 'kast-dev-secret';
   }
 
   async process(job: Job<WebhookFireJobData>): Promise<void> {
@@ -111,6 +108,7 @@ export class WebhookProcessor extends WorkerHost {
     }
 
     const payload: DeliveryPayload = {
+      version: '1',
       id: delivery.id,
       event: delivery.event,
       timestamp: delivery.createdAt.toISOString(),
@@ -120,7 +118,11 @@ export class WebhookProcessor extends WorkerHost {
     const body = JSON.stringify(payload);
     // Sign with the real plaintext secret (decrypted from storage) so receivers
     // can verify the signature with the secret they were shown at creation.
-    const signingKey = decryptSecret(endpoint.secretHash, this.appSecret);
+    const decrypted = this.secrets.decryptAndRotate(endpoint.secretHash);
+    const signingKey = decrypted.plaintext;
+    if (decrypted.rotatedCiphertext) {
+      await this.repo.rotateSecret(endpoint.id, decrypted.rotatedCiphertext);
+    }
     const sig = createHmac('sha256', signingKey).update(body).digest('hex');
 
     const outcome = await this.attempt(endpoint.url, sig, delivery.event, delivery.id, body);
@@ -200,6 +202,8 @@ export class WebhookProcessor extends WorkerHost {
           'X-Kast-Signature': `sha256=${sig}`,
           'X-Kast-Event': event,
           'X-Kast-Delivery': deliveryId,
+          'Idempotency-Key': deliveryId,
+          'X-Kast-Version': '1',
         },
         body,
       },

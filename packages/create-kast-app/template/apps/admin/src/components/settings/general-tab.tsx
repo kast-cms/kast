@@ -31,8 +31,8 @@ export function GeneralTab({ s }: Props): JSX.Element {
 
   const save = async (): Promise<void> => {
     await s.patchSettings([
-      { key: 'site.name', value: siteName },
-      { key: 'site.url', value: siteUrl },
+      { key: 'site.name', value: siteName, isPublic: true },
+      { key: 'site.url', value: siteUrl, isPublic: true },
       { key: 'site.maintenanceMode', value: maintenanceMode },
     ]);
   };

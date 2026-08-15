@@ -9,6 +9,8 @@ export interface AgentSessionRecord {
   toolsUsed: string[];
   startedAt: string;
   endedAt: string | null;
+  durationMs: number | null;
+  outcome: string | null;
 }
 
 @Injectable()
@@ -72,6 +74,8 @@ export class AgentTokenService {
         toolsUsed: Array.isArray(s.toolsUsed) ? (s.toolsUsed as string[]) : [],
         startedAt: s.startedAt.toISOString(),
         endedAt: s.endedAt?.toISOString() ?? null,
+        durationMs: s.durationMs,
+        outcome: s.outcome,
       })),
       meta: { total, limit, cursor: nextCursor, hasNextPage },
     };

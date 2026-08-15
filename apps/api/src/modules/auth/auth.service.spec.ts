@@ -11,7 +11,12 @@ import type { OAuthProfile } from './types/oauth.types';
 type Mocked<T> = { [K in keyof T]: jest.Mock };
 
 function buildProfile(overrides: Partial<OAuthProfile> = {}): OAuthProfile {
-  return { id: 'gid', provider: 'google', emails: [{ value: 'admin@kast.local' }], ...overrides };
+  return {
+    id: 'gid',
+    provider: 'google',
+    emails: [{ value: 'admin@kast.local', verified: true }],
+    ...overrides,
+  };
 }
 
 function buildUser(overrides: Record<string, unknown> = {}): Record<string, unknown> {
@@ -60,7 +65,11 @@ describe('AuthService', () => {
     } as unknown as Mocked<AuthRepository>;
 
     jwt = { signAsync: jest.fn().mockResolvedValue('access-jwt') } as unknown as Mocked<JwtService>;
-    queue = { enqueue: jest.fn().mockResolvedValue(undefined) } as unknown as Mocked<QueueAdapter>;
+    queue = {
+      enqueue: jest.fn().mockResolvedValue(undefined),
+      setEphemeral: jest.fn().mockResolvedValue(undefined),
+      consumeEphemeral: jest.fn().mockResolvedValue(null),
+    } as unknown as Mocked<QueueAdapter>;
     policy = {
       canProvision: jest.fn().mockReturnValue({ allowed: true, reason: 'allowed' }),
     } as unknown as Mocked<OAuthPolicy>;
@@ -381,7 +390,7 @@ describe('AuthService', () => {
         buildProfile({
           id: 'ghid',
           provider: 'github',
-          emails: [{ value: 'new@kast.local' }],
+          emails: [{ value: 'new@kast.local', verified: true }],
           name: { givenName: 'New', familyName: 'User' },
         }),
       );
@@ -429,6 +438,16 @@ describe('AuthService', () => {
 
       expect(result.accessToken).toBe('access-jwt');
       expect(policy.canProvision).not.toHaveBeenCalled();
+    });
+
+    it('refuses to link an existing account when verification is absent', async () => {
+      repo.findOAuthAccount.mockResolvedValue(null);
+      repo.findUserByEmail.mockResolvedValue(buildUser());
+
+      await expect(
+        service.oauthCallback('github', buildProfile({ emails: [{ value: 'admin@kast.local' }] })),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(repo.upsertOAuthAccount).not.toHaveBeenCalled();
     });
 
     it('passes the provider verification claim to the policy', async () => {

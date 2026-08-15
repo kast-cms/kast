@@ -1,4 +1,4 @@
-export type StorageProvider = 'local' | 's3' | 'r2' | 'minio';
+export type StorageProvider = 'local' | 's3' | 'r2';
 export type FrontendStarter = 'none' | 'blog' | 'docs';
 export type DeployTarget = 'none' | 'railway' | 'render' | 'vercel';
 export type PackageManager = 'pnpm' | 'npm' | 'yarn' | 'bun';

@@ -1,6 +1,8 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
 import type { AuthUser, PaginatedResult } from '../../common/types/auth.types';
 import {
   type ApiTokenCreatedResponse,
@@ -12,6 +14,7 @@ import { TokensService } from './tokens.service';
 @ApiTags('tokens')
 @ApiBearerAuth()
 @Controller({ path: 'tokens', version: '1' })
+@Roles(SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
 export class TokensController {
   constructor(private readonly service: TokensService) {}
 

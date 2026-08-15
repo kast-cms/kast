@@ -8,11 +8,14 @@ import {
   Param,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { WebhookDelivery } from '@prisma/client';
 import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { PaginationDto } from '../../common/dto/pagination.dto';
+import type { PaginatedResult } from '../../common/types/auth.types';
 import { CreateWebhookDto, UpdateWebhookDto } from './dto/webhook.dto';
 import type { EndpointRow } from './webhook.repository';
 import { WebhookService, type WebhookCreatedResult } from './webhook.service';
@@ -64,8 +67,11 @@ export class WebhookController {
 
   @Get(':id/deliveries')
   @ApiOperation({ summary: 'List delivery log for webhook endpoint' })
-  deliveries(@Param('id') id: string): Promise<WebhookDelivery[]> {
-    return this.service.getDeliveries(id);
+  deliveries(
+    @Param('id') id: string,
+    @Query() query: PaginationDto,
+  ): Promise<PaginatedResult<WebhookDelivery>> {
+    return this.service.getDeliveries(id, query);
   }
 
   @Post(':id/deliveries/:deliveryId/redeliver')

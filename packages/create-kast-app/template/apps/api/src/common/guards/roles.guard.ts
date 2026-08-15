@@ -4,6 +4,7 @@ import { Request } from 'express';
 import { PermissionResolverService } from '../authorization/permission-resolver.service';
 import { deriveRouteTarget, type RouteTarget } from '../authorization/route-permission.util';
 import { SYSTEM_ROLES, hasRequiredRole } from '../constants/roles.constants';
+import { AUTHENTICATED_KEY } from '../decorators/authenticated.decorator';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import {
   PERMISSION_KEY,
@@ -11,8 +12,6 @@ import {
 } from '../decorators/require-permission.decorator';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 import type { AuthUser } from '../types/auth.types';
-
-const SYSTEM_ROLE_NAMES = new Set<string>(Object.values(SYSTEM_ROLES));
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -33,6 +32,10 @@ export class RolesGuard implements CanActivate {
       context.getClass(),
     ]);
     const requiredRoles = declaredRoles && declaredRoles.length > 0 ? declaredRoles : undefined;
+    const authenticatedOnly = this.reflector.getAllAndOverride<boolean>(AUTHENTICATED_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
 
     const request = context.switchToHttp().getRequest<Request & { user?: AuthUser }>();
     const user = request.user;
@@ -42,6 +45,7 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('FORBIDDEN');
     }
 
+    if (authenticatedOnly && !requiredRoles) return true;
     if (this.roleAllows(user.roles, requiredRoles)) return true;
 
     const target = this.resolveTarget(context, request);
@@ -55,9 +59,9 @@ export class RolesGuard implements CanActivate {
   private roleAllows(userRoles: string[], requiredRoles: string[] | undefined): boolean {
     if (userRoles.includes(SYSTEM_ROLES.SUPER_ADMIN)) return true;
     if (requiredRoles) return hasRequiredRole(userRoles, requiredRoles);
-    // Undecorated routes have always been open to any system-role holder;
-    // narrowing that here would change every controller's contract at once.
-    return userRoles.some((role) => SYSTEM_ROLE_NAMES.has(role));
+    // Every protected handler must explicitly declare a role, a permission, or
+    // that authentication alone is sufficient. New routes therefore fail closed.
+    return false;
   }
 
   private resolveTarget(context: ExecutionContext, request: Request): RouteTarget {

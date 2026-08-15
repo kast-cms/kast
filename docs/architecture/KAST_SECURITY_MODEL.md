@@ -118,7 +118,7 @@ Kast uses a **stateless JWT + refresh token rotation** pattern. No server-side s
 │  1. POST /auth/login                                         │
 │     email + password                                         │
 │            ↓                                                 │
-│     [bcrypt verify password]                                 │
+│     [Argon2id verify password]                               │
 │            ↓                                                 │
 │     Issue: accessToken (JWT, 15min)                          │
 │            + refreshToken (opaque, 30 days, stored as hash)  │
@@ -214,12 +214,19 @@ Displayed: prefix (first 8 chars) in UI: "kast_x8j2..."
 {
   "scope": "SCOPED",
   "scopeData": {
-    "content": ["read", "create", "update"],
+    "content:*": ["read", "create", "update"],
+    "content:articles": ["publish"],
     "media": ["read", "upload"],
     "seo": ["read"]
   }
 }
 ```
+
+Content routes carry the content-type slug as a scope, so content grants are
+keyed `content:<type>` or `content:*`. A bare `content` key only matches
+content routes that carry no type scope — it deliberately does **not** widen
+to every content type, so a token minted before a type existed never gains
+access to it silently.
 
 **Enforcement** happens in `TokenPolicyGuard`, which runs between
 `JwtAuthGuard` and `RolesGuard`. `resource` and `action` are derived from the
@@ -686,23 +693,22 @@ type AgentAction =
 
 ### MCP Tool → Required Scope Mapping
 
-| MCP Tool                  | Required Scope              |
-| ------------------------- | --------------------------- |
-| `kast_content_list`       | `content: ["read"]`         |
-| `kast_content_create`     | `content: ["create"]`       |
-| `kast_content_update`     | `content: ["update"]`       |
-| `kast_content_publish`    | `content: ["publish"]`      |
-| `kast_content_unpublish`  | `content: ["unpublish"]`    |
-| `kast_schema_create_type` | `content-types: ["create"]` |
-| `kast_schema_add_field`   | `content-types: ["update"]` |
-| `kast_seo_validate`       | `seo: ["validate"]`         |
-| `kast_plugin_install`     | `plugins: ["install"]`      |
-| `kast_plugin_enable`      | `plugins: ["enable"]`       |
-| `kast_plugin_disable`     | `plugins: ["disable"]`      |
-| `kast_media_upload`       | `media: ["upload"]`         |
-| `kast_redirect_create`    | `seo: ["create"]`           |
-| `kast_user_create`        | `users: ["create"]`         |
-| `kast_audit_log`          | `audit: ["read"]`           |
+| MCP Tool                        | Required owner permission |
+| ------------------------------- | ------------------------- |
+| `list_content_entries`          | `content:read`            |
+| `get_content_entry`             | `content:read`            |
+| `create_content_entry`          | `content:create`          |
+| `update_content_entry`          | `content:update`          |
+| `publish_content_entry`         | `content:publish`         |
+| `delete_content_entry`          | `content:delete`          |
+| `list_content_types`            | `content-types:read`      |
+| `get_content_type`              | `content-types:read`      |
+| `create_content_type`           | `content-types:create`    |
+| `update_content_type`           | `content-types:update`    |
+| `list_media` / `get_media_file` | `media:read`              |
+| `get_seo_score`                 | `seo:read`                |
+| `validate_seo`                  | `seo:validate`            |
+| `get_audit_log`                 | `audit:read`              |
 
 ### Agent Safety Layers
 
@@ -733,7 +739,7 @@ Every destructive MCP tool supports a `dryRun: true` parameter. When set:
 
 ```typescript
 // MCP tool example with dry-run
-kast_content_publish({ id: 'clentry001', dryRun: true })
+publish_content_entry({ typeSlug: 'blog-post', entryId: 'clentry001', dryRun: true })
 
 // Response preview — nothing published
 {
@@ -827,8 +833,8 @@ SUPER_ADMIN installs plugin
 
 ```typescript
 // Never store plain text. Never use MD5/SHA1.
-const hash = await bcrypt.hash(password, 12); // cost factor 12
-const isValid = await bcrypt.compare(plainPassword, hash);
+const hash = await argon2.hash(password, { type: argon2.argon2id });
+const isValid = await argon2.verify(hash, plainPassword);
 ```
 
 ### Token Storage
@@ -1213,7 +1219,7 @@ Verified before every release. All items must pass.
 
 ### Data
 
-- [ ] Passwords hashed with bcrypt (cost factor 12+)
+- [x] Passwords hashed with Argon2id
 - [ ] API/agent tokens shown once, stored as hash
 - [ ] Plugin config values encrypted at rest
 - [ ] No secrets in logs (verified by log grep test)

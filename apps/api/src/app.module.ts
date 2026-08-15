@@ -9,6 +9,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { TokenPolicyGuard } from './common/guards/token-policy.guard';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
+import { SecretEncryptionModule } from './common/security/secret-encryption.module';
 import { validateEnv } from './config/env.schema';
 import { AgentTokenModule } from './modules/agent-tokens/agent-token.module';
 import { AuditModule } from './modules/audit/audit.module';
@@ -58,6 +59,7 @@ import { PrismaModule } from './prisma/prisma.module';
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60000, limit: 100 }]),
     PrismaModule,
     AuthorizationModule,
+    SecretEncryptionModule,
     QueueModule,
     HealthModule,
     AuthModule,

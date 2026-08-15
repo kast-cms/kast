@@ -64,7 +64,8 @@ export function FileDetail({ file, onUpdate, onTrash, onClose }: FileDetailProps
   const t = useTranslations('mediaLibrary');
   const [altText, setAltText] = useState(file.altText ?? '');
   const [saving, setSaving] = useState(false);
-  const inUse = file.usages.length > 0;
+  const usages = file.usages;
+  const inUse = usages.length > 0;
 
   function handleSave(): void {
     setSaving(true);
@@ -146,10 +147,10 @@ export function FileDetail({ file, onUpdate, onTrash, onClose }: FileDetailProps
             status message rather than a bare list. */}
         {inUse && (
           <Alert variant="info">
-            <AlertTitle>{t('detail.usedIn', { count: file.usages.length })}</AlertTitle>
+            <AlertTitle>{t('detail.usedIn', { count: usages.length })}</AlertTitle>
             <AlertDescription>
               <ul className="space-y-1">
-                {file.usages.map((u) => (
+                {usages.map((u) => (
                   <li key={u.entryId} className="truncate">
                     {u.entryTitle ?? u.entryId} — {u.fieldName}
                   </li>

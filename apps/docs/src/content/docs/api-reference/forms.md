@@ -7,13 +7,14 @@ description: Create forms, accept public submissions, and retrieve collected dat
 
 ```http
 GET /api/v1/forms
-X-Kast-Key: <delivery-key>
+Authorization: Bearer <token>   (ADMIN+)
 ```
 
 ## Get form
 
 ```http
 GET /api/v1/forms/:id
+Authorization: Bearer <token>   (VIEWER+)
 ```
 
 Returns the form schema without submissions.
@@ -22,27 +23,31 @@ Returns the form schema without submissions.
 
 ```http
 POST /api/v1/forms
-Authorization: Bearer <token>   (EDITOR+)
+Authorization: Bearer <token>   (ADMIN+)
 
 {
   "name": "Contact Us",
+  "slug": "contact-us",
   "description": "General enquiries",
   "fields": [
-    { "key": "name",    "label": "Your Name",    "type": "text",     "required": true },
-    { "key": "email",   "label": "Email",         "type": "email",    "required": true },
-    { "key": "message", "label": "Message",       "type": "textarea", "required": true }
+    { "name": "name",    "label": "Your Name", "type": "TEXT",     "isRequired": true },
+    { "name": "email",   "label": "Email",     "type": "EMAIL",    "isRequired": true },
+    { "name": "message", "label": "Message",   "type": "TEXTAREA", "isRequired": true }
   ],
   "notifyEmail": "hello@example.com"
 }
 ```
 
-**Field types:** `text`, `email`, `textarea`, `select`, `checkbox`, `number`
+**Field types:** `TEXT`, `EMAIL`, `PHONE`, `NUMBER`, `TEXTAREA`, `SELECT`,
+`MULTI_SELECT`, `CHECKBOX`, `RADIO`, `FILE`, `DATE`. Per-field validation and
+choices live in the optional `config` object.
 
 ## Update form
 
 ```http
 PATCH /api/v1/forms/:id
 Authorization: Bearer <token>
+Required role: `ADMIN+`.
 ```
 
 ## Delete form
@@ -50,6 +55,7 @@ Authorization: Bearer <token>
 ```http
 DELETE /api/v1/forms/:id
 Authorization: Bearer <token>
+Required role: `ADMIN+`.
 ```
 
 ## Submit a form (public)
@@ -132,7 +138,7 @@ submission id belonging to a different form is a `404`.
 
 ```http
 GET /api/v1/forms/:id/submissions
-Authorization: Bearer <token>   (EDITOR+)
+Authorization: Bearer <token>   (ADMIN+)
 ?limit=50&cursor=<cursor>
 ```
 
@@ -141,6 +147,7 @@ Authorization: Bearer <token>   (EDITOR+)
 ```http
 GET /api/v1/forms/:id/submissions/export
 Authorization: Bearer <token>
+Required role: `ADMIN+`.
 ```
 
 Returns `text/csv`.

@@ -16,8 +16,7 @@ export interface SettingDefinition {
   effectiveSource?: string;
 }
 
-const ENV_SMTP_NOTE =
-  'POST /settings/test-smtp (queued mail is still sent with the SMTP_* environment variables)';
+const SMTP_RUNTIME = 'EmailProcessor — saved SMTP settings, with SMTP_* environment fallback';
 
 const SETTING_CATALOG: Record<string, SettingDefinition> = {
   'site.name': { enforcedBy: 'GET /delivery/settings, when the row is marked public' },
@@ -26,12 +25,12 @@ const SETTING_CATALOG: Record<string, SettingDefinition> = {
     enforcedBy: 'MaintenanceMiddleware — serves 503 on /delivery routes while true',
   },
 
-  'smtp.host': { enforcedBy: ENV_SMTP_NOTE },
-  'smtp.port': { enforcedBy: ENV_SMTP_NOTE },
-  'smtp.user': { enforcedBy: ENV_SMTP_NOTE },
-  'smtp.password': { enforcedBy: ENV_SMTP_NOTE },
-  'smtp.from': { enforcedBy: ENV_SMTP_NOTE },
-  'smtp.fromName': { enforcedBy: ENV_SMTP_NOTE },
+  'smtp.host': { enforcedBy: SMTP_RUNTIME },
+  'smtp.port': { enforcedBy: SMTP_RUNTIME },
+  'smtp.user': { enforcedBy: SMTP_RUNTIME },
+  'smtp.password': { enforcedBy: SMTP_RUNTIME },
+  'smtp.from': { enforcedBy: SMTP_RUNTIME },
+  'smtp.fromName': { enforcedBy: SMTP_RUNTIME },
 
   'storage.provider': {
     enforcedBy: null,
@@ -68,8 +67,7 @@ const SETTING_CATALOG: Record<string, SettingDefinition> = {
     effectiveSource: 'nothing — new entries are always created as DRAFT',
   },
   'content.versionRetention': {
-    enforcedBy: null,
-    effectiveSource: 'nothing — content versions are kept indefinitely',
+    enforcedBy: 'ContentRepository — oldest per-entry snapshots are pruned after each version',
   },
 };
 

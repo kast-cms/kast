@@ -72,7 +72,7 @@ wildcards supported) to allow them anyway.
 
 | Variable            | Default                                    | Notes                                                                                                                                   |
 | ------------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `STORAGE_PROVIDER`  | `local`                                    | One of `local`, `s3`, `r2`, `gcs`                                                                                                       |
+| `STORAGE_PROVIDER`  | `local`                                    | One of `local`, `s3`, `r2`                                                                                                              |
 | `STORAGE_LOCAL_DIR` | `./uploads`                                | Directory for local storage                                                                                                             |
 | `STORAGE_LOCAL_URL` | `http://localhost:3000/api/v1/media/files` | Public URL prefix for local files. The API serves them from `/api/v1/media/files`; set this only if a CDN or proxy fronts the directory |
 

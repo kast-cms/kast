@@ -30,6 +30,7 @@ export type AgentTokenRow = {
 
 export type AgentTokenForAuth = {
   id: string;
+  name: string;
   scope: Prisma.JsonValue;
   user: {
     id: string;
@@ -98,6 +99,8 @@ export class AgentTokenRepository {
       toolsUsed: Prisma.JsonValue;
       startedAt: Date;
       endedAt: Date | null;
+      durationMs: number | null;
+      outcome: string | null;
     }[];
     total: number;
   }> {
@@ -105,7 +108,15 @@ export class AgentTokenRepository {
     const [items, total] = await Promise.all([
       this.prisma.agentSession.findMany({
         where,
-        select: { id: true, agentName: true, toolsUsed: true, startedAt: true, endedAt: true },
+        select: {
+          id: true,
+          agentName: true,
+          toolsUsed: true,
+          startedAt: true,
+          endedAt: true,
+          durationMs: true,
+          outcome: true,
+        },
         orderBy: { startedAt: 'desc' },
         take: limit + 1,
         ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
@@ -129,6 +140,7 @@ export class AgentTokenRepository {
       where: { tokenHash, revokedAt: null },
       select: {
         id: true,
+        name: true,
         scope: true,
         user: {
           select: {
@@ -149,9 +161,24 @@ export class AgentTokenRepository {
     });
   }
 
-  logToolCall(agentTokenId: string, toolName: string): void {
+  logToolCall(
+    agentTokenId: string,
+    agentName: string | undefined,
+    toolName: string,
+    durationMs: number,
+    outcome: string,
+  ): void {
+    const endedAt = new Date();
     void this.prisma.agentSession.create({
-      data: { agentTokenId, toolsUsed: [toolName], endedAt: new Date() },
+      data: {
+        agentTokenId,
+        agentName: agentName ?? null,
+        toolsUsed: [toolName],
+        startedAt: new Date(endedAt.getTime() - durationMs),
+        endedAt,
+        durationMs,
+        outcome,
+      },
     });
   }
 }

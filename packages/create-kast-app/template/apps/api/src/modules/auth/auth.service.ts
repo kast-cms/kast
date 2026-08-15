@@ -21,11 +21,6 @@ import type { OAuthProfile } from './types/oauth.types';
 /** An OAuth code only has to survive one provider→admin redirect hop. */
 const OAUTH_CODE_TTL_MS = 60_000;
 
-interface PendingOAuthCode {
-  tokenPair: TokenPair;
-  expiresAt: number;
-}
-
 @Injectable()
 export class AuthService {
   /**
@@ -35,14 +30,6 @@ export class AuthService {
    * its own exclude a second owner.
    */
   private setupChain: Promise<unknown> = Promise.resolve();
-
-  /**
-   * Pending OAuth authorization codes, keyed by SHA-256 of the code so a heap
-   * dump never yields a redeemable value. Held in this process: a horizontally
-   * scaled API must pin the OAuth callback and the exchange to one instance
-   * (sticky sessions) until these move to shared storage.
-   */
-  private readonly oauthCodes = new Map<string, PendingOAuthCode>();
 
   constructor(
     private readonly authRepository: AuthRepository,
@@ -181,37 +168,31 @@ export class AuthService {
    * code is what travels through the browser redirect, so nothing long-lived
    * ends up in history, Referer headers or access logs.
    */
-  issueOAuthAuthorizationCode(tokenPair: TokenPair): string {
-    this.purgeExpiredOAuthCodes();
+  async issueOAuthAuthorizationCode(tokenPair: TokenPair): Promise<string> {
     const code = randomBytes(32).toString('base64url');
-    this.oauthCodes.set(this.hashOAuthCode(code), {
-      tokenPair,
-      expiresAt: Date.now() + OAUTH_CODE_TTL_MS,
-    });
+    await this.queueAdapter.setEphemeral(
+      `oauth-code:${this.hashOAuthCode(code)}`,
+      JSON.stringify(tokenPair),
+      OAUTH_CODE_TTL_MS,
+    );
     return code;
   }
 
   async exchangeOAuthCode(code: string): Promise<TokenPair> {
     const key = this.hashOAuthCode(code);
-    const pending = this.oauthCodes.get(key);
-    // Consumed even when expired, so a replay never sees the same code twice.
-    this.oauthCodes.delete(key);
-    this.purgeExpiredOAuthCodes();
-    if (!pending || pending.expiresAt <= Date.now()) {
+    const pending = await this.queueAdapter.consumeEphemeral(`oauth-code:${key}`);
+    if (!pending) {
       throw new UnauthorizedException('Invalid or expired authorization code');
     }
-    return pending.tokenPair;
+    try {
+      return JSON.parse(pending) as TokenPair;
+    } catch {
+      throw new UnauthorizedException('Invalid or expired authorization code');
+    }
   }
 
   private hashOAuthCode(code: string): string {
     return createHash('sha256').update(code).digest('hex');
-  }
-
-  private purgeExpiredOAuthCodes(): void {
-    const now = Date.now();
-    for (const [key, pending] of this.oauthCodes) {
-      if (pending.expiresAt <= now) this.oauthCodes.delete(key);
-    }
   }
 
   private async findOrCreateOAuthUser(
@@ -232,17 +213,19 @@ export class AuthService {
     email: string | null,
   ): Promise<User & { roles: { role: { name: string } }[] }> {
     if (!email) throw new UnauthorizedException('No email provided by OAuth provider');
-    // The email is about to be used as an identity claim — matching an existing
-    // account or minting a new one — so a provider that tells us it is
-    // unverified must not be taken at its word.
-    if (profile.emails?.[0]?.verified === false) {
-      throw new UnauthorizedException('OAuth email address is not verified');
-    }
+    const verified = profile.emails?.[0]?.verified;
     const byEmail = await this.authRepository.findUserByEmail(email);
-    if (byEmail) return byEmail;
+    // Linking a new provider identity to an existing local account is an
+    // account-takeover boundary. An absent verification claim is not proof.
+    if (byEmail) {
+      if (verified !== true) {
+        throw new UnauthorizedException('OAuth email address is not verified');
+      }
+      return byEmail;
+    }
     // Past this point the identity is unknown to the install, so creating it is
     // self-registration and needs the operator's explicit policy, not a default.
-    const decision = this.oauthPolicy.canProvision(email, profile.emails?.[0]?.verified);
+    const decision = this.oauthPolicy.canProvision(email, verified);
     if (!decision.allowed) throw new ForbiddenException(decision.reason);
     const role = await this.authRepository.findDefaultRole();
     if (!role) throw new UnauthorizedException('No default role configured');

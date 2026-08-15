@@ -17,6 +17,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
+import { Authenticated } from '../../common/decorators/authenticated.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import type { AuthUser, TokenPair, UserSummary } from '../../common/types/auth.types';
@@ -89,6 +90,7 @@ export class AuthController {
   }
 
   @Get('me')
+  @Authenticated()
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get current user profile' })
   me(@CurrentUser() user: AuthUser): Promise<{ data: UserSummary }> {
@@ -96,6 +98,7 @@ export class AuthController {
   }
 
   @Patch('me')
+  @Authenticated()
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update current user profile' })
   updateProfile(
@@ -121,8 +124,11 @@ export class AuthController {
   @SkipThrottle()
   @UseGuards(AuthGuard('google'))
   @ApiOperation({ summary: 'Google OAuth callback' })
-  googleCallback(@Req() req: Request & { user?: TokenPair }, @Res() res: Response): void {
-    this.redirectWithCode(req.user, res);
+  async googleCallback(
+    @Req() req: Request & { user?: TokenPair },
+    @Res() res: Response,
+  ): Promise<void> {
+    await this.redirectWithCode(req.user, res);
   }
 
   @Get('oauth/github')
@@ -139,8 +145,11 @@ export class AuthController {
   @SkipThrottle()
   @UseGuards(AuthGuard('github'))
   @ApiOperation({ summary: 'GitHub OAuth callback' })
-  githubCallback(@Req() req: Request & { user?: TokenPair }, @Res() res: Response): void {
-    this.redirectWithCode(req.user, res);
+  async githubCallback(
+    @Req() req: Request & { user?: TokenPair },
+    @Res() res: Response,
+  ): Promise<void> {
+    await this.redirectWithCode(req.user, res);
   }
 
   @Post('oauth/exchange')
@@ -189,10 +198,10 @@ export class AuthController {
 
   // ─── Helpers ──────────────────────────────────────────────────
 
-  private redirectWithCode(tokenPair: TokenPair | undefined, res: Response): void {
+  private async redirectWithCode(tokenPair: TokenPair | undefined, res: Response): Promise<void> {
     if (!tokenPair) throw new BadRequestException('OAuth authentication failed');
     const target = this.adminCallbackUrl();
-    target.searchParams.set('code', this.authService.issueOAuthAuthorizationCode(tokenPair));
+    target.searchParams.set('code', await this.authService.issueOAuthAuthorizationCode(tokenPair));
     res.redirect(target.toString());
   }
 

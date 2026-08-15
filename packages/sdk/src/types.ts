@@ -63,6 +63,7 @@ export interface ContentTypeSummary {
   isSystem: boolean;
   /** Entries of a localized type carry a row per active locale. */
   isLocalized: boolean;
+  isPubliclyDiscoverable: boolean;
   fields: ContentField[];
   fieldsCount: number;
   entriesCount: number;
@@ -80,6 +81,7 @@ export interface CreateContentTypeBody {
   description?: string;
   icon?: string;
   isLocalized?: boolean;
+  isPubliclyDiscoverable?: boolean;
 }
 
 export interface UpdateContentTypeBody {
@@ -87,6 +89,7 @@ export interface UpdateContentTypeBody {
   description?: string | null;
   icon?: string | null;
   isLocalized?: boolean;
+  isPubliclyDiscoverable?: boolean;
 }
 
 export interface AddFieldBody {
@@ -245,11 +248,19 @@ export interface MediaFileSummary {
   originalName: string;
   mimeType: string;
   size: number;
+  totalSize: number;
   url: string;
   provider: string;
   width: number | null;
   height: number | null;
   altText: string | null;
+  caption: string | null;
+  originalStorageKey: string | null;
+  originalUrl: string | null;
+  originalSize: number | null;
+  optimizedSize: number | null;
+  thumbnailSize: number;
+  thumbnails: Record<string, { url: string; size: number }>;
   isAiAltText: boolean;
   isAiGenerated: boolean;
   folder: { id: string; name: string } | null;
@@ -274,6 +285,7 @@ export interface MediaListParams {
 
 export interface UpdateMediaBody {
   altText?: string | null;
+  caption?: string | null;
   folderId?: string | null;
 }
 
@@ -317,6 +329,7 @@ export type {
 } from './seo-types.js';
 
 export type {
+  AgentSessionSummary,
   AgentTokenCreated,
   AgentTokenSummary,
   CreateAgentTokenBody,

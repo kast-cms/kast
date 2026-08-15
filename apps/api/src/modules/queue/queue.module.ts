@@ -2,6 +2,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { Global, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import type { Env } from '../../config/env.schema';
+import { QueueOpsController } from './queue-ops.controller';
 import { QueueAdapter } from './queue.adapter';
 import { QUEUE_NAMES } from './queue.constants';
 
@@ -44,11 +45,11 @@ import { QUEUE_NAMES } from './queue.constants';
       { name: QUEUE_NAMES.MEDIA },
       { name: QUEUE_NAMES.SEO },
       { name: QUEUE_NAMES.PUBLISH },
-      { name: QUEUE_NAMES.AUDIT },
       { name: QUEUE_NAMES.EMAIL },
       { name: QUEUE_NAMES.TRASH },
     ),
   ],
+  controllers: [QueueOpsController],
   providers: [QueueAdapter],
   exports: [BullModule, QueueAdapter],
 })

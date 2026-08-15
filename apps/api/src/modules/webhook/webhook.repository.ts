@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, type WebhookDelivery, type WebhookEndpoint } from '@prisma/client';
+import type { PaginationDto } from '../../common/dto/pagination.dto';
+import type { PaginatedResult } from '../../common/types/auth.types';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export type EndpointRow = Omit<WebhookEndpoint, 'secretHash'>;
@@ -61,6 +63,10 @@ export class WebhookRepository {
     });
   }
 
+  async rotateSecret(id: string, secretHash: string): Promise<void> {
+    await this.prisma.webhookEndpoint.update({ where: { id }, data: { secretHash } });
+  }
+
   update(
     id: string,
     data: {
@@ -96,11 +102,30 @@ export class WebhookRepository {
     return this.prisma.webhookDelivery.findUnique({ where: { id } });
   }
 
-  findDeliveries(endpointId: string, limit = 100): Promise<WebhookDelivery[]> {
-    return this.prisma.webhookDelivery.findMany({
-      where: { endpointId },
-      orderBy: { createdAt: 'desc' },
-      take: limit,
-    });
+  async findDeliveries(
+    endpointId: string,
+    query: PaginationDto,
+  ): Promise<PaginatedResult<WebhookDelivery>> {
+    const limit = query.limit ?? 20;
+    const [rows, total] = await Promise.all([
+      this.prisma.webhookDelivery.findMany({
+        where: { endpointId },
+        orderBy: { createdAt: query.order ?? 'desc' },
+        take: limit + 1,
+        ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
+      }),
+      this.prisma.webhookDelivery.count({ where: { endpointId } }),
+    ]);
+    const hasNextPage = rows.length > limit;
+    const data = hasNextPage ? rows.slice(0, limit) : rows;
+    return {
+      data,
+      meta: {
+        total,
+        limit,
+        cursor: hasNextPage ? (data.at(-1)?.id ?? null) : null,
+        hasNextPage,
+      },
+    };
   }
 }

@@ -1,6 +1,7 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import { lookup } from 'dns/promises';
+import { SecretEncryptionService } from '../../common/security/secret-encryption.service';
 import { decryptSecret } from '../../common/utils/secret-crypto.util';
 import type { QueueAdapter } from '../queue/queue.adapter';
 import { QUEUE_NAMES } from '../queue/queue.constants';
@@ -14,7 +15,7 @@ const mockedLookup = lookup as unknown as jest.Mock;
 
 type Mocked<T> = { [K in keyof T]: jest.Mock };
 
-const APP_SECRET = 'unit-test-app-secret-0123456789';
+const APP_SECRET = 'unit-test-app-secret-0123456789-extra';
 
 function buildEndpoint(over: Partial<EndpointWithSecret> = {}): EndpointWithSecret {
   return {
@@ -57,7 +58,7 @@ describe('WebhookService', () => {
     service = new WebhookService(
       repo as unknown as WebhookRepository,
       queue as unknown as QueueAdapter,
-      config,
+      new SecretEncryptionService(config),
     );
   });
 
@@ -205,12 +206,23 @@ describe('WebhookService', () => {
 
     it('enqueues a redelivery for a matching delivery', async () => {
       repo.findById.mockResolvedValue(buildEndpoint() as EndpointRow);
-      repo.findDelivery.mockResolvedValue({ id: 'del1', endpointId: 'wh1' });
+      repo.findDelivery.mockResolvedValue({
+        id: 'del1',
+        endpointId: 'wh1',
+        event: 'content.updated',
+        payload: { id: 'entry1' },
+      });
+      repo.createDelivery.mockResolvedValue({ id: 'del2' });
       await service.redeliver('wh1', 'del1');
+      expect(repo.createDelivery).toHaveBeenCalledWith({
+        endpointId: 'wh1',
+        event: 'content.updated',
+        payload: { id: 'entry1' },
+      });
       expect(queue.enqueue).toHaveBeenCalledWith(
         QUEUE_NAMES.WEBHOOK,
         'fire',
-        expect.objectContaining({ endpointId: 'wh1', deliveryId: 'del1' }),
+        expect.objectContaining({ endpointId: 'wh1', deliveryId: 'del2' }),
         expect.anything(),
       );
     });

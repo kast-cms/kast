@@ -8,7 +8,6 @@ import { SeoModule } from '../seo/seo.module';
 import { McpController } from './mcp.controller';
 import { McpRegistry } from './mcp.registry';
 import { McpService } from './mcp.service';
-import { McpSessionStore } from './mcp.session';
 import { McpContentEntryTools } from './tools/content-entry.tools';
 import { McpContentTypeTools } from './tools/content-type.tools';
 import { McpMediaSeoAuditTools } from './tools/media-seo-audit.tools';
@@ -26,7 +25,6 @@ import { McpMediaSeoAuditTools } from './tools/media-seo-audit.tools';
   providers: [
     McpService,
     McpRegistry,
-    McpSessionStore,
     McpContentTypeTools,
     McpContentEntryTools,
     McpMediaSeoAuditTools,

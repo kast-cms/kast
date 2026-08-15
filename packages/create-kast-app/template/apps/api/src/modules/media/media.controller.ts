@@ -20,7 +20,6 @@ import {
   ApiPropertyOptional,
   ApiTags,
 } from '@nestjs/swagger';
-import type { MediaFile } from '@prisma/client';
 import { IsOptional, IsString } from 'class-validator';
 import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -29,7 +28,14 @@ import type { AuthUser, PaginatedResult } from '../../common/types/auth.types';
 import { ListMediaDto } from './dto/list-media.dto';
 import { CreateFolderDto, UpdateFolderDto, UploadFromUrlDto } from './dto/media-folder.dto';
 import { MediaFolderService, type MediaFolderResponse } from './media-folder.service';
-import { MediaService } from './media.service';
+import { MediaService, type MediaFileDetailView, type MediaFileView } from './media.service';
+
+class UploadMediaDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  folderId?: string;
+}
 
 class UpdateMediaDto {
   @ApiPropertyOptional()
@@ -60,7 +66,7 @@ export class MediaController {
   @ApiBearerAuth()
   @Roles(SYSTEM_ROLES.VIEWER, SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'List media files' })
-  findAll(@Query() query: ListMediaDto): Promise<PaginatedResult<MediaFile>> {
+  findAll(@Query() query: ListMediaDto): Promise<PaginatedResult<MediaFileView>> {
     return this.service.findAll(query);
   }
 
@@ -74,9 +80,10 @@ export class MediaController {
   @ApiOperation({ summary: 'Upload a media file' })
   upload(
     @UploadedFile() file: Express.Multer.File,
+    @Body() dto: UploadMediaDto,
     @CurrentUser() user: AuthUser,
-  ): Promise<{ data: MediaFile }> {
-    return this.service.upload(file, user.id);
+  ): Promise<{ data: MediaFileDetailView }> {
+    return this.service.upload(file, user.id, dto.folderId);
   }
 
   @Post('upload-url')
@@ -86,7 +93,7 @@ export class MediaController {
   uploadFromUrl(
     @Body() dto: UploadFromUrlDto,
     @CurrentUser() user: AuthUser,
-  ): Promise<{ data: MediaFile }> {
+  ): Promise<{ data: MediaFileDetailView }> {
     return this.service.uploadFromUrl(dto.url, user.id, {
       ...(dto.folderId !== undefined ? { folderId: dto.folderId } : {}),
       ...(dto.altText !== undefined ? { altText: dto.altText } : {}),
@@ -138,7 +145,7 @@ export class MediaController {
   @ApiBearerAuth()
   @Roles(SYSTEM_ROLES.VIEWER, SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get media file by ID' })
-  findOne(@Param('id') id: string): Promise<{ data: MediaFile }> {
+  findOne(@Param('id') id: string): Promise<{ data: MediaFileDetailView }> {
     return this.service.findById(id);
   }
 
@@ -146,7 +153,10 @@ export class MediaController {
   @ApiBearerAuth()
   @Roles(SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update media file metadata' })
-  update(@Param('id') id: string, @Body() dto: UpdateMediaDto): Promise<{ data: MediaFile }> {
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateMediaDto,
+  ): Promise<{ data: MediaFileDetailView }> {
     return this.service.update(id, dto);
   }
 

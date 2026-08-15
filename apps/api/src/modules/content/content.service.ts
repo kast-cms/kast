@@ -16,13 +16,13 @@ import {
   assertWritableStatus,
   localeData,
   paginate,
-  snapshotLocales,
   writeLocale,
 } from './content-entry.helpers';
-import { addEntryLocale, assertActiveLocale } from './content-locale.ops';
+import { addEntryLocale } from './content-locale.ops';
 import { revertEntryToVersion } from './content-revert.ops';
 import { cancelEntrySchedule, scheduleEntryPublish } from './content-schedule.ops';
-import { requireSlug, resolveEntrySlug } from './content-slug';
+import { resolveEntrySlug } from './content-slug';
+import { updateContentEntry } from './content-update.ops';
 import { ContentRepository, EntryWithLocale, VersionWithAuthor } from './content.repository';
 import type {
   AddLocaleDto,
@@ -34,7 +34,7 @@ import type {
 import type { ContentQueryDto } from './dto/content-query.dto';
 import type { ValidationResult } from './validation/content-validation.types';
 import { ContentWriteGate } from './validation/content-write.gate';
-import { PUBLIC_STATUSES, resolveValidationMode } from './validation/validation-mode';
+import { resolveValidationMode } from './validation/validation-mode';
 
 @Injectable()
 export class ContentService {
@@ -141,6 +141,7 @@ export class ContentService {
       extraLocaleCodes,
       result.uniqueChecks,
     );
+    await this.repo.syncReferences(entry.id, ct.fields);
     this.eventEmitter.emit('content.created', {
       entryId: entry.id,
       typeSlug,
@@ -156,45 +157,21 @@ export class ContentService {
     dto: UpdateContentEntryDto,
     userId: string,
   ): Promise<{ data: EntryWithLocale }> {
-    const { ct, entry } = await this.requireWritableEntry(typeSlug, id);
     assertWritableStatus(typeSlug, id, dto.status);
-    const locale = writeLocale(entry, dto.locale);
-    // A locale the entry does not have yet is created by this write, so it faces
-    // the same check as POST :id/locale rather than being taken on trust.
-    if (!entry.locales.some((l) => l.localeCode === locale)) {
-      await assertActiveLocale(this.repo, locale);
-    }
-    const slug = dto.slug !== undefined ? requireSlug(dto.slug, 'slug') : undefined;
-    // The status the entry ends up in, not just the one being asked for: a data-only
-    // write to live or scheduled content has to clear the same bar as publishing it.
-    const goesPublic = PUBLIC_STATUSES.has(dto.status ?? entry.status);
-
-    if (dto.data) {
-      const result = await this.validateUpdate(ct, entry, dto, dto.data);
-      // Snapshot the full multi-locale state so reverts restore every locale.
-      await this.repo.createVersion(
-        id,
-        localeData(entry, locale),
-        snapshotLocales(entry),
-        userId,
-        entry.status,
-      );
-      await this.repo.update(id, ct.id, locale, result.data, result.uniqueChecks, slug);
-    } else {
-      if (dto.status !== undefined && goesPublic) {
-        // A status-only transition must not be able to publish data that never passed.
-        await this.gate.assertStoredPublishable(ct, entry);
-      }
-      if (slug !== undefined) {
-        assertApplied(await this.repo.updateSlug(id, ct.id, locale, slug), id);
-      }
-    }
-
-    if (dto.status) assertApplied(await this.repo.updateStatus(id, ct.id, dto.status), id);
-
-    const updated = await this.reload(ct.id, id);
-    this.eventEmitter.emit('content.updated', { entryId: id, typeSlug, status: updated.status });
-    return { data: updated };
+    return updateContentEntry(
+      {
+        repo: this.repo,
+        gate: this.gate,
+        seo: this.seoService,
+        events: this.eventEmitter,
+        load: (slug, entryId) => this.requireWritableEntry(slug, entryId),
+        reload: (contentTypeId, entryId) => this.reload(contentTypeId, entryId),
+      },
+      typeSlug,
+      id,
+      dto,
+      userId,
+    );
   }
 
   /**
@@ -234,6 +211,34 @@ export class ContentService {
     return { data: updated };
   }
 
+  /** Runs every publish gate and returns its decision without changing entry status. */
+  async previewPublish(
+    typeSlug: string,
+    id: string,
+    force = false,
+  ): Promise<{
+    wouldPublish: boolean;
+    seoScore: number;
+    warnings: unknown[];
+    errors: unknown[];
+  }> {
+    const { ct, entry } = await this.requireWritableEntry(typeSlug, id);
+    await this.gate.assertStoredPublishable(ct, entry);
+    const validation = await this.seoService.validateNow(id);
+    return {
+      wouldPublish: validation.errors.length === 0 && (force || validation.warnings.length === 0),
+      seoScore: validation.score,
+      warnings: validation.warnings,
+      errors: validation.errors,
+    };
+  }
+
+  /** Checks that trashing would address a live entry, without touching it. */
+  async previewTrash(typeSlug: string, id: string): Promise<{ wouldTrash: true; status: string }> {
+    const { entry } = await this.requireWritableEntry(typeSlug, id);
+    return { wouldTrash: true, status: entry.status };
+  }
+
   async addLocale(
     typeSlug: string,
     id: string,
@@ -243,6 +248,7 @@ export class ContentService {
     const { ct, entry } = await this.requireWritableEntry(typeSlug, id);
     await addEntryLocale(this.repo, this.gate, ct, entry, dto);
     const updated = await this.reload(ct.id, id);
+    await this.repo.syncReferences(id, ct.fields);
     this.eventEmitter.emit('content.updated', { entryId: id, typeSlug, status: updated.status });
     return { data: updated };
   }
@@ -346,6 +352,7 @@ export class ContentService {
   ): Promise<{ data: EntryWithLocale }> {
     const { ct, entry } = await this.requireWritableEntry(typeSlug, id);
     const data = await revertEntryToVersion(this.repo, this.gate, ct, entry, versionId, userId);
+    await this.repo.syncReferences(id, ct.fields);
     return { data };
   }
 }
