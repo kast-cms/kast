@@ -84,7 +84,17 @@ function getPmConfigFiles(opts: ProjectOptions): FileEntry[] {
   if (opts.packageManager === 'yarn') {
     return [{ path: '.yarnrc.yml', content: 'nodeLinker: node-modules\n' }];
   }
-  return [];
+  // pnpm does not install optional peer dependencies unless asked, and sharp's
+  // platform package declares its libvips binary as exactly that. Without this
+  // the generated project installs cleanly and then dies on first boot with
+  // "Could not load the sharp module ... libvips-cpp.so: cannot open shared
+  // object file". The Kast monorepo carries the same two settings.
+  return [
+    {
+      path: '.npmrc',
+      content: 'auto-install-peers=true\nstrict-peer-dependencies=false\n',
+    },
+  ];
 }
 
 async function keepSelectedPlugins(targetDir: string, selected: string[]): Promise<void> {

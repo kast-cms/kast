@@ -74,6 +74,43 @@ test('--skip-interactive generates expected project structure', async (t) => {
   );
 });
 
+test('the generated pnpm project carries the settings its dependencies need', async (t) => {
+  const tmp = await mkdtemp(join(tmpdir(), 'kast-e2e-'));
+  const projectName = 'test-kast-pm-config';
+  const projectDir = join(tmp, projectName);
+
+  t.after(async () => {
+    await rm(tmp, { recursive: true, force: true });
+  });
+
+  await execFileAsync('node', [CLI_BIN, projectName, ...SKIP_FLAGS], { cwd: tmp });
+
+  // sharp's platform package declares its libvips binary as an optional peer,
+  // and pnpm skips those unless told otherwise. Without this the project
+  // installs cleanly and dies on first boot with ERR_DLOPEN_FAILED.
+  const npmrc = await readFile(join(projectDir, '.npmrc'), 'utf-8');
+  assert.match(npmrc, /auto-install-peers=true/);
+
+  // Build permissions have to land where the pinned pnpm reads them: package.json
+  // below 10, onlyBuiltDependencies at 10, allowBuilds at 11 — and pnpm 11 fails
+  // the install outright when a package with a build script is listed neither way.
+  const pkg = JSON.parse(await readFile(join(projectDir, 'package.json'), 'utf-8'));
+  const major = Number.parseInt(pkg.packageManager.split('@')[1].split('.')[0], 10);
+  const workspace = await readFile(join(projectDir, 'pnpm-workspace.yaml'), 'utf-8');
+
+  if (major >= 11) {
+    assert.match(workspace, /^allowBuilds:/m, 'pnpm 11 reads allowBuilds from the workspace file');
+    assert.match(workspace, /^ {2}sharp: true$/m);
+    assert.equal(pkg.pnpm, undefined, 'pnpm 11 ignores the package.json pnpm field');
+  } else if (major === 10) {
+    assert.match(workspace, /^onlyBuiltDependencies:/m);
+    assert.equal(pkg.pnpm, undefined, 'pnpm 10 ignores the package.json pnpm field');
+  } else {
+    assert.ok(pkg.pnpm?.onlyBuiltDependencies?.includes('sharp'), 'pnpm 9 reads package.json');
+    assert.doesNotMatch(workspace, /^(allowBuilds|onlyBuiltDependencies):/m);
+  }
+});
+
 test('docker-compose.yml contains postgres and redis services', async (t) => {
   const tmp = await mkdtemp(join(tmpdir(), 'kast-e2e-'));
   t.after(async () => rm(tmp, { recursive: true, force: true }));
