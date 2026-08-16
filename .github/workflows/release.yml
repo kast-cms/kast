@@ -190,6 +190,11 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: 'true' # npm publish --provenance
+          # semantic-release verifies push access and creates package tags with
+          # `git push`. The quality gate above has already run the full suite;
+          # running Husky again after npm temporarily bumps package.json makes
+          # scaffold parity fail on release-only, uncommitted version changes.
+          HUSKY: '0'
 
   # ── Compute the product vX.Y.Z version for Docker + GitHub Release ─────────
   product-version:
