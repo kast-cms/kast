@@ -1,0 +1,9 @@
+name: Kast CodeQL configuration
+
+paths-ignore:
+  - node_modules
+  - '**/dist'
+  - '**/.next'
+  # The scaffolder template is byte-checked against the canonical source trees,
+  # so scanning both copies only creates duplicate findings.
+  - packages/create-kast-app/template

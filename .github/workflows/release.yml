@@ -111,13 +111,23 @@ jobs:
         run: pnpm --filter @kast-cms/api run test:e2e
 
       - name: Docker image smoke test
+        env:
+          # The e2e suite seeds admin@kast.local with the publicly documented
+          # password into kast_test, and the API correctly refuses to boot while
+          # that login is live. Exercise the production image against a separate,
+          # empty database so the container applies migrations and starts exactly
+          # as a fresh deployment would.
+          SMOKE_DATABASE_URL: postgresql://kast:kast@127.0.0.1:5432/kast_smoke?schema=public
         run: |
           set -euo pipefail
           trap 'docker rm -f kast-api-smoke kast-admin-smoke >/dev/null 2>&1 || true' EXIT
+          docker run --rm --network host postgres:16 \
+            psql postgresql://kast:kast@127.0.0.1:5432/kast_test \
+            -c 'CREATE DATABASE kast_smoke'
           docker build -f apps/api/Dockerfile -t kast-api-smoke .
           docker run -d --name kast-api-smoke --network host \
             -e NODE_ENV=test \
-            -e DATABASE_URL="$DATABASE_URL" \
+            -e DATABASE_URL="$SMOKE_DATABASE_URL" \
             -e REDIS_HOST=127.0.0.1 \
             -e REDIS_PORT=6379 \
             -e JWT_SECRET="$JWT_SECRET" \
