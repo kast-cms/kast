@@ -4,7 +4,8 @@
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 0.x     | :white_check_mark: |
+| 1.x     | :white_check_mark: |
+| < 1.0   | :x:                |
 
 ## Reporting a Vulnerability
 
@@ -38,29 +39,31 @@ We follow **responsible disclosure** — please give us reasonable time to patch
 
 Kast implements multiple layers of security:
 
-- **Authentication**: JWT with 15-minute access tokens, separate refresh secrets, and token rotation on every refresh. OAuth CSRF state validation.
-- **Authorization**: Role-based access control (RBAC) with `SUPER_ADMIN`, `ADMIN`, `EDITOR`, and `VIEWER` roles. Every protected endpoint requires explicit permission.
+- **Authentication**: JWT with 15-minute access tokens, separate refresh secrets, and refresh-token rotation. OAuth flows validate state and verified provider email addresses.
+- **Authorization**: Role and permission checks are deny-by-default. API and agent token scopes are enforced independently of their owner's permissions.
 - **Transport**: HSTS with preload, strict CSP, `X-Content-Type-Options`, `Referrer-Policy`.
-- **Input validation**: All DTOs use `whitelist: true` with `forbidNonWhitelisted`. Rich text fields are sanitized with DOMPurify before storage (OWASP A03). File uploads are validated against both declared MIME type and magic bytes.
-- **Rate limiting**: Auth endpoints are rate-limited to 20 requests / 15 minutes. Form submissions to 10 requests / minute per IP.
-- **Cryptography**: Passwords hashed with bcrypt (cost factor 12). API/agent tokens stored as SHA-256 hashes. Plugin configuration encrypted with AES-256-GCM.
-- **Audit trail**: Every mutation is logged to an append-only audit log.
-- **Dependencies**: Automated `pnpm audit` in CI and weekly Dependabot updates.
+- **Input validation**: DTOs are validated with unknown-field rejection. Rich text is sanitized with DOMPurify before storage, and uploads are checked against both their declared MIME type and magic bytes.
+- **Outbound requests**: Remote media imports and webhooks use bounded redirects, DNS revalidation, response-size limits, and private/reserved-address blocking. Plugins are trusted in-process code and are not constrained by this guard.
+- **Rate limiting**: The API has a global limit plus stricter limits for login, setup, password recovery, and public form submission.
+- **Cryptography**: Passwords use Argon2id. API, agent, refresh, and recovery tokens are stored as hashes. Stored application and plugin secrets use authenticated encryption.
+- **Audit trail**: Protected management mutations, authorization denials, and MCP tool calls are recorded in the audit log.
+- **Dependencies and analysis**: CI audits production dependencies, Dependabot checks the full lockfile, and CodeQL scans JavaScript and TypeScript.
+- **Plugins**: Plugins are trusted build-time extensions loaded into the API process. Install only source you would be willing to run as part of the application itself.
 
 ## OWASP Top 10 Mitigation Summary
 
-| OWASP ID | Vulnerability             | Kast Mitigation                                                           |
-| -------- | ------------------------- | ------------------------------------------------------------------------- |
-| A01      | Broken Access Control     | `RbacGuard` + `@RequirePermission` on every endpoint                      |
-| A02      | Cryptographic Failures    | bcrypt(12) passwords; SHA-256 token hashes; AES-256-GCM plugin config     |
-| A03      | Injection                 | Prisma parameterized queries; DOMPurify rich text; `whitelist: true` DTOs |
-| A04      | Insecure Design           | Soft delete; append-only audit log; least-privilege RBAC                  |
-| A05      | Security Misconfiguration | Helmet + CSP; env validated at startup; no default secrets                |
-| A06      | Vulnerable Components     | `pnpm audit` in CI; Dependabot weekly updates                             |
-| A07      | Auth Failures             | Rate limiting (20/15 min); JWT rotation; no username enumeration on reset |
-| A08      | Software/Data Integrity   | Plugin manifest verification; HMAC webhook signing; no `eval`             |
-| A09      | Logging & Monitoring      | Audit interceptor on all mutations; structured JSON logs                  |
-| A10      | SSRF                      | Plugin network allowlist; no user-controlled URL fetch in core            |
+| OWASP ID | Vulnerability             | Kast Mitigation                                                               |
+| -------- | ------------------------- | ----------------------------------------------------------------------------- |
+| A01      | Broken Access Control     | Deny-by-default route permissions; scoped API and agent tokens                |
+| A02      | Cryptographic Failures    | Argon2id passwords; hashed opaque tokens; authenticated secret encryption     |
+| A03      | Injection                 | Prisma parameterization; rich-text sanitization; strict DTO validation        |
+| A04      | Insecure Design           | Recoverable deletion, publish gates, and permission-aware previews            |
+| A05      | Security Misconfiguration | Helmet/CSP, validated environment, startup checks, and no default secrets     |
+| A06      | Vulnerable Components     | CI dependency audit, Dependabot, lockfile overrides, and CodeQL               |
+| A07      | Auth Failures             | Endpoint rate limits, refresh rotation, OAuth state, and setup locking        |
+| A08      | Software/Data Integrity   | HMAC-signed webhooks and explicit trusted-plugin deployment model             |
+| A09      | Logging & Monitoring      | Mutation, denial, failure, and agent-tool audit records                       |
+| A10      | SSRF                      | DNS/IP validation, redirect revalidation, and bounded outbound response reads |
 
 ## Bug Bounty
 
