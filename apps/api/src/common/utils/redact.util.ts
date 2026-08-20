@@ -59,7 +59,14 @@ function redactObject(record: Record<string, unknown>, depth: number): Record<st
       SENSITIVE_KEYS.has(key.toLowerCase()) ||
       isSecretSettingKey(key) ||
       (secretPair && key === 'value');
-    out[key] = redactThis ? REDACTED : redactSensitive(val, depth + 1);
+    // Keys come from request/response bodies, so a crafted `__proto__` key must
+    // not reach assignment — defineProperty copies it as a plain own property.
+    Object.defineProperty(out, key, {
+      value: redactThis ? REDACTED : redactSensitive(val, depth + 1),
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
   }
   return out;
 }

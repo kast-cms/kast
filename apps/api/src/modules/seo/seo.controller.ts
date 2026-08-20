@@ -158,7 +158,9 @@ export class SeoController {
   @ApiBearerAuth()
   @Roles(SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @HttpCode(HttpStatus.OK)
-  @UseInterceptors(FileInterceptor('file'))
+  // Multer defaults are unbounded; cap the buffered upload so the request dies
+  // at the door instead of in the CSV parser.
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 2 * 1024 * 1024 } }))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Bulk import redirects from a CSV file' })
   async importRedirects(

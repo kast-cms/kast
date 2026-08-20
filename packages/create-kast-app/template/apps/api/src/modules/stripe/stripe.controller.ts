@@ -67,14 +67,19 @@ export class StripeController {
     signature: string,
     secret: string,
   ): StripeWebhookEvent {
-    const parts = signature.split(',').reduce<Record<string, string>>((acc, part) => {
-      const [k, v] = part.split('=');
-      if (k && v) acc[k] = v;
-      return acc;
-    }, {});
-
-    const timestamp = parts['t'];
-    const v1 = parts['v1'];
+    // Parsed into locals rather than a record keyed by header content: the
+    // header is attacker-controlled, so it must never choose property names.
+    let timestamp: string | undefined;
+    let v1: string | undefined;
+    for (const part of signature.split(',')) {
+      const eq = part.indexOf('=');
+      if (eq <= 0) continue;
+      const name = part.slice(0, eq).trim();
+      // Split on the first '=' only: values are not quoted and may contain it.
+      const value = part.slice(eq + 1).trim();
+      if (name === 't') timestamp = value;
+      else if (name === 'v1') v1 = value;
+    }
 
     if (!timestamp || !v1) {
       throw new BadRequestException('Invalid Stripe-Signature header format');

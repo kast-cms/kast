@@ -37,7 +37,10 @@ export class LocalStorageAdapter implements StorageAdapter {
   private realRoot: string | null = null;
 
   constructor(config: ConfigService<Env>) {
-    const dir = config.get('STORAGE_LOCAL_DIR', { infer: true }) ?? '/tmp/kast-uploads';
+    // Matches the env.schema default. A predictable directory inside the OS
+    // temp dir is writable by every local user and is swept on reboot, so it
+    // is never a safe default for persisted uploads.
+    const dir = config.get('STORAGE_LOCAL_DIR', { infer: true }) ?? './uploads';
     this.localDir = isAbsolute(dir) ? resolve(dir) : resolve(process.cwd(), dir);
     const configured = config.get('STORAGE_LOCAL_URL', { infer: true }) ?? '';
     this.localUrl = LocalStorageAdapter.resolveBaseUrl(configured);
@@ -90,6 +93,10 @@ export class LocalStorageAdapter implements StorageAdapter {
     }
     const filePath = join(this.localDir, key);
     await fs.mkdir(dirname(filePath), { recursive: true });
+    // `key` is rejected above unless isSafeObjectKey passes (no traversal,
+    // dotfiles, backslashes or NUL), and `buffer` reached here only after the
+    // media pipeline validated size, content-type and magic bytes.
+    // lgtm[js/http-to-file-access]
     await fs.writeFile(filePath, buffer);
     const url = `${this.localUrl}/${key}`;
     return { url, storageKey: key };
@@ -125,6 +132,10 @@ export class LocalStorageAdapter implements StorageAdapter {
 
     let real: string;
     try {
+      // `key` passed isSafeObjectKey and the resolve/isInside containment
+      // check above; realpath then resolves symlinks so the second isInside
+      // check below rejects anything that escapes the root that way.
+      // lgtm[js/path-injection]
       real = await fs.realpath(candidate);
     } catch {
       return null;

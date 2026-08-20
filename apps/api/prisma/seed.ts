@@ -139,9 +139,12 @@ async function seedDevAccounts(): Promise<void> {
   console.error(
     `⚠️  DEV ACCOUNTS — these logins are public knowledge. Remove ${DEV_ACCOUNTS_ENV_VAR} from your environment before this database is reachable by anyone else.`,
   );
+  // Passwords are not echoed: the values live in DEV_ACCOUNTS
+  // (common/utils/weak-credential.util.ts) and logs must not carry
+  // credential-shaped strings, even dev ones.
   for (const account of DEV_ACCOUNTS) {
     await upsertUser({ ...account, resetPassword: true });
-    console.error(`   ${account.email} / ${account.password} (${account.role})`);
+    console.error(`   ${account.email} (${account.role})`);
   }
 }
 

@@ -3,15 +3,30 @@
  * values are simple paths; supports quoted fields containing commas, quotes
  * (escaped as ""), and newlines.
  */
+import { BadRequestException } from '@nestjs/common';
+
+/** Parses stop here: past this many characters the import is a DoS vector, not data. */
+export const MAX_CSV_INPUT_CHARS = 1_000_000;
+
+function assertWithinCsvLimits(input: string): void {
+  if (input.length > MAX_CSV_INPUT_CHARS) {
+    throw new BadRequestException(`CSV input exceeds ${MAX_CSV_INPUT_CHARS} characters`);
+  }
+}
 
 export function parseCsv(input: string): string[][] {
+  assertWithinCsvLimits(input);
   const rows: string[][] = [];
   let field = '';
   let row: string[] = [];
   let inQuotes = false;
   const text = input.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  // Constant bound on the scan loop — the guard above already rejected anything
+  // longer, and normalization can only shrink the string, but neither fact is
+  // visible to the loop itself.
+  const chars = Math.min(text.length, MAX_CSV_INPUT_CHARS);
 
-  for (let i = 0; i < text.length; i++) {
+  for (let i = 0; i < chars; i++) {
     const ch = text[i];
     if (inQuotes) {
       if (ch === '"') {

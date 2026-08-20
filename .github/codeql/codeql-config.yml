@@ -7,3 +7,8 @@ paths-ignore:
   # The scaffolder template is byte-checked against the canonical source trees,
   # so scanning both copies only creates duplicate findings.
   - packages/create-kast-app/template
+  # Tests carry deliberately unsafe fixtures (sanitizer assertions, e2e stubs);
+  # production threat-model queries against them are noise, not findings.
+  - '**/*.spec.ts'
+  - '**/*.e2e-spec.ts'
+  - '**/test/**'

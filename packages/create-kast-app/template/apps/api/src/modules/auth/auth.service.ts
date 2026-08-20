@@ -135,6 +135,11 @@ export class AuthService {
     const user = await this.authRepository.findUserById(userId);
     if (!user) throw new UnauthorizedException('User not found');
 
+    // class-validator has already rejected any non-nullish newPassword shorter
+    // than 8 characters, so a validated truthy value here is a real change
+    // request — the branch below is the "only verify when changing" rule, not
+    // a bypass a caller can shape.
+    // lgtm[js/user-controlled-bypass]
     if (dto.newPassword) {
       if (!dto.currentPassword) {
         throw new BadRequestException('currentPassword is required to change password');
@@ -191,7 +196,15 @@ export class AuthService {
     }
   }
 
+  /**
+   * Unsalted SHA-256 is deliberate here: the code is 32 random bytes whose
+   * hash is the lookup key for a 60-second ephemeral entry, so it needs a
+   * deterministic function — a salted or password-hashing construction would
+   * make the exchange lookup impossible. Brute-forcing 256 bits of entropy is
+   * out of scope for any adversary who could read the store.
+   */
   private hashOAuthCode(code: string): string {
+    // lgtm[js/insufficient-password-hash]
     return createHash('sha256').update(code).digest('hex');
   }
 
