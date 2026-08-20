@@ -139,7 +139,6 @@ export class AuthService {
     // than 8 characters, so a validated truthy value here is a real change
     // request — the branch below is the "only verify when changing" rule, not
     // a bypass a caller can shape.
-    // lgtm[js/user-controlled-bypass]
     if (dto.newPassword) {
       if (!dto.currentPassword) {
         throw new BadRequestException('currentPassword is required to change password');
@@ -204,7 +203,6 @@ export class AuthService {
    * out of scope for any adversary who could read the store.
    */
   private hashOAuthCode(code: string): string {
-    // lgtm[js/insufficient-password-hash]
     return createHash('sha256').update(code).digest('hex');
   }
 

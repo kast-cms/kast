@@ -266,7 +266,7 @@ jobs:
 
       - name: Extract Docker metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ matrix.image }}
           # This job only runs on a product bump, so always tag :x.y.z + :latest.
@@ -275,7 +275,7 @@ jobs:
             type=raw,value=latest
 
       - name: Build and push ${{ matrix.app }}
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ${{ matrix.dockerfile }}

@@ -159,11 +159,7 @@ export function isPrivateAddress(address: string): boolean {
 }
 
 export type BlockedUrlReason =
-  | 'invalid_url'
-  | 'unsupported_scheme'
-  | 'private_address'
-  | 'dns_failure'
-  | 'too_many_redirects';
+  'invalid_url' | 'unsupported_scheme' | 'private_address' | 'dns_failure' | 'too_many_redirects';
 
 /** Thrown by the outbound-URL helpers. Framework-free so callers map it to their own HTTP errors. */
 export class BlockedUrlError extends Error {

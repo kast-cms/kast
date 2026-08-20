@@ -96,7 +96,6 @@ export class LocalStorageAdapter implements StorageAdapter {
     // `key` is rejected above unless isSafeObjectKey passes (no traversal,
     // dotfiles, backslashes or NUL), and `buffer` reached here only after the
     // media pipeline validated size, content-type and magic bytes.
-    // lgtm[js/http-to-file-access]
     await fs.writeFile(filePath, buffer);
     const url = `${this.localUrl}/${key}`;
     return { url, storageKey: key };
@@ -135,7 +134,6 @@ export class LocalStorageAdapter implements StorageAdapter {
       // `key` passed isSafeObjectKey and the resolve/isInside containment
       // check above; realpath then resolves symlinks so the second isInside
       // check below rejects anything that escapes the root that way.
-      // lgtm[js/path-injection]
       real = await fs.realpath(candidate);
     } catch {
       return null;

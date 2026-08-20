@@ -9,10 +9,10 @@
   },
   "dependencies": {
     "@kast-cms/plugin-sdk": "workspace:*",
-    "@sentry/node": "^10.58.0"
+    "@sentry/node": "^10.70.0"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
-    "typescript": "^5.5.0"
+    "@types/node": "('^26.2.0', '    ')",
+    "typescript": "('^7.0.2', '    ')"
   }
 }
