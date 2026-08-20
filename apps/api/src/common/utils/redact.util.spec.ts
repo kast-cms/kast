@@ -76,4 +76,19 @@ describe('redactSensitive', () => {
     expect(redactSensitive(null)).toBeNull();
     expect(redactSensitive(42)).toBe(42);
   });
+
+  it('keeps a JSON __proto__ key an own property instead of mutating the prototype', () => {
+    // JSON.parse creates `__proto__` as a plain own key; an object literal
+    // would not, so the fixture has to come from text. A crafted body must
+    // survive redaction without the copy inheriting anything from it.
+    const body = JSON.parse('{"__proto__":{"polluted":"yes"},"email":"a@b.com"}');
+    const out = redactSensitive(body) as Record<string, unknown>;
+
+    expect(Object.getPrototypeOf(out)).toBe(Object.prototype);
+    expect((out as { polluted?: unknown }).polluted).toBeUndefined();
+    expect(Object.getOwnPropertyDescriptor(out, '__proto__')?.value).toEqual({
+      polluted: 'yes',
+    });
+    expect(out['email']).toBe('a@b.com');
+  });
 });
