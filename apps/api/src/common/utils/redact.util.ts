@@ -53,13 +53,18 @@ export function redactSensitive(value: unknown, depth = 0): unknown {
 
 function redactObject(record: Record<string, unknown>, depth: number): Record<string, unknown> {
   const secretPair = isSecretKeyValuePair(record);
-  const out: Record<string, unknown> = {};
-  for (const [key, val] of Object.entries(record)) {
-    const redactThis =
-      SENSITIVE_KEYS.has(key.toLowerCase()) ||
-      isSecretSettingKey(key) ||
-      (secretPair && key === 'value');
-    out[key] = redactThis ? REDACTED : redactSensitive(val, depth + 1);
-  }
-  return out;
+  // The copy is rebuilt with Object.fromEntries — CreateDataProperty semantics,
+  // so a JSON `__proto__` key lands as a plain own property instead of reaching
+  // an assignment that would mutate the copy's prototype. Its only consumer is
+  // the audit log (JSON-serialized into a Prisma JSON column), and key names
+  // must survive verbatim: the redactor redacts values under their own names.
+  return Object.fromEntries(
+    Object.entries(record).map(([key, val]) => {
+      const redactThis =
+        SENSITIVE_KEYS.has(key.toLowerCase()) ||
+        isSecretSettingKey(key) ||
+        (secretPair && key === 'value');
+      return [key, redactThis ? REDACTED : redactSensitive(val, depth + 1)];
+    }),
+  );
 }

@@ -48,6 +48,12 @@ async function fetchGuarded(initialUrl: string): Promise<Response> {
     await assertPublicUrl(target);
     let response: Response;
     try {
+      // `target` is re-validated by assertPublicUrl on EVERY hop of this loop:
+      // scheme, DNS resolution of all records, and private/link-local/metadata
+      // range checks (see ssrf-guard.util.ts). The one residual window — a DNS
+      // rebind between that lookup and this connection — is documented on
+      // assertPublicUrl; Node's global fetch cannot be handed a pinned lookup.
+      // lgtm[js/request-forgery]
       response = await fetch(target, {
         signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
         redirect: 'manual',

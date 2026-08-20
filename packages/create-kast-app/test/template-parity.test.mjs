@@ -622,3 +622,39 @@ test('the generated README documents the real first-run path', async () => {
     'SEED_DEV_ACCOUNTS is an opt-in phrase, not a boolean — documenting "1" sends operators down a path that exits 1',
   );
 });
+
+test('the scaffolder ships the monorepo security overrides', async () => {
+  // Generated projects install the same transitive graph as the monorepo, so
+  // a Dependabot pin that only lands in the root package.json protects nobody
+  // downstream. This is the guard that keeps the baked list honest: the
+  // monorepo's pnpm.overrides is the source of truth, the JSON the scaffolder
+  // renders from must match it key for key.
+  const repoPkg = JSON.parse(await readFile(join(REPO, 'package.json'), 'utf-8'));
+  const baked = JSON.parse(
+    await readFile(join(PKG, 'src', 'templates', 'security-overrides.json'), 'utf-8'),
+  );
+  assert.deepEqual(
+    Object.keys(baked),
+    Object.keys(repoPkg.pnpm?.overrides ?? {}),
+    'the scaffolder override list drifted from the monorepo pnpm.overrides — copy the monorepo list into src/templates/security-overrides.json',
+  );
+  assert.deepEqual(baked, repoPkg.pnpm?.overrides ?? {});
+
+  // pnpm >=10 run directly ignores package.json pnpm.* and reads only
+  // pnpm-workspace.yaml; the pinned pnpm 9 runner is the reverse. The monorepo
+  // therefore carries the pins in both places, and they must say exactly the
+  // same thing or protection depends on which pnpm happened to run.
+  const workspaceYaml = await readFile(join(REPO, 'pnpm-workspace.yaml'), 'utf-8');
+  const overridesBlock = /^overrides:\n((?: {2}.*\n?)+)/m.exec(workspaceYaml)?.[1] ?? '';
+  const yamlPins = Object.fromEntries(
+    [...overridesBlock.matchAll(/^ {2}(?:'([^']+)'|([^':\n]+)): (.+)$/gm)].map((m) => [
+      (m[1] ?? m[2]).trim(),
+      m[3],
+    ]),
+  );
+  assert.deepEqual(
+    yamlPins,
+    repoPkg.pnpm?.overrides ?? {},
+    'pnpm-workspace.yaml overrides must mirror package.json pnpm.overrides exactly — direct pnpm >=10 runners read only the yaml copy',
+  );
+});

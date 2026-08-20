@@ -5,3 +5,48 @@ packages:
 
 catalog:
   typescript: ^5.5.0
+
+# The pinned runner (packageManager: pnpm@9.0.0) reads the pins below from
+# package.json pnpm.overrides and ignores this copy; pnpm >=10 run directly
+# (an IDE, CI image, or delegation disabled) reads ONLY this copy and silently
+# skips package.json — leaving both would mean the security pins apply to some
+# runners and not others. The two lists must stay identical;
+# test/template-parity.test.mjs fails when they drift.
+overrides:
+  '@babel/core': ^7.29.6
+  '@hono/node-server': ^2.0.5
+  body-parser: ^2.3.0
+  'brace-expansion@1': ^1.1.18
+  'brace-expansion@>=4': ^5.0.9
+  deepmerge-ts: ^8.0.0
+  dompurify: ^3.4.13
+  esbuild: ^0.28.1
+  fast-uri: ^3.1.5
+  fast-xml-builder: ^1.1.7
+  form-data: ^4.0.6
+  icu-minify: ^4.9.2
+  'js-yaml@3': ^3.15.1
+  'js-yaml@4': ^4.3.1
+  lodash: ^4.18.1
+  multer: ^2.2.0
+  nanoid: ^3.3.17
+  next-intl: ^4.9.2
+  nodemailer: ^9.0.1
+  postcss: ^8.5.18
+  qs: ^6.15.2
+  sharp: ^0.35.0
+  svgo: ^4.0.2
+  undici: ^7.29.0
+  uuid: ^11.1.1
+  'yaml@>=2.0.0 <2.8.3': ^2.8.3
+
+onlyBuiltDependencies:
+  - '@parcel/watcher'
+  - '@prisma/client'
+  - '@prisma/engines'
+  - '@swc/core'
+  - argon2
+  - esbuild
+  - msgpackr-extract
+  - prisma
+  - sharp

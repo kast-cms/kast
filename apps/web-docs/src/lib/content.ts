@@ -111,6 +111,20 @@ export async function getChangelog(params: ListParams = {}): Promise<{
 }
 
 /**
+ * Strips tags in a loop until the output stops changing: a single pass over
+ * `<scr<script>ipt>` leaves a re-formed tag behind.
+ */
+function stripTags(html: string): string {
+  let out = html;
+  let prev: string;
+  do {
+    prev = out;
+    out = out.replace(/<[^>]*>/g, '');
+  } while (out !== prev);
+  return out;
+}
+
+/**
  * Extracts H2 and H3 headings from rich-text HTML for a table of contents.
  */
 export function extractToc(html: string): TocHeading[] {
@@ -120,7 +134,7 @@ export function extractToc(html: string): TocHeading[] {
 
   while ((match = re.exec(html)) !== null) {
     const level = parseInt((match[1] ?? 'h2').replace('h', ''), 10) as 2 | 3;
-    const text = (match[2] ?? '').replace(/<[^>]+>/g, '').trim();
+    const text = stripTags(match[2] ?? '').trim();
     const id = text
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
@@ -136,7 +150,7 @@ export function extractToc(html: string): TocHeading[] {
  */
 export function injectHeadingIds(html: string): string {
   return html.replace(/<(h[23])([^>]*)>(.*?)<\/\1>/gi, (_match, tag, attrs, content) => {
-    const text = content.replace(/<[^>]+>/g, '').trim();
+    const text = stripTags(content).trim();
     const id = text
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')

@@ -102,6 +102,13 @@ export async function getPostsByCategory(
 
 export function estimateReadTime(body: string): number {
   const wordsPerMinute = 200;
-  const words = body.replace(/<[^>]*>/g, '').split(/\s+/).length;
+  // Looped stripping: one pass over `<scr<script>ipt>` leaves a re-formed tag.
+  let text = body;
+  let prev: string;
+  do {
+    prev = text;
+    text = text.replace(/<[^>]*>/g, '');
+  } while (text !== prev);
+  const words = text.split(/\s+/).length;
   return Math.max(1, Math.ceil(words / wordsPerMinute));
 }
