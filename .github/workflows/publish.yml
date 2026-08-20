@@ -64,7 +64,7 @@ jobs:
             type=edge,branch=main
 
       - name: Build and push ${{ matrix.app }}
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ${{ matrix.dockerfile }}
