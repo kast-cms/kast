@@ -4,6 +4,7 @@
     "outDir": "dist",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "resolveJsonModule": true,
     "lib": ["ES2022"]
   },
   "include": ["src/**/*.ts", "tsup.config.ts"]

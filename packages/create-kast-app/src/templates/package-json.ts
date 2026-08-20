@@ -1,3 +1,5 @@
+import { jsonOverridesEntries, yamlOverridesEntries } from './security-overrides.js';
+
 export const PACKAGE_JSON_TEMPLATE = `{
   "name": "{{projectName}}",
   "private": true,
@@ -36,6 +38,9 @@ export const PACKAGE_JSON_TEMPLATE = `{
     "@commitlint/types": "^19.8.0"
   }{{#if isPnpmLegacyConfig}},
   "pnpm": {
+    "overrides": {
+${jsonOverridesEntries('      ')}
+    },
     "onlyBuiltDependencies": [
       "@parcel/watcher",
       "@prisma/client",
@@ -174,6 +179,9 @@ export const PACKAGE_JSON_API_ONLY_TEMPLATE = `{
     "testEnvironment": "node"
   }{{#if isPnpmLegacyConfig}},
   "pnpm": {
+    "overrides": {
+${jsonOverridesEntries('      ')}
+    },
     "onlyBuiltDependencies": [
       "@prisma/client",
       "@prisma/engines",
@@ -190,7 +198,13 @@ export const PACKAGE_JSON_API_ONLY_TEMPLATE = `{
  * A single-package pnpm 10+ project still needs pnpm-workspace.yaml, because
  * that is the only place those versions read build permissions from.
  */
-export const API_ONLY_WORKSPACE_TEMPLATE = `{{#if isPnpmOnlyBuilt}}onlyBuiltDependencies:
+export const API_ONLY_WORKSPACE_TEMPLATE = `# Security pins mirrored from the Kast monorepo's root package.json
+# (pnpm.overrides). test/template-parity.test.mjs fails if this list drifts
+# from the monorepo's.
+overrides:
+${yamlOverridesEntries()}
+
+{{#if isPnpmOnlyBuilt}}onlyBuiltDependencies:
   - '@prisma/client'
   - '@prisma/engines'
   - argon2
@@ -211,7 +225,14 @@ export const WORKSPACE_TEMPLATE = `{{#if isPnpm}}packages:
   - 'apps/*'
   - 'packages/*'
   - 'plugins/*'
-{{#if isPnpmOnlyBuilt}}
+{{#if isPnpmWorkspaceConfig}}
+# Security pins mirrored from the Kast monorepo's root package.json
+# (pnpm.overrides). pnpm 10+ reads overrides from this file; a pnpm 9 project
+# carries them in package.json instead. test/template-parity.test.mjs fails if
+# this list drifts from the monorepo's.
+overrides:
+${yamlOverridesEntries()}
+{{/if}}{{#if isPnpmOnlyBuilt}}
 # pnpm 10 reads this here rather than from package.json. Without it the build
 # scripts for argon2, sharp and Prisma are skipped and the API fails at runtime.
 onlyBuiltDependencies:
