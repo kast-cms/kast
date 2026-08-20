@@ -61,6 +61,11 @@ function redactObject(record: Record<string, unknown>, depth: number): Record<st
       (secretPair && key === 'value');
     // Keys come from request/response bodies, so a crafted `__proto__` key must
     // not reach assignment — defineProperty copies it as a plain own property.
+    // The copy's only consumer is the audit log (JSON-serialized into a Prisma
+    // JSON column): no lookups, no merges, no prototype source, so the key
+    // names themselves carry no privilege. Key preservation is the feature —
+    // the redactor must redact values under their original names.
+    // lgtm[js/remote-property-injection]
     Object.defineProperty(out, key, {
       value: redactThis ? REDACTED : redactSensitive(val, depth + 1),
       enumerable: true,
