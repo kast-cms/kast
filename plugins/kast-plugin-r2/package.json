@@ -9,11 +9,11 @@
   },
   "dependencies": {
     "@kast-cms/plugin-sdk": "workspace:*",
-    "@aws-sdk/client-s3": "^3.1072.0",
-    "@aws-sdk/s3-request-presigner": "^3.1072.0"
+    "@aws-sdk/client-s3": "^3.1112.0",
+    "@aws-sdk/s3-request-presigner": "^3.1112.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "typescript": "^5.5.0"
+    "typescript": "^7.0.2"
   }
 }
