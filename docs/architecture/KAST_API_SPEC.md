@@ -119,11 +119,11 @@ On limit exceeded: `429 RATE_LIMITED` with `Retry-After` header.
 
 #### Layer 3 — Auth
 
-| Endpoint type                        | Behavior                                                   |
-| ------------------------------------ | ---------------------------------------------------------- |
+| Endpoint type                      | Behavior                                                   |
+| ---------------------------------- | ---------------------------------------------------------- |
 | Protected (`🔑` `👁` `✏️` `🛡` `👑`) | JWT or API token required. Rejected with `401` if missing. |
-| Public (`🌐`) without key            | Layers 1 + 2 only. No auth check.                          |
-| Public (`🌐`) with `X-Kast-Key`      | Key validated. CORS bypassed. Higher rate limit applied.   |
+| Public (`🌐`) without key          | Layers 1 + 2 only. No auth check.                          |
+| Public (`🌐`) with `X-Kast-Key`    | Key validated. CORS bypassed. Higher rate limit applied.   |
 
 ---
 
@@ -140,9 +140,9 @@ SUPER_ADMIN > ADMIN > EDITOR > VIEWER
 | 🌐     | Public — CORS + rate limit only. Optional `X-Kast-Key` for server callers. |
 | 🌐❌   | Fully open — CORS exempt. Sitemap and health only.                         |
 | 🔑     | Any authenticated user                                                     |
-| 👁     | VIEWER or above                                                            |
+| 👁      | VIEWER or above                                                            |
 | ✏️     | EDITOR or above                                                            |
-| 🛡     | ADMIN or above                                                             |
+| 🛡      | ADMIN or above                                                             |
 | 👑     | SUPER_ADMIN only                                                           |
 
 ---
@@ -421,9 +421,10 @@ OAuth callback. Completes login and returns tokens.
 List all content types.
 
 **Query params:**
-| Param | Type | Description |
-|---|---|---|
-| `limit` | number | Default `50` |
+
+| Param    | Type   | Description       |
+| -------- | ------ | ----------------- |
+| `limit`  | number | Default `50`      |
 | `cursor` | string | Pagination cursor |
 
 **Response `200`:**
@@ -644,14 +645,15 @@ Remove a field from a content type.
 List entries of a content type. Includes drafts and trashed items for admin.
 
 **Query params:**
-| Param | Type | Description |
-|---|---|---|
-| `status` | `draft` \| `published` \| `archived` \| `trashed` | Filter by status |
-| `locale` | string | Filter by locale code |
-| `limit` | number | Default `20` |
-| `cursor` | string | Pagination cursor |
-| `order` | `asc` \| `desc` | Default `desc` |
-| `search` | string | Full-text search |
+
+| Param    | Type                                              | Description           |
+| -------- | ------------------------------------------------- | --------------------- |
+| `status` | `draft` \| `published` \| `archived` \| `trashed` | Filter by status      |
+| `locale` | string                                            | Filter by locale code |
+| `limit`  | number                                            | Default `20`          |
+| `cursor` | string                                            | Pagination cursor     |
+| `order`  | `asc` \| `desc`                                   | Default `desc`        |
+| `search` | string                                            | Full-text search      |
 
 **Response `200`:**
 
@@ -732,8 +734,9 @@ Create a new content entry as a draft.
 Get a single content entry with all locales and full field data.
 
 **Query params:**
-| Param | Type | Description |
-|---|---|---|
+
+| Param    | Type   | Description                          |
+| -------- | ------ | ------------------------------------ |
 | `locale` | string | Return data for specific locale only |
 
 **Response `200`:**
@@ -1010,12 +1013,13 @@ Add a new locale to an existing entry.
 List published entries of a content type.
 
 **Query params:**
-| Param | Type | Description |
-|---|---|---|
-| `locale` | string | Required. Return data in this locale |
-| `limit` | number | Default `20` |
-| `cursor` | string | Pagination cursor |
-| `order` | `asc` \| `desc` | Default `desc` |
+
+| Param    | Type            | Description                          |
+| -------- | --------------- | ------------------------------------ |
+| `locale` | string          | Required. Return data in this locale |
+| `limit`  | number          | Default `20`                         |
+| `cursor` | string          | Pagination cursor                    |
+| `order`  | `asc` \| `desc` | Default `desc`                       |
 
 **Response `200`:**
 
@@ -1053,9 +1057,10 @@ List published entries of a content type.
 Get a single published entry by its locale slug.
 
 **Query params:**
-| Param | Type | Description |
-|---|---|---|
-| `locale` | string | Required |
+
+| Param    | Type   | Description |
+| -------- | ------ | ----------- |
+| `locale` | string | Required    |
 
 **Response `200`:** Single entry in same shape as list item above.
 
@@ -1205,11 +1210,12 @@ Get historical SEO score records for an entry.
 List all redirect rules.
 
 **Query params:**
-| Param | Type | Description |
-|---|---|---|
+
+| Param      | Type    | Description             |
+| ---------- | ------- | ----------------------- |
 | `isActive` | boolean | Filter by active status |
-| `limit` | number | Default `20` |
-| `cursor` | string | Cursor |
+| `limit`    | number  | Default `20`            |
+| `cursor`   | string  | Cursor                  |
 
 **Response `200`:**
 
@@ -1310,12 +1316,13 @@ Bulk import redirects from a CSV file.
 List media files.
 
 **Query params:**
-| Param | Type | Description |
-|---|---|---|
-| `folderId` | string | Filter by folder |
+
+| Param      | Type   | Description             |
+| ---------- | ------ | ----------------------- |
+| `folderId` | string | Filter by folder        |
 | `mimeType` | string | e.g. `image/`, `video/` |
-| `limit` | number | Default `20` |
-| `cursor` | string | Cursor |
+| `limit`    | number | Default `20`            |
+| `cursor`   | string | Cursor                  |
 
 **Response `200`:**
 
@@ -1553,12 +1560,13 @@ Delete an empty folder.
 List all admin users.
 
 **Query params:**
-| Param | Type | Description |
-|---|---|---|
-| `role` | string | Filter by role name |
+
+| Param      | Type    | Description             |
+| ---------- | ------- | ----------------------- |
+| `role`     | string  | Filter by role name     |
 | `isActive` | boolean | Filter by active status |
-| `limit` | number | Default `20` |
-| `cursor` | string | Cursor |
+| `limit`    | number  | Default `20`            |
+| `cursor`   | string  | Cursor                  |
 
 **Response `200`:**
 
@@ -2769,18 +2777,19 @@ Get all public settings. **Public endpoint.** CORS-checked. Optional `X-Kast-Key
 List audit log entries.
 
 **Query params:**
-| Param | Type | Description |
-|---|---|---|
-| `userId` | string | Filter by user |
-| `agentTokenId` | string | Filter by AI agent |
-| `resource` | string | e.g. `ContentEntry`, `User` |
-| `resourceId` | string | Specific resource ID |
-| `action` | string | e.g. `content.publish` |
-| `isDryRun` | boolean | MCP dry-run entries only |
-| `from` | ISO date | Start of date range |
-| `to` | ISO date | End of date range |
-| `limit` | number | Default `20` |
-| `cursor` | string | Cursor |
+
+| Param          | Type     | Description                 |
+| -------------- | -------- | --------------------------- |
+| `userId`       | string   | Filter by user              |
+| `agentTokenId` | string   | Filter by AI agent          |
+| `resource`     | string   | e.g. `ContentEntry`, `User` |
+| `resourceId`   | string   | Specific resource ID        |
+| `action`       | string   | e.g. `content.publish`      |
+| `isDryRun`     | boolean  | MCP dry-run entries only    |
+| `from`         | ISO date | Start of date range         |
+| `to`           | ISO date | End of date range           |
+| `limit`        | number   | Default `20`                |
+| `cursor`       | string   | Cursor                      |
 
 **Response `200`:**
 
@@ -2825,11 +2834,12 @@ Export audit logs as CSV or JSON.
 List all trashed items across all resource types.
 
 **Query params:**
-| Param | Type | Description |
-|---|---|---|
+
+| Param      | Type   | Description                                 |
+| ---------- | ------ | ------------------------------------------- |
 | `resource` | string | `ContentEntry`, `MediaFile`, `User`, `Form` |
-| `limit` | number | Default `20` |
-| `cursor` | string | Cursor |
+| `limit`    | number | Default `20`                                |
+| `cursor`   | string | Cursor                                      |
 
 **Response `200`:**
 
