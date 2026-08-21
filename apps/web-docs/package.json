@@ -1,7 +1,7 @@
 {
   "name": "@kast-cms/web-docs",
   "version": "0.1.0",
-  "description": "Kast CMS — Next.js Docs Starter Template",
+  "description": "Kast CMS \u2014 Next.js Docs Starter Template",
   "private": true,
   "scripts": {
     "dev": "next dev --port 3003",
@@ -16,15 +16,15 @@
     "next": "^16.3.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "shiki": "^4.4.3"
+    "shiki": "^1.0.0"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "('^4.3.3', '    ')",
-    "@types/node": "('^26.2.0', '    ')",
-    "@types/react": "('^19.2.18', '    ')",
-    "@types/react-dom": "('^19.2.4', '    ')",
-    "tailwindcss": "('^4.3.3', '    ')",
-    "tsx": "('^4.23.12', '    ')",
-    "typescript": "('^7.0.2', '    ')"
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^26.2.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.12",
+    "typescript": "^5.0.0"
   }
 }

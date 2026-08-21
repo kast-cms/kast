@@ -39,10 +39,10 @@
     "multi-semantic-release": "^3.0.2",
     "prettier": "^3.9.6",
     "prettier-plugin-organize-imports": "^4.1.0",
-    "semantic-release": "('^25.0.9', '    ')",
-    "turbo": "('2.10.10', '    ')",
-    "typescript": "('^7.0.2', '    ')",
-    "typescript-eslint": "('^8.67.0', '    ')"
+    "semantic-release": "^24.0.0",
+    "turbo": "2.10.10",
+    "typescript": "^5.5.0",
+    "typescript-eslint": "^8.67.0"
   },
   "engines": {
     "node": ">=20",
