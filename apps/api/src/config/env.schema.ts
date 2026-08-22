@@ -103,6 +103,18 @@ const envSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   GITHUB_CLIENT_ID: z.string().optional(),
   GITHUB_CLIENT_SECRET: z.string().optional(),
+  /**
+   * Generic OpenID Connect provider (Entra, Okta, Keycloak, …). All four vars
+   * must be set together or the provider stays hidden; the issuer URL is the
+   * one whose /.well-known/openid-configuration is fetched server-side.
+   */
+  OIDC_ISSUER_URL: z.string().optional(),
+  OIDC_CLIENT_ID: z.string().optional(),
+  OIDC_CLIENT_SECRET: z.string().optional(),
+  /** Space- or comma-separated; the 'openid' scope is always sent. */
+  OIDC_SCOPES: z.string().default('openid email profile'),
+  /** Issuer label shown in authenticator apps for this install's TOTP codes. */
+  TOTP_ISSUER: z.string().default('Kast'),
   SITE_URL: z.string().default('http://localhost:3000'),
   /**
    * Public base URL of the admin panel, INCLUDING its base path. The Next.js

@@ -42,3 +42,4 @@ uploads/temp/
 # agent instructions, not project source. Commit them deliberately if wanted.
 apps/*/AGENTS.md
 apps/*/CLAUDE.md
+.zcode/

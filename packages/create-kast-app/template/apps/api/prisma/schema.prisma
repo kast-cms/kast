@@ -319,6 +319,15 @@ model User {
   isVerified    Boolean   @default(false)
   lastLoginAt   DateTime?
 
+  // TOTP two-factor. The secret is SecretEncryptionService ciphertext
+  // (enc:v1:…) while enabled OR mid-enrollment; recoveryCodes is a JSON array
+  // of SHA-256 hex hashes, each single-use. lastCounter is the newest TOTP
+  // timestep accepted, so a captured code cannot be replayed inside its window.
+  twoFactorSecret         String?
+  twoFactorEnabled        Boolean  @default(false)
+  twoFactorLastCounter    Int?
+  twoFactorRecoveryCodes  String?
+
   trashedAt        DateTime?
   trashedByUserId  String?
   preTrashIsActive Boolean?
@@ -430,7 +439,12 @@ model RefreshToken {
   tokenHash String    @unique
   expiresAt DateTime
   revokedAt DateTime?
-  createdAt DateTime  @default(now())
+  // Session metadata, captured at issue and refreshed on rotation, so the
+  // owner can recognise and revoke devices from the admin.
+  userAgent   String?
+  ipAddress   String?
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
 
   @@index([userId])
   @@map("refresh_tokens")
