@@ -50,6 +50,13 @@ enum ContentStatus {
   TRASHED
 }
 
+enum ContentReviewStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  CHANGES_REQUESTED
+}
+
 enum RedirectType {
   PERMANENT
   TEMPORARY
@@ -139,8 +146,14 @@ model ContentEntry {
   contentType   ContentType   @relation(fields: [contentTypeId], references: [id])
 
   status        ContentStatus @default(DRAFT)
+  reviewStatus  ContentReviewStatus @default(DRAFT)
   publishedAt   DateTime?
   scheduledAt   DateTime?
+  submittedAt   DateTime?
+  approvedAt    DateTime?
+  approvedById  String?
+  lockedById    String?
+  lockExpiresAt DateTime?
 
   isAiGenerated Boolean       @default(false)
 
@@ -164,6 +177,8 @@ model ContentEntry {
   updatedAt     DateTime      @updatedAt
 
   @@index([contentTypeId, status])
+  @@index([reviewStatus])
+  @@index([lockExpiresAt])
   @@index([trashedAt])
   @@index([scheduledAt])
   @@map("content_entries")
@@ -329,6 +344,9 @@ model User {
   apiTokens        ApiToken[]
   agentTokens      AgentToken[]
   passwordResetToken PasswordResetToken?
+  mfaSecret        String?
+  mfaEnabledAt     DateTime?
+  mfaRecoveryCodes String[]  @default([])
 
   auditLogs        AuditLog[]
   createdEntries   ContentEntry[]        @relation("CreatedEntries")
@@ -430,6 +448,9 @@ model RefreshToken {
   tokenHash String    @unique
   expiresAt DateTime
   revokedAt DateTime?
+  lastUsedAt DateTime?
+  userAgent String?
+  ipAddress String?
   createdAt DateTime  @default(now())
 
   @@index([userId])
@@ -491,6 +512,10 @@ model MediaFile {
   optimizedSize      Int?
   thumbnailSize      Int          @default(0)
   thumbnails         Json         @default("{}")
+  variantSize        Int          @default(0)
+  variants           Json         @default("{}")
+  focalPoint         Json?
+  deliveryTransforms Json         @default("{}")
 
   width         Int?
   height        Int?
@@ -831,4 +856,3 @@ model GlobalSetting {
   @@index([group])
   @@map("global_settings")
 }
-

@@ -34,7 +34,12 @@
       "forgotPassword": "نسيت كلمة المرور؟",
       "orContinueWith": "أو تابع عبر",
       "continueWithGoogle": "تابع مع Google",
-      "continueWithGitHub": "تابع مع GitHub"
+      "continueWithGitHub": "تابع مع GitHub",
+      "continueWithOidc": "تابع عبر OIDC",
+      "mfaCodeLabel": "رمز المصادقة",
+      "mfaCodePlaceholder": "123456 أو رمز استرداد",
+      "verifyMfa": "تحقق",
+      "useDifferentAccount": "استخدم حسابًا آخر"
     },
     "forgotPassword": {
       "title": "نسيت كلمة المرور؟",

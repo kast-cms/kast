@@ -34,7 +34,6 @@ import {
 import type { Response } from 'express';
 import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import type { AuthUser, PaginatedResult } from '../../common/types/auth.types';
 import { ListMediaDto } from './dto/list-media.dto';
@@ -175,7 +174,8 @@ export class MediaController {
   }
 
   @Get(':id/renditions/:name')
-  @Public()
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.VIEWER, SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Redirect to a named media rendition' })
   async rendition(
     @Param('id') id: string,

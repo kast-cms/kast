@@ -32,7 +32,13 @@ export class MediaFileController {
     const storageKey = Array.isArray(key) ? key.join('/') : key;
     const sourceKey = storageKey.startsWith('thumbs/')
       ? storageKey.split('/').slice(2).join('/')
-      : storageKey;
+      : storageKey.startsWith('variants/')
+        ? storageKey
+            .split('/')
+            .slice(2)
+            .join('/')
+            .replace(/\.webp$/, '')
+        : storageKey;
     if (!(await this.repo.findActiveByStorageKey(sourceKey))) {
       throw new NotFoundException('Not found');
     }

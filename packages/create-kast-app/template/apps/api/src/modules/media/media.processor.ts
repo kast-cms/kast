@@ -4,7 +4,7 @@ import type { Job } from 'bullmq';
 import sharp from 'sharp';
 import { QUEUE_NAMES } from '../queue/queue.constants';
 import { MediaRepository } from './media.repository';
-import { THUMBNAIL_WIDTHS } from './storage/derived-keys.util';
+import { MEDIA_VARIANTS, THUMBNAIL_WIDTHS, variantStorageKey } from './storage/derived-keys.util';
 import type { StorageAdapter } from './storage/storage.adapter';
 
 export const STORAGE_ADAPTER = 'STORAGE_ADAPTER';
@@ -20,6 +20,7 @@ const RASTER_TYPES = new Set([
   'image/jpg',
   'image/png',
   'image/gif',
+  'image/webp',
   'image/bmp',
   'image/tiff',
 ]);
@@ -41,6 +42,8 @@ export class MediaProcessor extends WorkerHost {
         return this.handleOptimize(job.data);
       case 'thumbnail':
         return this.handleThumbnail(job.data);
+      case 'variants':
+        return this.handleVariants(job.data);
       default:
         this.logger.warn(`Unknown media job: ${String(job.name)}`);
     }
@@ -99,5 +102,63 @@ export class MediaProcessor extends WorkerHost {
       this.logger.error(`Failed to generate thumbnails for ${mediaFileId}`, err);
       throw err;
     }
+  }
+
+  private async handleVariants(data: MediaJobData): Promise<void> {
+    const { mediaFileId, storageKey, mimeType } = data;
+    if (!RASTER_TYPES.has(mimeType)) {
+      this.logger.debug(`Skipping variants for non-raster: ${mimeType}`);
+      return;
+    }
+    const media = await this.repo.findByIdIncludingTrashed(mediaFileId);
+    if (!media || media.trashedAt) return;
+    const sourceKey = media.originalStorageKey ?? storageKey;
+    const focalPoint = this.focalPoint(media.focalPoint);
+    const original = await this.storage.read(sourceKey);
+    const variants: Record<
+      string,
+      { url: string; size: number; width: number; height: number; mimeType: string }
+    > = {};
+    let variantSize = 0;
+    for (const [name, spec] of Object.entries(MEDIA_VARIANTS)) {
+      const variantBuffer = await sharp(original)
+        .resize(spec.width, spec.height, { fit: 'cover', position: this.cropPosition(focalPoint) })
+        .webp({ quality: 82 })
+        .toBuffer();
+      const { url } = await this.storage.upload(
+        variantStorageKey(name, sourceKey),
+        variantBuffer,
+        'image/webp',
+      );
+      variants[name] = {
+        url,
+        size: variantBuffer.length,
+        width: spec.width,
+        height: spec.height,
+        mimeType: 'image/webp',
+      };
+      variantSize += variantBuffer.length;
+    }
+    await this.repo.update(mediaFileId, {
+      variants,
+      variantSize,
+      deliveryTransforms: { mode: 'precomputed', names: Object.keys(MEDIA_VARIANTS) },
+    });
+  }
+
+  private focalPoint(value: unknown): { x: number; y: number } | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const record = value as Record<string, unknown>;
+    const x = Number(record['x']);
+    const y = Number(record['y']);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    return { x: Math.min(1, Math.max(0, x)), y: Math.min(1, Math.max(0, y)) };
+  }
+
+  private cropPosition(point: { x: number; y: number } | null): string {
+    if (!point) return 'center';
+    const horizontal = point.x < 0.33 ? 'west' : point.x > 0.67 ? 'east' : '';
+    const vertical = point.y < 0.33 ? 'north' : point.y > 0.67 ? 'south' : '';
+    return `${vertical}${horizontal}` || 'center';
   }
 }

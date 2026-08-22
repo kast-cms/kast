@@ -6,6 +6,7 @@ import {
 import type { ConfigService } from '@nestjs/config';
 import type { JwtService } from '@nestjs/jwt';
 import type { Response } from 'express';
+import type { SecretEncryptionService } from '../../common/security/secret-encryption.service';
 import type { TokenPair } from '../../common/types/auth.types';
 import type { Env } from '../../config/env.schema';
 import type { QueueAdapter } from '../queue/queue.adapter';
@@ -40,6 +41,10 @@ function buildPolicy(): OAuthPolicy {
   } as unknown as OAuthPolicy;
 }
 
+function buildSecrets(): SecretEncryptionService {
+  return {} as unknown as SecretEncryptionService;
+}
+
 function buildQueue(): QueueAdapter {
   const values = new Map<string, { value: string; expiresAt: number }>();
   return {
@@ -71,6 +76,7 @@ describe('OAuth authorization-code exchange', () => {
       {} as unknown as JwtService,
       buildQueue(),
       buildPolicy(),
+      buildSecrets(),
     );
   });
 
@@ -187,6 +193,7 @@ describe('OAuth authorization-code exchange', () => {
         {} as unknown as JwtService,
         buildQueue(),
         buildPolicy(),
+        buildSecrets(),
       );
 
       await expect(

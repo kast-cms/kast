@@ -9,43 +9,70 @@ import { SeparatorWithLabel } from '@/components/ui/separator';
 import { adminRoute, API_URL } from '@/config/env';
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
-import type { TokenPair } from '@/types';
+import type { LoginResult, MfaChallenge, TokenPair } from '@/types';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { type JSX, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { type JSX, useEffect, useState } from 'react';
 
 export default function LoginPage(): JSX.Element {
   const t = useTranslations('auth.login');
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { setSession } = useSession();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [mfaCode, setMfaCode] = useState('');
+  const [challenge, setChallenge] = useState<MfaChallenge | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
+
+  useEffect(() => {
+    const challengeToken = searchParams.get('challenge');
+    if (!challengeToken) return;
+    const challengeEmail = searchParams.get('email') ?? '';
+    setChallenge({
+      mfaRequired: true,
+      challengeToken,
+      expiresIn: 300,
+      user: { id: '', email: challengeEmail, firstName: null, lastName: null, roles: [] },
+    });
+  }, [searchParams]);
+
+  async function establishSession(pair: TokenPair): Promise<void> {
+    await fetch(adminRoute('/api/auth/set-session'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken: pair.refreshToken }),
+    });
+    setSession(pair);
+    router.push('/content-types');
+  }
+
+  function isMfaChallenge(result: LoginResult): result is MfaChallenge {
+    return 'mfaRequired' in result && result.mfaRequired;
+  }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     setError(null);
     setIsPending(true);
-
     try {
       const client = createApiClient();
-      const res = (await client.auth.login(email, password)) as { data: TokenPair };
-      const pair = res.data;
-
-      // Persist refresh token in HttpOnly cookie via server route
-      await fetch(adminRoute('/api/auth/set-session'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken: pair.refreshToken }),
-      });
-
-      // Store access token in memory via session context
-      setSession(pair);
-
-      router.push('/content-types');
+      if (challenge) {
+        const res = await client.auth.completeMfaChallenge(challenge.challengeToken, mfaCode);
+        await establishSession(res.data as TokenPair);
+        return;
+      }
+      const res = (await client.auth.login(email, password)) as { data: LoginResult };
+      const result = res.data;
+      if (isMfaChallenge(result)) {
+        setChallenge(result);
+        setMfaCode('');
+        return;
+      }
+      await establishSession(result);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : '';
       const isUnauthorized = (err as { status?: number }).status === 401 || message.includes('401');
@@ -76,46 +103,81 @@ export default function LoginPage(): JSX.Element {
               {t('continueWithGitHub')}
             </a>
           </Button>
+          <Button variant="outline" className="w-full" asChild>
+            <a href={`${API_URL}/api/v1/auth/oauth/oidc`}>{t('continueWithOidc')}</a>
+          </Button>
         </div>
 
         <SeparatorWithLabel>{t('orContinueWith')}</SeparatorWithLabel>
 
         <form onSubmit={(e) => void handleSubmit(e)} noValidate className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="email">{t('emailLabel')}</Label>
-            <Input
-              id="email"
-              type="email"
-              autoComplete="email"
-              placeholder={t('emailPlaceholder')}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              disabled={isPending}
-            />
-          </div>
+          {!challenge && (
+            <>
+              <div className="space-y-1.5">
+                <Label htmlFor="email">{t('emailLabel')}</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder={t('emailPlaceholder')}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  disabled={isPending}
+                />
+              </div>
 
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between gap-2">
-              <Label htmlFor="password">{t('passwordLabel')}</Label>
-              <Link
-                href="/forgot-password"
-                className="rounded-sm text-xs font-medium text-muted-foreground transition-colors duration-150 ease-out-quad hover:text-foreground"
-              >
-                {t('forgotPassword')}
-              </Link>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="password">{t('passwordLabel')}</Label>
+                  <Link
+                    href="/forgot-password"
+                    className="rounded-sm text-xs font-medium text-muted-foreground transition-colors duration-150 ease-out-quad hover:text-foreground"
+                  >
+                    {t('forgotPassword')}
+                  </Link>
+                </div>
+                <Input
+                  id="password"
+                  type="password"
+                  autoComplete="current-password"
+                  placeholder={t('passwordPlaceholder')}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={isPending}
+                />
+              </div>
+            </>
+          )}
+
+          {challenge && (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="mfa-code">{t('mfaCodeLabel')}</Label>
+                <button
+                  type="button"
+                  className="rounded-sm text-xs font-medium text-muted-foreground transition-colors duration-150 ease-out-quad hover:text-foreground"
+                  onClick={() => {
+                    setChallenge(null);
+                    setMfaCode('');
+                  }}
+                >
+                  {t('useDifferentAccount')}
+                </button>
+              </div>
+              <Input
+                id="mfa-code"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                placeholder={t('mfaCodePlaceholder')}
+                value={mfaCode}
+                onChange={(e) => setMfaCode(e.target.value)}
+                required
+                disabled={isPending}
+              />
             </div>
-            <Input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              placeholder={t('passwordPlaceholder')}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              disabled={isPending}
-            />
-          </div>
+          )}
 
           {error !== null && (
             <Alert variant="destructive">
@@ -124,7 +186,7 @@ export default function LoginPage(): JSX.Element {
           )}
 
           <Button type="submit" className="w-full" loading={isPending}>
-            {isPending ? t('submitting') : t('submit')}
+            {isPending ? t('submitting') : challenge ? t('verifyMfa') : t('submit')}
           </Button>
         </form>
       </CardContent>

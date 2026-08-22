@@ -34,7 +34,12 @@
       "forgotPassword": "Forgot password?",
       "orContinueWith": "Or continue with",
       "continueWithGoogle": "Continue with Google",
-      "continueWithGitHub": "Continue with GitHub"
+      "continueWithGitHub": "Continue with GitHub",
+      "continueWithOidc": "Continue with OIDC",
+      "mfaCodeLabel": "Authentication code",
+      "mfaCodePlaceholder": "123456 or recovery code",
+      "verifyMfa": "Verify",
+      "useDifferentAccount": "Use a different account"
     },
     "forgotPassword": {
       "title": "Forgot your password?",

@@ -1540,7 +1540,7 @@ Update media file metadata.
 
 ---
 
-### GET /api/v1/media/:id/renditions/:name 🌐
+### GET /api/v1/media/:id/renditions/:name 👁
 
 Redirect to a pre-generated named image rendition. Built-in names are
 `thumbnail`, `card`, and `hero`; raster uploads are rendered as WebP. Updating a

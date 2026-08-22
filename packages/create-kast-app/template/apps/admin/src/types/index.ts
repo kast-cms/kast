@@ -7,6 +7,15 @@ export interface TokenPair {
   user: SessionUser;
 }
 
+export interface MfaChallenge {
+  mfaRequired: true;
+  challengeToken: string;
+  expiresIn: number;
+  user: SessionUser;
+}
+
+export type LoginResult = TokenPair | MfaChallenge;
+
 export interface SessionUser {
   id: string;
   email: string;
