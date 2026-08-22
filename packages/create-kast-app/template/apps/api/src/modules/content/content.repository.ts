@@ -79,7 +79,7 @@ export class ContentRepository {
 
   findAllForExport(contentTypeId: string): Promise<EntryExportRow[]> {
     return this.prisma.contentEntry.findMany({
-      where: { contentTypeId },
+      where: { contentTypeId, trashedAt: null },
       include: {
         locales: { orderBy: { localeCode: 'asc' } },
         versions: { orderBy: { versionNumber: 'asc' } },

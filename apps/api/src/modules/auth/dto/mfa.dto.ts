@@ -1,5 +1,5 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, MinLength } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsString, MinLength } from 'class-validator';
 
 export class VerifyMfaSetupDto {
   @ApiProperty({ description: 'Base32 TOTP secret returned by setup start' })
@@ -37,10 +37,4 @@ export class MfaCodeDto {
   @ApiProperty({ description: 'Six-digit TOTP code or one recovery code' })
   @IsString()
   code!: string;
-}
-
-export class RevokeSessionDto {
-  @ApiPropertyOptional({ description: 'Keep the current browser session when possible' })
-  @IsOptional()
-  keepCurrent?: boolean;
 }

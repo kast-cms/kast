@@ -31,6 +31,7 @@ import {
   generateRecoveryCodes,
   generateTotpSecret,
   normalizeRecoveryCode,
+  normalizeRecoveryCodeForVerification,
   verifyTotp,
 } from './mfa-totp.util';
 import { OAuthPolicy } from './oauth-policy';
@@ -484,19 +485,17 @@ export class AuthService {
     code: string,
   ): Promise<void> {
     if (!user.mfaSecret) throw new UnauthorizedException('MFA is not enabled');
-    if (/^\s*\d{6}\s*$/.test(code) && verifyTotp(this.secrets.decrypt(user.mfaSecret), code))
-      return;
+    if (verifyTotp(this.secrets.decrypt(user.mfaSecret), code)) return;
 
-    const normalized = normalizeRecoveryCode(code);
-    if (normalized.length > 0) {
-      for (const hash of user.mfaRecoveryCodes ?? []) {
-        if (await argon2.verify(hash, normalized)) {
-          await this.authRepository.updateMfaRecoveryCodes(
-            user.id,
-            (user.mfaRecoveryCodes ?? []).filter((item) => item !== hash),
-          );
-          return;
-        }
+    const recoveryCode = normalizeRecoveryCodeForVerification(code);
+    const recoveryCodeHashes = user.mfaRecoveryCodes ?? [];
+    for (const hash of recoveryCodeHashes) {
+      if (await argon2.verify(hash, recoveryCode)) {
+        await this.authRepository.updateMfaRecoveryCodes(
+          user.id,
+          recoveryCodeHashes.filter((item) => item !== hash),
+        );
+        return;
       }
     }
     throw new UnauthorizedException('Invalid MFA code');

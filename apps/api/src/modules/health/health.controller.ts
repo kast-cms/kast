@@ -1,7 +1,7 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { Controller, Get, Header } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   HealthCheck,
   HealthCheckResult,
@@ -10,7 +10,9 @@ import {
   type HealthIndicatorResult,
 } from '@nestjs/terminus';
 import type { Queue } from 'bullmq';
+import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
 import { Public } from '../../common/decorators/public.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
 import type { Env } from '../../config/env.schema';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QUEUE_NAMES } from '../queue/queue.constants';
@@ -59,13 +61,14 @@ export class HealthController {
   }
 
   @Get('metrics')
-  @Public()
+  @Roles(SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
+  @ApiBearerAuth()
   @Header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
   @ApiOperation({ summary: 'Prometheus metrics' })
   async metrics(): Promise<string> {
     const [users, contentEntries, mediaFiles, queueMetrics] = await Promise.all([
       this.prisma.user.count(),
-      this.prisma.contentEntry.count(),
+      this.prisma.contentEntry.count({ where: { trashedAt: null } }),
       this.prisma.mediaFile.count({ where: { trashedAt: null } }),
       this.collectQueueMetrics(),
     ]);

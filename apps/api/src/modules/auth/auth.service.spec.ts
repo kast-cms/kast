@@ -69,6 +69,8 @@ describe('AuthService', () => {
       consumePasswordResetToken: jest.fn().mockResolvedValue('u1'),
       countUsers: jest.fn().mockResolvedValue(0),
       createInitialOwner: jest.fn(),
+      updateMfa: jest.fn().mockResolvedValue(undefined),
+      updateMfaRecoveryCodes: jest.fn().mockResolvedValue(undefined),
     } as unknown as Mocked<AuthRepository>;
 
     jwt = { signAsync: jest.fn().mockResolvedValue('access-jwt') } as unknown as Mocked<JwtService>;
@@ -242,6 +244,43 @@ describe('AuthService', () => {
       repo.findRefreshToken.mockResolvedValue(null);
       await service.logout('tok');
       expect(repo.revokeRefreshToken).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('MFA challenges', () => {
+    beforeEach(() => {
+      queue.consumeEphemeral.mockResolvedValue(JSON.stringify({ userId: 'u1' }));
+      repo.findUserById.mockResolvedValue(
+        buildUser({
+          mfaSecret: 'JBSWY3DPEHPK3PXP',
+          mfaEnabledAt: new Date(),
+          mfaRecoveryCodes: ['hash-1', 'hash-2'],
+        }),
+      );
+    });
+
+    it('checks stored recovery-code hashes even when the submitted code is malformed', async () => {
+      const verifySpy = jest.spyOn(argon2, 'verify').mockResolvedValue(false);
+
+      await expect(service.completeMfaChallenge('challenge-token', '---')).rejects.toThrow(
+        UnauthorizedException,
+      );
+
+      expect(verifySpy).toHaveBeenCalledTimes(2);
+      expect(repo.updateMfaRecoveryCodes).not.toHaveBeenCalled();
+      expect(repo.createRefreshToken).not.toHaveBeenCalled();
+    });
+
+    it('normalizes and consumes a matching recovery code once', async () => {
+      jest.spyOn(argon2, 'verify').mockImplementation(async (hash, value) => {
+        return hash === 'hash-2' && value === 'ABCD1234EF56';
+      });
+
+      const result = await service.completeMfaChallenge('challenge-token', 'abcd-1234-ef56');
+
+      expectTokenPair(result);
+      expect(repo.updateMfaRecoveryCodes).toHaveBeenCalledWith('u1', ['hash-1']);
+      expect(repo.updateLastLogin).toHaveBeenCalledWith('u1');
     });
   });
 

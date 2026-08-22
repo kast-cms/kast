@@ -4,6 +4,8 @@ const TOTP_DIGITS = 6;
 const TOTP_PERIOD_SECONDS = 30;
 const TOTP_WINDOW = 1;
 const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+const RECOVERY_CODE_LENGTH = 12;
+const INVALID_RECOVERY_CODE_CANDIDATE = 'invalid-recovery-code-candidate';
 
 export function generateTotpSecret(): string {
   return base32Encode(randomBytes(20));
@@ -38,7 +40,23 @@ export function generateRecoveryCodes(count = 10): string[] {
 }
 
 export function normalizeRecoveryCode(code: string): string {
-  return code.replace(/[^a-z0-9]/gi, '').toUpperCase();
+  let normalized = '';
+  for (let index = 0; index < code.length; index += 1) {
+    const charCode = code.charCodeAt(index);
+    if (charCode >= 48 && charCode <= 57) {
+      normalized += String.fromCharCode(charCode);
+    } else if (charCode >= 65 && charCode <= 90) {
+      normalized += String.fromCharCode(charCode);
+    } else if (charCode >= 97 && charCode <= 122) {
+      normalized += String.fromCharCode(charCode - 32);
+    }
+  }
+  return normalized;
+}
+
+export function normalizeRecoveryCodeForVerification(code: string): string {
+  const normalized = normalizeRecoveryCode(code);
+  return isRecoveryCodeFormat(normalized) ? normalized : INVALID_RECOVERY_CODE_CANDIDATE;
 }
 
 function hotp(secret: string, counter: number): string {
@@ -86,7 +104,7 @@ function base32Decode(secret: string): Buffer {
   let bits = 0;
   let value = 0;
   const bytes: number[] = [];
-  for (const char of secret.replace(/=+$/g, '').toUpperCase()) {
+  for (const char of trimBase32Padding(secret).toUpperCase()) {
     const index = BASE32_ALPHABET.indexOf(char);
     if (index === -1) continue;
     value = (value << 5) | index;
@@ -97,4 +115,21 @@ function base32Decode(secret: string): Buffer {
     }
   }
   return Buffer.from(bytes);
+}
+
+function isRecoveryCodeFormat(value: string): boolean {
+  if (value.length !== RECOVERY_CODE_LENGTH) return false;
+  for (let index = 0; index < value.length; index += 1) {
+    const charCode = value.charCodeAt(index);
+    const isDigit = charCode >= 48 && charCode <= 57;
+    const isHexLetter = charCode >= 65 && charCode <= 70;
+    if (!isDigit && !isHexLetter) return false;
+  }
+  return true;
+}
+
+function trimBase32Padding(secret: string): string {
+  let end = secret.length;
+  while (end > 0 && secret.charCodeAt(end - 1) === 61) end -= 1;
+  return secret.slice(0, end);
 }
