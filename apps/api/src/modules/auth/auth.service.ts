@@ -8,7 +8,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import type { User } from '@prisma/client';
 import * as argon2 from 'argon2';
-import { createHash, randomBytes, randomUUID } from 'crypto';
+import { createHmac, randomBytes, randomUUID } from 'crypto';
 import { SecretEncryptionService } from '../../common/security/secret-encryption.service';
 import type {
   LoginResult,
@@ -43,6 +43,7 @@ const OAUTH_CODE_TTL_MS = 60_000;
 const OAUTH_STATE_TTL_MS = 10 * 60_000;
 /** A password-verified MFA challenge should only survive one prompt. */
 const MFA_CHALLENGE_TTL_MS = 5 * 60_000;
+const OPAQUE_TOKEN_LOOKUP_KEY = 'kast-opaque-token-lookup-v1';
 
 export interface RequestMetadata {
   userAgent?: string;
@@ -349,11 +350,8 @@ export class AuthService {
   }
 
   /**
-   * Unsalted SHA-256 is deliberate here: the code is 32 random bytes whose
-   * hash is the lookup key for a 60-second ephemeral entry, so it needs a
-   * deterministic function — a salted or password-hashing construction would
-   * make the exchange lookup impossible. Brute-forcing 256 bits of entropy is
-   * out of scope for any adversary who could read the store.
+   * The code is 32 random bytes whose keyed digest is only the lookup key for a
+   * 60-second ephemeral entry, so this must stay deterministic for exchange.
    */
   private hashOAuthCode(code: string): string {
     return this.hashOpaqueToken(code);
@@ -506,7 +504,7 @@ export class AuthService {
   }
 
   private hashOpaqueToken(token: string): string {
-    return createHash('sha256').update(token).digest('hex');
+    return createHmac('sha256', OPAQUE_TOKEN_LOOKUP_KEY).update(token).digest('hex');
   }
 
   async forgotPassword(email: string): Promise<void> {
