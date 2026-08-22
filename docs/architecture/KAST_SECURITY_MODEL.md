@@ -174,21 +174,35 @@ interface JwtPayload {
 | API token (`kast_...`)        | Configurable or never       | Client — hash in DB                            |
 | Agent token (`kastagent_...`) | No expiry (revoke manually) | Client — hash in DB                            |
 
-### OAuth Flow
+### MFA
+
+Users can enable TOTP MFA from the admin security settings. The encrypted TOTP
+secret is stored on the user row, and recovery codes are stored as Argon2id
+hashes. Once enabled, password and OAuth/OIDC login first issue a short-lived
+opaque MFA challenge, then mint the normal token pair only after a valid TOTP or
+unused recovery code.
+
+### OAuth / OIDC Flow
 
 ```
-User clicks "Login with Google"
+User clicks "Login with Google, GitHub, or configured OIDC"
         ↓
-GET /auth/oauth/google → redirect to Google
+GET /auth/oauth/:provider → redirect to provider
         ↓
-Google redirects to /auth/oauth/google/callback
+Provider redirects to /auth/oauth/:provider/callback
         ↓
 [find or create User by email + OAuthAccount record]
         ↓
-Issue same accessToken + refreshToken pair as password login
+Issue same MFA challenge or accessToken + refreshToken pair as password login
 ```
 
-OAuth does not create separate session types. All flows converge on the same JWT.
+Google and GitHub use the provider strategy. Generic OIDC is configured with
+`OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_AUTHORIZATION_URL`,
+`OIDC_TOKEN_URL`, `OIDC_USERINFO_URL`, and optional `OIDC_SCOPES`.
+
+OAuth does not create separate session types. All flows converge on the same JWT
+and refresh-token session rows. The admin can list active sessions and revoke one
+or all refresh tokens for the current account.
 
 ---
 

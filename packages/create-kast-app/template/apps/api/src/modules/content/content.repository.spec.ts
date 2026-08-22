@@ -37,6 +37,7 @@ describe('ContentRepository', () => {
       $transaction: jest.fn((cb: (client: unknown) => unknown) => cb(tx)),
       contentEntry: {
         findFirst: jest.fn().mockResolvedValue(null),
+        findMany: jest.fn().mockResolvedValue([]),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       contentEntryLocale: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
@@ -76,6 +77,13 @@ describe('ContentRepository', () => {
       await repo.trash('e1', 'ct1');
       expect(updateMany()).toHaveBeenCalledWith(
         expect.objectContaining({ where: { id: 'e1', contentTypeId: 'ct1' } }),
+      );
+    });
+
+    it('excludes trashed entries from export bundles', async () => {
+      await repo.findAllForExport('ct1');
+      expect(mockOf(prisma, 'contentEntry', 'findMany')).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { contentTypeId: 'ct1', trashedAt: null } }),
       );
     });
 

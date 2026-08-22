@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import {
   BadRequestException,
   Injectable,
@@ -8,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import type { MediaFile } from '@prisma/client';
+import { Prisma, type MediaFile } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import sharp from 'sharp';
 import type { PaginatedResult } from '../../common/types/auth.types';
@@ -40,12 +41,27 @@ const OPTIMIZE_RASTER_TYPES = new Set([
   'image/bmp',
   'image/tiff',
 ]);
+const RENDITION_RASTER_TYPES = new Set([...OPTIMIZE_RASTER_TYPES, 'image/webp']);
 
-export interface MediaFileView extends Omit<MediaFile, 'thumbnails'> {
+export interface MediaFileView extends Omit<
+  MediaFile,
+  'thumbnails' | 'variants' | 'focalPoint' | 'deliveryTransforms'
+> {
   folder: { id: string; name: string } | null;
   usagesCount: number;
   thumbnails: Record<string, { url: string; size: number }>;
+  variants: Record<string, MediaVariant>;
+  focalPoint: { x: number; y: number } | null;
+  deliveryTransforms: Record<string, unknown>;
   totalSize: number;
+}
+
+export interface MediaVariant {
+  url: string;
+  size: number;
+  width: number;
+  height: number;
+  mimeType: string;
 }
 
 export interface MediaFileDetailView extends MediaFileView {
@@ -164,20 +180,30 @@ export class MediaService {
     storageKey: string,
     mimeType: string,
   ): Promise<void> {
-    if (!OPTIMIZE_RASTER_TYPES.has(mimeType)) return;
+    if (!RENDITION_RASTER_TYPES.has(mimeType)) return;
     const jobData: MediaJobData = { mediaFileId, storageKey, mimeType };
-    await Promise.all([
-      this.queue.enqueue(QUEUE_NAMES.MEDIA, 'optimize', jobData, {
-        attempts: 3,
-        jobId: `media-optimize-${mediaFileId}`,
-        removeOnComplete: true,
-      }),
+    const jobs = [
       this.queue.enqueue(QUEUE_NAMES.MEDIA, 'thumbnail', jobData, {
         attempts: 3,
         jobId: `media-thumbnail-${mediaFileId}`,
         removeOnComplete: true,
       }),
-    ]);
+      this.queue.enqueue(QUEUE_NAMES.MEDIA, 'variants', jobData, {
+        attempts: 3,
+        jobId: `media-variants-${mediaFileId}`,
+        removeOnComplete: true,
+      }),
+    ];
+    if (OPTIMIZE_RASTER_TYPES.has(mimeType)) {
+      jobs.unshift(
+        this.queue.enqueue(QUEUE_NAMES.MEDIA, 'optimize', jobData, {
+          attempts: 3,
+          jobId: `media-optimize-${mediaFileId}`,
+          removeOnComplete: true,
+        }),
+      );
+    }
+    await Promise.all(jobs);
   }
 
   async findAll(query: ListMediaDto): Promise<PaginatedResult<MediaFileView>> {
@@ -198,11 +224,43 @@ export class MediaService {
 
   async update(
     id: string,
-    data: { altText?: string; caption?: string; folderId?: string },
+    data: {
+      altText?: string;
+      caption?: string;
+      folderId?: string;
+      focalPoint?: { x: number; y: number } | null;
+    },
   ): Promise<{ data: MediaFileDetailView }> {
-    await this.findById(id);
-    await this.repo.update(id, data);
+    const existing = await this.findById(id);
+    const updateData: Prisma.MediaFileUpdateInput = {};
+    if (data.altText !== undefined) updateData.altText = data.altText;
+    if (data.caption !== undefined) updateData.caption = data.caption;
+    if (data.folderId !== undefined) updateData.folder = { connect: { id: data.folderId } };
+    const focalPoint =
+      data.focalPoint === undefined ? undefined : this.normalizeFocalPoint(data.focalPoint);
+    if (focalPoint !== undefined) updateData.focalPoint = focalPoint ?? Prisma.JsonNull;
+    await this.repo.update(id, updateData);
+    if (focalPoint !== undefined && existing.data.originalStorageKey) {
+      await this.queue.enqueue(
+        QUEUE_NAMES.MEDIA,
+        'variants',
+        {
+          mediaFileId: id,
+          storageKey: existing.data.originalStorageKey,
+          mimeType: existing.data.mimeType,
+        },
+        { attempts: 3, jobId: `media-variants-${id}`, removeOnComplete: true },
+      );
+    }
     return this.findById(id);
+  }
+
+  async getRendition(id: string, name: string): Promise<MediaVariant> {
+    const media = await this.repo.findById(id);
+    if (!media) throw new NotFoundException(`Media ${id} not found`);
+    const variant = this.parseVariants(media.variants)[name];
+    if (!variant) throw new NotFoundException(`Media rendition ${name} not found`);
+    return variant;
   }
 
   /**
@@ -316,11 +374,19 @@ export class MediaService {
   private toView(row: MediaListRow): MediaFileView {
     const { _count, ...file } = row;
     const thumbnails = this.parseThumbnails(file.thumbnails);
+    const variants = this.parseVariants(file.variants);
     return {
       ...file,
       thumbnails,
+      variants,
+      focalPoint: this.parseFocalPoint(file.focalPoint),
+      deliveryTransforms: this.parseRecord(file.deliveryTransforms),
       usagesCount: _count.usages,
-      totalSize: (file.originalSize ?? file.size) + (file.optimizedSize ?? 0) + file.thumbnailSize,
+      totalSize:
+        (file.originalSize ?? file.size) +
+        (file.optimizedSize ?? 0) +
+        file.thumbnailSize +
+        file.variantSize,
     };
   }
 
@@ -340,6 +406,34 @@ export class MediaService {
   private parseThumbnails(value: unknown): Record<string, { url: string; size: number }> {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
     return value as Record<string, { url: string; size: number }>;
+  }
+
+  private parseVariants(value: unknown): Record<string, MediaVariant> {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+    return value as Record<string, MediaVariant>;
+  }
+
+  private parseRecord(value: unknown): Record<string, unknown> {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+    return value as Record<string, unknown>;
+  }
+
+  private parseFocalPoint(value: unknown): { x: number; y: number } | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const record = value as Record<string, unknown>;
+    const x = Number(record['x']);
+    const y = Number(record['y']);
+    return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null;
+  }
+
+  private normalizeFocalPoint(
+    value: { x: number; y: number } | null,
+  ): { x: number; y: number } | null {
+    if (value === null) return null;
+    return {
+      x: Math.min(1, Math.max(0, Number(value.x))),
+      y: Math.min(1, Math.max(0, Number(value.y))),
+    };
   }
 
   private entryTitle(data: unknown): string | null {

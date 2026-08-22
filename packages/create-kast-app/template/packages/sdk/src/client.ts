@@ -21,8 +21,12 @@ import type {
   ContentEntryDetail,
   ContentEntrySummary,
   ContentEntryVersion,
+  ContentExportBundle,
+  ContentVersionDiff,
   CreateEntryBody,
   EntryListParams,
+  ImportContentBody,
+  ImportWordPressBody,
   PublishEntryBody,
   SchedulePublishBody,
   UpdateEntryBody,
@@ -142,6 +146,30 @@ class ContentResource {
     });
   }
 
+  export(typeSlug: string): Promise<ApiResponse<ContentExportBundle>> {
+    return this.client.request(`/api/v1/content-types/${typeSlug}/entries/export`);
+  }
+
+  import(
+    typeSlug: string,
+    data: ImportContentBody,
+  ): Promise<ApiResponse<{ imported: number; ids: string[] }>> {
+    return this.client.request(`/api/v1/content-types/${typeSlug}/entries/import`, {
+      method: 'POST',
+      body: data,
+    });
+  }
+
+  importWordPress(
+    typeSlug: string,
+    data: ImportWordPressBody,
+  ): Promise<ApiResponse<{ imported: number; ids: string[] }>> {
+    return this.client.request(`/api/v1/content-types/${typeSlug}/entries/import/wordpress`, {
+      method: 'POST',
+      body: data,
+    });
+  }
+
   update(
     typeSlug: string,
     id: string,
@@ -203,6 +231,36 @@ class ContentResource {
     });
   }
 
+  submitForReview(typeSlug: string, id: string): Promise<ApiResponse<ContentEntryDetail>> {
+    return this.client.request(`/api/v1/content-types/${typeSlug}/entries/${id}/review/submit`, {
+      method: 'POST',
+    });
+  }
+
+  approveReview(typeSlug: string, id: string): Promise<ApiResponse<ContentEntryDetail>> {
+    return this.client.request(`/api/v1/content-types/${typeSlug}/entries/${id}/review/approve`, {
+      method: 'POST',
+    });
+  }
+
+  requestChanges(typeSlug: string, id: string): Promise<ApiResponse<ContentEntryDetail>> {
+    return this.client.request(`/api/v1/content-types/${typeSlug}/entries/${id}/review/changes`, {
+      method: 'POST',
+    });
+  }
+
+  acquireLock(typeSlug: string, id: string): Promise<ApiResponse<ContentEntryDetail>> {
+    return this.client.request(`/api/v1/content-types/${typeSlug}/entries/${id}/lock`, {
+      method: 'POST',
+    });
+  }
+
+  releaseLock(typeSlug: string, id: string): Promise<void> {
+    return this.client.request(`/api/v1/content-types/${typeSlug}/entries/${id}/lock`, {
+      method: 'DELETE',
+    });
+  }
+
   cancelSchedule(typeSlug: string, id: string): Promise<ApiResponse<ContentEntryDetail>> {
     return this.client.request(`/api/v1/content-types/${typeSlug}/entries/${id}/schedule`, {
       method: 'DELETE',
@@ -260,6 +318,18 @@ class ContentResource {
   ): Promise<ApiResponse<ContentEntryVersion>> {
     return this.client.request(
       `/api/v1/content-types/${typeSlug}/entries/${id}/versions/${versionId}`,
+    );
+  }
+
+  diffVersion(
+    typeSlug: string,
+    id: string,
+    versionId: string,
+    locale?: string,
+  ): Promise<ApiResponse<ContentVersionDiff>> {
+    const qs = locale !== undefined ? `?locale=${locale}` : '';
+    return this.client.request(
+      `/api/v1/content-types/${typeSlug}/entries/${id}/versions/${versionId}/diff${qs}`,
     );
   }
 

@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { createApiClient } from '@/lib/api';
 import { useSession } from '@/lib/session';
 import { cn } from '@/lib/utils';
-import type { ContentEntryVersion } from '@kast-cms/sdk';
+import type { ContentEntryVersion, ContentVersionDiff } from '@kast-cms/sdk';
 import { History } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState, type JSX } from 'react';
@@ -108,6 +108,8 @@ function VersionList({ versions, selected, onSelect }: VersionListProps): JSX.El
 
 interface VersionDetailProps {
   version: ContentEntryVersion;
+  diff: ContentVersionDiff | null;
+  diffLoading: boolean;
   confirming: boolean;
   isReverting: boolean;
   onStartConfirm: () => void;
@@ -118,6 +120,8 @@ interface VersionDetailProps {
 /** Payload preview for the picked version, plus its two-step revert. */
 function VersionDetail({
   version,
+  diff,
+  diffLoading,
   confirming,
   isReverting,
   onStartConfirm,
@@ -130,6 +134,27 @@ function VersionDetail({
       <pre className="max-h-56 overflow-auto rounded-md border border-border bg-muted p-3 text-xs text-muted-foreground">
         {JSON.stringify(version.data, null, 2)}
       </pre>
+      <div className="space-y-2 rounded-md border border-border p-3">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          {t('diff')}
+        </p>
+        {diffLoading && <Skeleton className="h-12 w-full rounded-md" />}
+        {!diffLoading && diff?.changes.length === 0 && (
+          <p className="text-sm text-muted-foreground">{t('noDiff')}</p>
+        )}
+        {!diffLoading &&
+          diff?.changes.map((change) => (
+            <div key={`${change.type}:${change.path}`} className="space-y-1 text-xs">
+              <span className="font-mono font-medium">{change.path}</span>
+              <span className="ms-2 rounded bg-muted px-1.5 py-0.5 text-muted-foreground">
+                {change.type}
+              </span>
+              <pre className="max-h-28 overflow-auto rounded bg-muted p-2 text-muted-foreground">
+                {JSON.stringify({ before: change.before, after: change.after }, null, 2)}
+              </pre>
+            </div>
+          ))}
+      </div>
       {!confirming && (
         <Button
           type="button"
@@ -179,6 +204,8 @@ export function VersionPanel({
   const t = useTranslations('content.versions');
   const [versions, setVersions] = useState<ContentEntryVersion[]>([]);
   const [selected, setSelected] = useState<ContentEntryVersion | null>(null);
+  const [diff, setDiff] = useState<ContentVersionDiff | null>(null);
+  const [diffLoading, setDiffLoading] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [loading, setLoading] = useState(false);
   const token = session?.accessToken;
@@ -192,6 +219,22 @@ export function VersionPanel({
       setLoading(false);
     });
   }, [open, typeId, entryId, token]);
+
+  useEffect(() => {
+    if (!open || !entryId || !selected) return;
+    const c = createApiClient(token);
+    setDiffLoading(true);
+    void c.content
+      .diffVersion(typeId, entryId, selected.id)
+      .then((res) => {
+        setDiff(res.data);
+        setDiffLoading(false);
+      })
+      .catch(() => {
+        setDiff(null);
+        setDiffLoading(false);
+      });
+  }, [open, typeId, entryId, selected, token]);
 
   if (!open || !entryId) return null;
 
@@ -224,6 +267,7 @@ export function VersionPanel({
               selected={selected}
               onSelect={(v) => {
                 setSelected(v);
+                setDiff(null);
                 setConfirming(false);
               }}
             />
@@ -231,6 +275,8 @@ export function VersionPanel({
           {selected && (
             <VersionDetail
               version={selected}
+              diff={diff}
+              diffLoading={diffLoading}
               confirming={confirming}
               isReverting={isReverting}
               onStartConfirm={() => {

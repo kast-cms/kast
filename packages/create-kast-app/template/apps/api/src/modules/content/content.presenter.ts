@@ -1,4 +1,9 @@
-import type { ContentEntryLocale, ContentField, ContentStatus } from '@prisma/client';
+import type {
+  ContentEntryLocale,
+  ContentField,
+  ContentReviewStatus,
+  ContentStatus,
+} from '@prisma/client';
 import type { EntryAuthor, EntryWithLocale } from './content.repository';
 
 /**
@@ -10,6 +15,7 @@ export interface ContentEntryDetailResponse {
   id: string;
   contentTypeId: string;
   status: ContentStatus;
+  reviewStatus: ContentReviewStatus;
   locale: string | null;
   slug: string | null;
   data: Record<string, unknown>;
@@ -20,6 +26,11 @@ export interface ContentEntryDetailResponse {
   updatedAt: Date;
   publishedAt: Date | null;
   scheduledAt: Date | null;
+  submittedAt: Date | null;
+  approvedAt: Date | null;
+  approvedById: string | null;
+  lockedById: string | null;
+  lockExpiresAt: Date | null;
   trashedAt: Date | null;
   locales: ContentEntryLocale[];
 }
@@ -55,6 +66,7 @@ export function toEntryDetail(
     id: entry.id,
     contentTypeId: entry.contentTypeId,
     status: entry.status,
+    reviewStatus: entry.reviewStatus,
     locale: locale?.localeCode ?? null,
     slug: locale?.slug ?? null,
     data: (locale?.data ?? {}) as Record<string, unknown>,
@@ -65,6 +77,11 @@ export function toEntryDetail(
     updatedAt: entry.updatedAt,
     publishedAt: entry.publishedAt,
     scheduledAt: entry.scheduledAt,
+    submittedAt: entry.submittedAt,
+    approvedAt: entry.approvedAt,
+    approvedById: entry.approvedById,
+    lockedById: entry.lockedById,
+    lockExpiresAt: entry.lockExpiresAt,
     trashedAt: entry.trashedAt,
     locales: entry.locales,
   };

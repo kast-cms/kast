@@ -30,10 +30,7 @@ export class MediaFileController {
   async serve(@Param('key') key: string | string[], @Res() res: Response): Promise<void> {
     if (this.storage !== this.local) throw new NotFoundException('Not found');
     const storageKey = Array.isArray(key) ? key.join('/') : key;
-    const sourceKey = storageKey.startsWith('thumbs/')
-      ? storageKey.split('/').slice(2).join('/')
-      : storageKey;
-    if (!(await this.repo.findActiveByStorageKey(sourceKey))) {
+    if (!(await this.findActiveSourceForStorageKey(storageKey))) {
       throw new NotFoundException('Not found');
     }
     const object = await this.local.resolveObject(storageKey);
@@ -67,5 +64,26 @@ export class MediaFileController {
       if (err.code === 'ENOENT' || err.code === 'EISDIR') throw new NotFoundException('Not found');
       throw err;
     });
+  }
+
+  private async findActiveSourceForStorageKey(storageKey: string): Promise<unknown> {
+    for (const sourceKey of this.sourceKeysFor(storageKey)) {
+      const source = await this.repo.findActiveByStorageKey(sourceKey);
+      if (source) return source;
+    }
+    return null;
+  }
+
+  private sourceKeysFor(storageKey: string): string[] {
+    if (storageKey.startsWith('thumbs/')) return [storageKey.split('/').slice(2).join('/')];
+    if (!storageKey.startsWith('variants/')) return [storageKey];
+
+    const variantSourceKey = storageKey.split('/').slice(2).join('/');
+    const optimizedSourceKey = variantSourceKey.endsWith('.webp')
+      ? variantSourceKey.slice(0, -'.webp'.length)
+      : variantSourceKey;
+    return optimizedSourceKey === variantSourceKey
+      ? [variantSourceKey]
+      : [optimizedSourceKey, variantSourceKey];
   }
 }

@@ -1,6 +1,8 @@
 import { BadRequestException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import type { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
+import type { SecretEncryptionService } from '../../common/security/secret-encryption.service';
+import type { LoginResult, TokenPair } from '../../common/types/auth.types';
 import type { QueueAdapter } from '../queue/queue.adapter';
 import { QUEUE_NAMES } from '../queue/queue.constants';
 import type { AuthRepository } from './auth.repository';
@@ -9,6 +11,10 @@ import type { OAuthPolicy } from './oauth-policy';
 import type { OAuthProfile } from './types/oauth.types';
 
 type Mocked<T> = { [K in keyof T]: jest.Mock };
+
+function expectTokenPair(result: LoginResult): asserts result is TokenPair {
+  expect('accessToken' in result).toBe(true);
+}
 
 function buildProfile(overrides: Partial<OAuthProfile> = {}): OAuthProfile {
   return {
@@ -38,6 +44,7 @@ describe('AuthService', () => {
   let jwt: Mocked<JwtService>;
   let queue: Mocked<QueueAdapter>;
   let policy: Mocked<OAuthPolicy>;
+  let secrets: Mocked<SecretEncryptionService>;
   let service: AuthService;
 
   beforeEach(() => {
@@ -62,6 +69,8 @@ describe('AuthService', () => {
       consumePasswordResetToken: jest.fn().mockResolvedValue('u1'),
       countUsers: jest.fn().mockResolvedValue(0),
       createInitialOwner: jest.fn(),
+      updateMfa: jest.fn().mockResolvedValue(undefined),
+      updateMfaRecoveryCodes: jest.fn().mockResolvedValue(undefined),
     } as unknown as Mocked<AuthRepository>;
 
     jwt = { signAsync: jest.fn().mockResolvedValue('access-jwt') } as unknown as Mocked<JwtService>;
@@ -73,12 +82,17 @@ describe('AuthService', () => {
     policy = {
       canProvision: jest.fn().mockReturnValue({ allowed: true, reason: 'allowed' }),
     } as unknown as Mocked<OAuthPolicy>;
+    secrets = {
+      encrypt: jest.fn((value: string) => value),
+      decrypt: jest.fn((value: string) => value),
+    } as unknown as Mocked<SecretEncryptionService>;
 
     service = new AuthService(
       repo as unknown as AuthRepository,
       jwt as unknown as JwtService,
       queue as unknown as QueueAdapter,
       policy as unknown as OAuthPolicy,
+      secrets as unknown as SecretEncryptionService,
     );
   });
 
@@ -137,6 +151,7 @@ describe('AuthService', () => {
 
       const result = await service.login({ email: 'admin@kast.local', password: 'Admin1234!' });
 
+      expectTokenPair(result);
       expect(result.accessToken).toBe('access-jwt');
       expect(result.refreshToken).toBe('refresh-raw');
       expect(result.expiresIn).toBe(900);
@@ -229,6 +244,43 @@ describe('AuthService', () => {
       repo.findRefreshToken.mockResolvedValue(null);
       await service.logout('tok');
       expect(repo.revokeRefreshToken).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('MFA challenges', () => {
+    beforeEach(() => {
+      queue.consumeEphemeral.mockResolvedValue(JSON.stringify({ userId: 'u1' }));
+      repo.findUserById.mockResolvedValue(
+        buildUser({
+          mfaSecret: 'JBSWY3DPEHPK3PXP',
+          mfaEnabledAt: new Date(),
+          mfaRecoveryCodes: ['hash-1', 'hash-2'],
+        }),
+      );
+    });
+
+    it('checks stored recovery-code hashes even when the submitted code is malformed', async () => {
+      const verifySpy = jest.spyOn(argon2, 'verify').mockResolvedValue(false);
+
+      await expect(service.completeMfaChallenge('challenge-token', '---')).rejects.toThrow(
+        UnauthorizedException,
+      );
+
+      expect(verifySpy).toHaveBeenCalledTimes(2);
+      expect(repo.updateMfaRecoveryCodes).not.toHaveBeenCalled();
+      expect(repo.createRefreshToken).not.toHaveBeenCalled();
+    });
+
+    it('normalizes and consumes a matching recovery code once', async () => {
+      jest.spyOn(argon2, 'verify').mockImplementation(async (hash, value) => {
+        return hash === 'hash-2' && value === 'ABCD1234EF56';
+      });
+
+      const result = await service.completeMfaChallenge('challenge-token', 'abcd-1234-ef56');
+
+      expectTokenPair(result);
+      expect(repo.updateMfaRecoveryCodes).toHaveBeenCalledWith('u1', ['hash-1']);
+      expect(repo.updateLastLogin).toHaveBeenCalledWith('u1');
     });
   });
 
@@ -373,6 +425,7 @@ describe('AuthService', () => {
 
       const result = await service.oauthCallback('google', buildProfile());
 
+      expectTokenPair(result);
       expect(result.accessToken).toBe('access-jwt');
       expect(repo.upsertOAuthAccount).toHaveBeenCalled();
     });
@@ -436,6 +489,7 @@ describe('AuthService', () => {
 
       const result = await service.oauthCallback('google', buildProfile());
 
+      expectTokenPair(result);
       expect(result.accessToken).toBe('access-jwt');
       expect(policy.canProvision).not.toHaveBeenCalled();
     });

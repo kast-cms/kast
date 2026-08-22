@@ -7,7 +7,13 @@ import type {
   ContentTypeDetail,
   ContentTypeSummary,
   CreateContentTypeBody,
+  LoginResult,
+  MfaSetup,
+  MfaSetupVerified,
+  MfaStatus,
   ReorderFieldsBody,
+  SessionSummary,
+  TokenPair,
   UpdateContentTypeBody,
   UpdateFieldBody,
 } from './types.js';
@@ -15,11 +21,11 @@ import type {
 export class AuthResource {
   constructor(private readonly client: KastClient) {}
 
-  login(email: string, password: string): Promise<unknown> {
+  login(email: string, password: string): Promise<ApiResponse<LoginResult>> {
     return this.client.request('/api/v1/auth/login', { method: 'POST', body: { email, password } });
   }
 
-  refresh(refreshToken: string): Promise<unknown> {
+  refresh(refreshToken: string): Promise<ApiResponse<TokenPair>> {
     return this.client.request('/api/v1/auth/refresh', { method: 'POST', body: { refreshToken } });
   }
 
@@ -32,8 +38,56 @@ export class AuthResource {
    * The provider initiates a server-side redirect, so this method
    * constructs the URL rather than following it.
    */
-  getOAuthUrl(provider: 'google' | 'github'): string {
+  getOAuthUrl(provider: 'google' | 'github' | 'oidc'): string {
     return `${this.client.getBaseUrl()}/api/v1/auth/oauth/${provider}`;
+  }
+
+  mfaStatus(): Promise<ApiResponse<MfaStatus>> {
+    return this.client.request('/api/v1/auth/mfa');
+  }
+
+  beginMfaSetup(): Promise<ApiResponse<MfaSetup>> {
+    return this.client.request('/api/v1/auth/mfa/setup', { method: 'POST' });
+  }
+
+  verifyMfaSetup(secret: string, code: string): Promise<ApiResponse<MfaSetupVerified>> {
+    return this.client.request('/api/v1/auth/mfa/verify-setup', {
+      method: 'POST',
+      body: { secret, code },
+    });
+  }
+
+  completeMfaChallenge(challengeToken: string, code: string): Promise<ApiResponse<TokenPair>> {
+    return this.client.request('/api/v1/auth/mfa/challenge', {
+      method: 'POST',
+      body: { challengeToken, code },
+    });
+  }
+
+  regenerateRecoveryCodes(code: string): Promise<ApiResponse<{ recoveryCodes: string[] }>> {
+    return this.client.request('/api/v1/auth/mfa/recovery-codes', {
+      method: 'POST',
+      body: { code },
+    });
+  }
+
+  disableMfa(currentPassword: string, code: string): Promise<ApiResponse<MfaStatus>> {
+    return this.client.request('/api/v1/auth/mfa', {
+      method: 'DELETE',
+      body: { currentPassword, code },
+    });
+  }
+
+  listSessions(): Promise<ApiResponse<SessionSummary[]>> {
+    return this.client.request('/api/v1/auth/sessions');
+  }
+
+  revokeSession(id: string): Promise<void> {
+    return this.client.request(`/api/v1/auth/sessions/${id}`, { method: 'DELETE' });
+  }
+
+  revokeAllSessions(): Promise<ApiResponse<{ revoked: number }>> {
+    return this.client.request('/api/v1/auth/sessions', { method: 'DELETE' });
   }
 
   forgotPassword(email: string): Promise<{ message: string }> {

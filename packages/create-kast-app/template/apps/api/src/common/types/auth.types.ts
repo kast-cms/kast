@@ -30,6 +30,15 @@ export interface TokenPair {
   user: UserSummary;
 }
 
+export interface MfaChallenge {
+  mfaRequired: true;
+  challengeToken: string;
+  expiresIn: number;
+  user: UserSummary;
+}
+
+export type LoginResult = TokenPair | MfaChallenge;
+
 export interface UserSummary {
   id: string;
   email: string;
@@ -37,6 +46,31 @@ export interface UserSummary {
   lastName: string | null;
   avatarUrl: string | null;
   roles: string[];
+}
+
+export interface MfaStatus {
+  enabled: boolean;
+  enabledAt: string | null;
+  recoveryCodeCount: number;
+}
+
+export interface MfaSetup {
+  secret: string;
+  otpauthUrl: string;
+}
+
+export interface MfaSetupVerified {
+  enabled: true;
+  recoveryCodes: string[];
+}
+
+export interface SessionSummary {
+  id: string;
+  userAgent: string | null;
+  ipAddress: string | null;
+  createdAt: string;
+  lastUsedAt: string | null;
+  expiresAt: string;
 }
 
 export interface PaginatedResult<T> {

@@ -45,7 +45,9 @@ describe('MediaFileController (MED-01)', () => {
           useValue: {
             findActiveByStorageKey: jest.fn((key: string) =>
               Promise.resolve(
-                ['photo.png', 'drawing.svg', 'notes.pdf', 'payload.bin', 'link.txt'].includes(key)
+                ['photo.png', 'drawing.svg', 'notes.pdf', 'payload.bin', 'link.txt'].includes(
+                  key,
+                ) || key === 'photo.webp'
                   ? { id: key }
                   : null,
               ),
@@ -71,6 +73,9 @@ describe('MediaFileController (MED-01)', () => {
     await fs.writeFile(join(dir, 'photo.png'), PNG);
     await fs.mkdir(join(dir, 'thumbs/400'), { recursive: true });
     await fs.writeFile(join(dir, 'thumbs/400/photo.png'), PNG);
+    await fs.writeFile(join(dir, 'photo.webp'), PNG);
+    await fs.mkdir(join(dir, 'variants/thumbnail'), { recursive: true });
+    await fs.writeFile(join(dir, 'variants/thumbnail/photo.webp'), PNG);
     await fs.writeFile(join(dir, 'drawing.svg'), '<svg onload="alert(1)"></svg>');
     await fs.writeFile(join(dir, 'notes.pdf'), '%PDF-1.4');
   });
@@ -100,6 +105,12 @@ describe('MediaFileController (MED-01)', () => {
     it('serves a nested thumbnail key', async () => {
       await request(app.getHttpServer())
         .get('/api/v1/media/files/thumbs/400/photo.png')
+        .expect(200);
+    });
+
+    it('serves a variant for an original webp upload', async () => {
+      await request(app.getHttpServer())
+        .get('/api/v1/media/files/variants/thumbnail/photo.webp')
         .expect(200);
     });
 

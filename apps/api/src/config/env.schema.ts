@@ -103,6 +103,12 @@ const envSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   GITHUB_CLIENT_ID: z.string().optional(),
   GITHUB_CLIENT_SECRET: z.string().optional(),
+  OIDC_CLIENT_ID: z.string().optional(),
+  OIDC_CLIENT_SECRET: z.string().optional(),
+  OIDC_AUTHORIZATION_URL: z.string().url().optional(),
+  OIDC_TOKEN_URL: z.string().url().optional(),
+  OIDC_USERINFO_URL: z.string().url().optional(),
+  OIDC_SCOPES: z.string().default('openid email profile'),
   SITE_URL: z.string().default('http://localhost:3000'),
   /**
    * Public base URL of the admin panel, INCLUDING its base path. The Next.js

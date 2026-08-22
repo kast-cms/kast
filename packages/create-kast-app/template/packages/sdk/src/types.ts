@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 export interface KastClientOptions {
   baseUrl: string;
   apiKey?: string;
@@ -19,6 +20,56 @@ export interface ApiListResponse<T> {
     cursor: string | null;
     hasNextPage: boolean;
   };
+}
+
+export interface AuthUserSummary {
+  id: string;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  avatarUrl: string | null;
+  roles: string[];
+}
+
+export interface TokenPair {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+  user: AuthUserSummary;
+}
+
+export interface MfaChallenge {
+  mfaRequired: true;
+  challengeToken: string;
+  expiresIn: number;
+  user: AuthUserSummary;
+}
+
+export type LoginResult = TokenPair | MfaChallenge;
+
+export interface MfaStatus {
+  enabled: boolean;
+  enabledAt: string | null;
+  recoveryCodeCount: number;
+}
+
+export interface MfaSetup {
+  secret: string;
+  otpauthUrl: string;
+}
+
+export interface MfaSetupVerified {
+  enabled: true;
+  recoveryCodes: string[];
+}
+
+export interface SessionSummary {
+  id: string;
+  userAgent: string | null;
+  ipAddress: string | null;
+  createdAt: string;
+  lastUsedAt: string | null;
+  expiresAt: string;
 }
 
 /** Mirrors the Prisma `ContentFieldType` enum exactly. */
@@ -120,6 +171,7 @@ export interface ReorderFieldsBody {
 }
 
 export type EntryStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED';
+export type EntryReviewStatus = 'DRAFT' | 'IN_REVIEW' | 'APPROVED' | 'CHANGES_REQUESTED';
 
 export interface SchedulePublishBody {
   publishAt: string;
@@ -144,6 +196,7 @@ export interface ContentEntryDetail {
   id: string;
   contentTypeId: string;
   status: EntryStatus;
+  reviewStatus: EntryReviewStatus;
   locale: string | null;
   slug: string | null;
   data: Record<string, unknown>;
@@ -154,6 +207,11 @@ export interface ContentEntryDetail {
   updatedAt: string;
   publishedAt: string | null;
   scheduledAt: string | null;
+  submittedAt: string | null;
+  approvedAt: string | null;
+  approvedById: string | null;
+  lockedById: string | null;
+  lockExpiresAt: string | null;
   trashedAt: string | null;
   locales: ContentEntryLocale[];
 }
@@ -185,6 +243,64 @@ export interface UpdateEntryBody {
   data?: Record<string, unknown>;
   status?: EntryStatus;
   scheduledAt?: string | null;
+  expectedUpdatedAt?: string;
+}
+
+export interface ContentVersionDiff {
+  fromVersionId: string;
+  fromVersionNumber: number;
+  to: 'current';
+  changes: Array<{
+    path: string;
+    before: unknown;
+    after: unknown;
+    type: 'added' | 'removed' | 'changed';
+  }>;
+}
+
+export interface ContentExportBundle {
+  formatVersion: 1;
+  exportedAt: string;
+  contentType: ContentTypeDetail;
+  entries: Array<
+    ContentEntryDetail & {
+      versions: Array<{
+        id: string;
+        versionNumber: number;
+        status: EntryStatus;
+        data: Record<string, unknown>;
+        localesData: Record<string, unknown>;
+        createdAt: string;
+      }>;
+    }
+  >;
+}
+
+export interface ImportContentBody {
+  entries: Array<{
+    id?: string;
+    status?: EntryStatus;
+    locales: Array<{ localeCode: string; slug: string; data: Record<string, unknown> }>;
+    versions?: Array<{
+      versionNumber: number;
+      status?: EntryStatus;
+      data: Record<string, unknown>;
+      localesData: Record<string, unknown>;
+    }>;
+  }>;
+  overwrite?: boolean;
+}
+
+export interface ImportWordPressBody {
+  locale?: string;
+  posts: Array<{
+    title: string;
+    content: string;
+    slug?: string;
+    excerpt?: string;
+    status?: string;
+    date?: string;
+  }>;
 }
 
 export interface PublishEntryBody {
@@ -261,6 +377,13 @@ export interface MediaFileSummary {
   optimizedSize: number | null;
   thumbnailSize: number;
   thumbnails: Record<string, { url: string; size: number }>;
+  variantSize: number;
+  variants: Record<
+    string,
+    { url: string; size: number; width: number; height: number; mimeType: string }
+  >;
+  focalPoint: { x: number; y: number } | null;
+  deliveryTransforms: Record<string, unknown>;
   isAiAltText: boolean;
   isAiGenerated: boolean;
   folder: { id: string; name: string } | null;
@@ -287,6 +410,7 @@ export interface UpdateMediaBody {
   altText?: string | null;
   caption?: string | null;
   folderId?: string | null;
+  focalPoint?: { x: number; y: number } | null;
 }
 
 export interface CreateFolderBody {

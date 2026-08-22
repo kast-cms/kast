@@ -1,5 +1,11 @@
 import { derivedStorageKeys, THUMBNAIL_WIDTHS } from './derived-keys.util';
 
+const variantKeys = (storageKey: string): string[] => [
+  `variants/thumbnail/${storageKey}.webp`,
+  `variants/card/${storageKey}.webp`,
+  `variants/hero/${storageKey}.webp`,
+];
+
 describe('derivedStorageKeys', () => {
   it('returns every object written beside an optimized upload', () => {
     // `optimize` repointed the row at <key>.webp and left the PNG behind.
@@ -9,6 +15,7 @@ describe('derivedStorageKeys', () => {
         '2026/01/abc.png',
         'thumbs/400/2026/01/abc.png',
         'thumbs/800/2026/01/abc.png',
+        ...variantKeys('2026/01/abc.png'),
       ].sort(),
     );
   });
@@ -18,6 +25,7 @@ describe('derivedStorageKeys', () => {
       '2026/01/abc.pdf',
       'thumbs/400/2026/01/abc.pdf',
       'thumbs/800/2026/01/abc.pdf',
+      ...variantKeys('2026/01/abc.pdf'),
     ]);
   });
 

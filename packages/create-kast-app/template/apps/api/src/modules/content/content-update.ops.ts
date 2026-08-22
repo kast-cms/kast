@@ -1,3 +1,4 @@
+import { ConflictException } from '@nestjs/common';
 import type { EventEmitter2 } from '@nestjs/event-emitter';
 import type { ContentTypeWithFields } from '../content-types/content-types.repository';
 import type { SeoService } from '../seo/seo.service';
@@ -79,6 +80,27 @@ async function createSlugRedirect(
   );
 }
 
+function assertEntryEditable(
+  entry: EntryWithLocale,
+  dto: UpdateContentEntryDto,
+  userId: string,
+): void {
+  const now = new Date();
+  if (
+    entry.lockedById &&
+    entry.lockExpiresAt &&
+    entry.lockExpiresAt > now &&
+    entry.lockedById !== userId
+  ) {
+    throw new ConflictException('Entry is locked by another editor');
+  }
+  if (!dto.expectedUpdatedAt) return;
+  const expected = new Date(dto.expectedUpdatedAt);
+  if (Number.isNaN(expected.getTime()) || entry.updatedAt.getTime() !== expected.getTime()) {
+    throw new ConflictException('Entry has changed since it was loaded');
+  }
+}
+
 export async function updateContentEntry(
   deps: ContentUpdateDependencies,
   typeSlug: string,
@@ -87,6 +109,7 @@ export async function updateContentEntry(
   userId: string,
 ): Promise<{ data: EntryWithLocale }> {
   const { ct, entry } = await deps.load(typeSlug, id);
+  assertEntryEditable(entry, dto, userId);
   const locale = writeLocale(entry, dto.locale);
   if (!entry.locales.some((item) => item.localeCode === locale)) {
     await assertActiveLocale(deps.repo, locale);
