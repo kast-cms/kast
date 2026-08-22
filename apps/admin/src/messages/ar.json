@@ -290,7 +290,9 @@
       "confirmTitle": "الاسترجاع إلى الإصدار {number}؟",
       "confirmDescription": "سيؤدي هذا إلى استبدال محتوى المسودة الحالية. سيتم ضبط المدخل على مسودة.",
       "confirm": "استرجاع",
-      "cancel": "إلغاء"
+      "cancel": "إلغاء",
+      "diff": "الفروق عن الحالي",
+      "noDiff": "لا توجد فروق عن المدخل الحالي."
     },
     "bulkPartial": "تم تطبيق {succeeded}، وفشل {failed}",
     "seoWarnings": {
@@ -334,6 +336,9 @@
       "dimensions": "الأبعاد",
       "uploaded": "تاريخ الرفع",
       "url": "الرابط",
+      "focalPoint": "نقطة التركيز",
+      "focalPointHint": "اضبط X/Y بين 0 و1 لتوجيه النسخ المقصوصة.",
+      "variants": "النسخ",
       "usedIn": "مستخدم في {count} مدخلات",
       "trash": "نقل إلى المهملات",
       "trashDisabled": "قيد الاستخدام — لا يمكن نقله"

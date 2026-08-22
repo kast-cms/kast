@@ -290,7 +290,9 @@
       "confirmTitle": "Revert to Version {number}?",
       "confirmDescription": "This will overwrite the current draft content. The entry will be set to Draft.",
       "confirm": "Revert",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "diff": "Diff from current",
+      "noDiff": "No differences from the current entry."
     },
     "bulkPartial": "{succeeded} applied, {failed} failed",
     "seoWarnings": {
@@ -334,6 +336,9 @@
       "dimensions": "Dimensions",
       "uploaded": "Uploaded",
       "url": "URL",
+      "focalPoint": "Focal point",
+      "focalPointHint": "Set X/Y between 0 and 1 to steer cropped variants.",
+      "variants": "Variants",
       "usedIn": "Used in {count} entries",
       "trash": "Move to trash",
       "trashDisabled": "In use — cannot trash"

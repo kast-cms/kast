@@ -9,6 +9,7 @@ import {
   Patch,
   Post,
   Query,
+  Res,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
@@ -20,9 +21,20 @@ import {
   ApiPropertyOptional,
   ApiTags,
 } from '@nestjs/swagger';
-import { IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsNumber,
+  IsObject,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+  ValidateNested,
+} from 'class-validator';
+import type { Response } from 'express';
 import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import type { AuthUser, PaginatedResult } from '../../common/types/auth.types';
 import { ListMediaDto } from './dto/list-media.dto';
@@ -35,6 +47,20 @@ class UploadMediaDto {
   @IsOptional()
   @IsString()
   folderId?: string;
+}
+
+class FocalPointDto {
+  @ApiPropertyOptional({ minimum: 0, maximum: 1 })
+  @IsNumber()
+  @Min(0)
+  @Max(1)
+  x!: number;
+
+  @ApiPropertyOptional({ minimum: 0, maximum: 1 })
+  @IsNumber()
+  @Min(0)
+  @Max(1)
+  y!: number;
 }
 
 class UpdateMediaDto {
@@ -52,6 +78,13 @@ class UpdateMediaDto {
   @IsOptional()
   @IsString()
   folderId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => FocalPointDto)
+  focalPoint?: FocalPointDto | null;
 }
 
 @ApiTags('media')
@@ -139,6 +172,18 @@ export class MediaController {
   @ApiOperation({ summary: 'Delete an empty media folder' })
   async deleteFolder(@Param('id') id: string): Promise<void> {
     await this.folders.delete(id);
+  }
+
+  @Get(':id/renditions/:name')
+  @Public()
+  @ApiOperation({ summary: 'Redirect to a named media rendition' })
+  async rendition(
+    @Param('id') id: string,
+    @Param('name') name: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const variant = await this.service.getRendition(id, name);
+    res.redirect(variant.url);
   }
 
   @Get(':id')

@@ -1,6 +1,8 @@
 import { BadRequestException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import type { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
+import type { SecretEncryptionService } from '../../common/security/secret-encryption.service';
+import type { LoginResult, TokenPair } from '../../common/types/auth.types';
 import type { QueueAdapter } from '../queue/queue.adapter';
 import { QUEUE_NAMES } from '../queue/queue.constants';
 import type { AuthRepository } from './auth.repository';
@@ -9,6 +11,10 @@ import type { OAuthPolicy } from './oauth-policy';
 import type { OAuthProfile } from './types/oauth.types';
 
 type Mocked<T> = { [K in keyof T]: jest.Mock };
+
+function expectTokenPair(result: LoginResult): asserts result is TokenPair {
+  expect('accessToken' in result).toBe(true);
+}
 
 function buildProfile(overrides: Partial<OAuthProfile> = {}): OAuthProfile {
   return {
@@ -38,6 +44,7 @@ describe('AuthService', () => {
   let jwt: Mocked<JwtService>;
   let queue: Mocked<QueueAdapter>;
   let policy: Mocked<OAuthPolicy>;
+  let secrets: Mocked<SecretEncryptionService>;
   let service: AuthService;
 
   beforeEach(() => {
@@ -73,12 +80,17 @@ describe('AuthService', () => {
     policy = {
       canProvision: jest.fn().mockReturnValue({ allowed: true, reason: 'allowed' }),
     } as unknown as Mocked<OAuthPolicy>;
+    secrets = {
+      encrypt: jest.fn((value: string) => value),
+      decrypt: jest.fn((value: string) => value),
+    } as unknown as Mocked<SecretEncryptionService>;
 
     service = new AuthService(
       repo as unknown as AuthRepository,
       jwt as unknown as JwtService,
       queue as unknown as QueueAdapter,
       policy as unknown as OAuthPolicy,
+      secrets as unknown as SecretEncryptionService,
     );
   });
 
@@ -137,6 +149,7 @@ describe('AuthService', () => {
 
       const result = await service.login({ email: 'admin@kast.local', password: 'Admin1234!' });
 
+      expectTokenPair(result);
       expect(result.accessToken).toBe('access-jwt');
       expect(result.refreshToken).toBe('refresh-raw');
       expect(result.expiresIn).toBe(900);
@@ -373,6 +386,7 @@ describe('AuthService', () => {
 
       const result = await service.oauthCallback('google', buildProfile());
 
+      expectTokenPair(result);
       expect(result.accessToken).toBe('access-jwt');
       expect(repo.upsertOAuthAccount).toHaveBeenCalled();
     });
@@ -436,6 +450,7 @@ describe('AuthService', () => {
 
       const result = await service.oauthCallback('google', buildProfile());
 
+      expectTokenPair(result);
       expect(result.accessToken).toBe('access-jwt');
       expect(policy.canProvision).not.toHaveBeenCalled();
     });

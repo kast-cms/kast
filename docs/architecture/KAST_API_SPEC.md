@@ -331,6 +331,52 @@ Get the currently authenticated user's profile.
 
 ---
 
+### MFA and session management 🔑
+
+Kast supports TOTP MFA with single-use recovery codes. When MFA is enabled for a
+user, `POST /auth/login` returns a challenge instead of tokens:
+
+```json
+{
+  "data": {
+    "mfaRequired": true,
+    "challengeToken": "opaque",
+    "expiresIn": 300,
+    "user": { "id": "clxyz123", "email": "admin@example.com", "roles": ["ADMIN"] }
+  }
+}
+```
+
+Complete the challenge with `POST /api/v1/auth/mfa/challenge`:
+
+```ts
+{
+  challengeToken: string;
+  code: string;
+}
+```
+
+Management endpoints:
+
+| Method | Path                        | Purpose                                      |
+| ------ | --------------------------- | -------------------------------------------- |
+| GET    | `/auth/mfa`                 | MFA status and remaining recovery-code count |
+| POST   | `/auth/mfa/setup`           | Generate a TOTP secret and otpauth URI       |
+| POST   | `/auth/mfa/verify-setup`    | Verify setup code and enable MFA             |
+| POST   | `/auth/mfa/recovery-codes`  | Regenerate recovery codes                    |
+| DELETE | `/auth/mfa`                 | Disable MFA with password + code             |
+| GET    | `/auth/sessions`            | List active refresh-token sessions           |
+| DELETE | `/auth/sessions/:id`        | Revoke one session                           |
+| DELETE | `/auth/sessions`            | Revoke all other sessions                    |
+| GET    | `/auth/oauth/oidc`          | Start generic OIDC login                     |
+| GET    | `/auth/oauth/oidc/callback` | Complete generic OIDC login                  |
+
+Generic OIDC is configured with `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`,
+`OIDC_AUTHORIZATION_URL`, `OIDC_TOKEN_URL`, `OIDC_USERINFO_URL`, and optional
+`OIDC_SCOPES`.
+
+---
+
 ### PATCH /api/v1/auth/me 🔑
 
 Update the authenticated user's own profile.
@@ -796,12 +842,38 @@ Update an entry's data for a specific locale.
   locale: string
   slug?: string
   data?: Record<string, unknown>
+  expectedUpdatedAt?: string // optional optimistic concurrency guard
 }
 ```
 
 **Response `200`:** Updated entry object.
 
 **Errors:** `400` `404` `409`
+
+---
+
+### Import/export and review workflow ✏️
+
+Content-type entries can be exported as a portable JSON bundle and restored into
+the same or another Kast instance. WordPress migrator input accepts a JSON object
+with a `posts` array containing `title`, `content`, optional `slug`, `excerpt`,
+`date`, and `status`.
+
+| Method | Path                                                        | Purpose                                      |
+| ------ | ----------------------------------------------------------- | -------------------------------------------- |
+| GET    | `/content-types/:type/entries/export`                       | Export entries, locales, and stored versions |
+| POST   | `/content-types/:type/entries/import`                       | Import Kast JSON entries                     |
+| POST   | `/content-types/:type/entries/import/wordpress`             | Import WordPress post JSON                   |
+| POST   | `/content-types/:type/entries/:id/review/submit`            | Submit a draft for review                    |
+| POST   | `/content-types/:type/entries/:id/review/approve`           | Approve an entry for publishing              |
+| POST   | `/content-types/:type/entries/:id/review/changes`           | Request changes                              |
+| POST   | `/content-types/:type/entries/:id/lock`                     | Acquire/refresh an edit lock                 |
+| DELETE | `/content-types/:type/entries/:id/lock`                     | Release the current user's edit lock         |
+| GET    | `/content-types/:type/entries/:id/versions/:versionId/diff` | Diff a stored version against current data   |
+
+Editors cannot silently overwrite another active editor's lock. Supplying
+`expectedUpdatedAt` adds an additional last-writer-wins guard for autosave and
+manual saves.
 
 ---
 
@@ -1458,12 +1530,26 @@ Update media file metadata.
 {
   altText?: string
   folderId?: string
+  focalPoint?: { x: number; y: number } // 0..1, used for cropped variants
 }
 ```
 
 **Response `200`:** Updated media object.
 
 **Errors:** `400` `404`
+
+---
+
+### GET /api/v1/media/:id/renditions/:name 🌐
+
+Redirect to a pre-generated named image rendition. Built-in names are
+`thumbnail`, `card`, and `hero`; raster uploads are rendered as WebP. Updating a
+file's `focalPoint` regenerates cropped variants so delivery URLs can keep using
+the stable rendition route.
+
+**Response `302`:** Redirects to the stored rendition URL.
+
+**Errors:** `404`
 
 ---
 
@@ -2928,6 +3014,22 @@ System health check. Used by load balancers and monitoring. **CORS-exempt** — 
     }
   }
 }
+```
+
+---
+
+### GET /api/v1/health/metrics 🌐❌
+
+Prometheus text-format metrics for operators. Current gauges include users,
+content entries, active media files, and BullMQ job counts by queue/state.
+
+**Response `200`:** `text/plain; version=0.0.4`
+
+```text
+kast_users_total 3
+kast_content_entries_total 42
+kast_media_files_total 88
+kast_queue_jobs{queue="kast.media",state="waiting"} 0
 ```
 
 ---

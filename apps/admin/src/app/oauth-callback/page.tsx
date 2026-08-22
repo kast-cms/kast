@@ -4,7 +4,7 @@ import { KastLogo } from '@/components/layout/kast-logo';
 import { LoadingBlock } from '@/components/ui/spinner';
 import { adminRoute, API_URL } from '@/config/env';
 import { useSession } from '@/lib/session';
-import type { TokenPair } from '@/types';
+import type { LoginResult, MfaChallenge, TokenPair } from '@/types';
 import { useTranslations } from 'next-intl';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { type JSX, useEffect } from 'react';
@@ -14,6 +14,10 @@ export default function OAuthCallbackPage(): JSX.Element {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { setSession } = useSession();
+
+  function isMfaChallenge(result: LoginResult): result is MfaChallenge {
+    return 'mfaRequired' in result && result.mfaRequired;
+  }
 
   useEffect(() => {
     const code = searchParams.get('code');
@@ -33,14 +37,22 @@ export default function OAuthCallbackPage(): JSX.Element {
           router.replace('/login');
           return;
         }
-        const { data: pair } = (await res.json()) as { data: TokenPair };
+        const { data: result } = (await res.json()) as { data: LoginResult };
+        if (isMfaChallenge(result)) {
+          const next = new URLSearchParams({
+            challenge: result.challengeToken,
+            email: result.user.email,
+          });
+          router.replace(`/login?${next.toString()}`);
+          return;
+        }
 
         await fetch(adminRoute('/api/auth/set-session'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refreshToken: pair.refreshToken }),
+          body: JSON.stringify({ refreshToken: result.refreshToken }),
         });
-        setSession(pair);
+        setSession(result as TokenPair);
         router.replace('/content-types');
       } catch {
         router.replace('/login');

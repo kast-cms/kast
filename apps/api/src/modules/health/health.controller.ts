@@ -1,5 +1,5 @@
 import { InjectQueue } from '@nestjs/bullmq';
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Header } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
@@ -58,6 +58,32 @@ export class HealthController {
     ]);
   }
 
+  @Get('metrics')
+  @Public()
+  @Header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
+  @ApiOperation({ summary: 'Prometheus metrics' })
+  async metrics(): Promise<string> {
+    const [users, contentEntries, mediaFiles, queueMetrics] = await Promise.all([
+      this.prisma.user.count(),
+      this.prisma.contentEntry.count(),
+      this.prisma.mediaFile.count({ where: { trashedAt: null } }),
+      this.collectQueueMetrics(),
+    ]);
+    return [
+      '# HELP kast_users_total Total users in the instance.',
+      '# TYPE kast_users_total gauge',
+      `kast_users_total ${users}`,
+      '# HELP kast_content_entries_total Total content entries in the instance.',
+      '# TYPE kast_content_entries_total gauge',
+      `kast_content_entries_total ${contentEntries}`,
+      '# HELP kast_media_files_total Total non-deleted media files in the instance.',
+      '# TYPE kast_media_files_total gauge',
+      `kast_media_files_total ${mediaFiles}`,
+      ...queueMetrics,
+      '',
+    ].join('\n');
+  }
+
   private async checkRedis(): Promise<HealthIndicatorResult> {
     const client = await redisCommands(this.redisProbeQueue);
     await client.ping();
@@ -111,5 +137,38 @@ export class HealthController {
       throw new Error(`Queue alert threshold exceeded: ${overloaded.join(', ')}`);
     }
     return { workers: { status: 'up', queues: state } };
+  }
+
+  private async collectQueueMetrics(): Promise<string[]> {
+    const queues = [
+      [QUEUE_NAMES.WEBHOOK, this.webhookQueue],
+      [QUEUE_NAMES.MEDIA, this.mediaQueue],
+      [QUEUE_NAMES.SEO, this.seoQueue],
+      [QUEUE_NAMES.PUBLISH, this.redisProbeQueue],
+      [QUEUE_NAMES.EMAIL, this.emailQueue],
+      [QUEUE_NAMES.TRASH, this.trashQueue],
+    ] as const;
+    const lines = [
+      '# HELP kast_queue_jobs Number of BullMQ jobs by queue and state.',
+      '# TYPE kast_queue_jobs gauge',
+    ];
+    const snapshots = await Promise.all(
+      queues.map(async ([name, queue]) => {
+        const counts = await queue.getJobCounts(
+          'waiting',
+          'active',
+          'failed',
+          'completed',
+          'delayed',
+        );
+        return [name, counts] as const;
+      }),
+    );
+    for (const [name, counts] of snapshots) {
+      for (const state of ['waiting', 'active', 'failed', 'completed', 'delayed'] as const) {
+        lines.push(`kast_queue_jobs{queue="${name}",state="${state}"} ${counts[state] ?? 0}`);
+      }
+    }
+    return lines;
   }
 }
