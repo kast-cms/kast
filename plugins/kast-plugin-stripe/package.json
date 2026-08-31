@@ -9,10 +9,10 @@
   },
   "dependencies": {
     "@kast-cms/plugin-sdk": "workspace:*",
-    "stripe": "^22.5.0"
+    "stripe": "^22.6.0"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
-    "typescript": "^5.5.0"
+    "typescript": "^7.0.2"
   }
 }
