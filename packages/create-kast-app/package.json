@@ -30,8 +30,8 @@
   },
   "devDependencies": {
     "@types/handlebars": "^4.1.0",
-    "@types/node": "^26.2.0",
-    "postcss": "^8.5.18",
+    "@types/node": "^26.4.1",
+    "postcss": "^8.5.28",
     "tsup": "^8.0.0",
     "typescript": "^5.7.0"
   },

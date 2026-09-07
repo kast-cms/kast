@@ -12,7 +12,7 @@
     "resend": "^6.20.0"
   },
   "devDependencies": {
-    "@types/node": "^26.2.0",
+    "@types/node": "^26.4.1",
     "typescript": "^5.5.0"
   }
 }
