@@ -4,7 +4,14 @@
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
   "transform": {
-    "^.+\\.(t|j)s$": ["ts-jest", { "tsconfig": "<rootDir>/../tsconfig.json" }]
+    "^.+\\.(t|j)s$": [
+      "ts-jest",
+      {
+        "tsconfig": {
+          "allowJs": true
+        }
+      }
+    ]
   },
   "moduleNameMapper": {
     "^isomorphic-dompurify$": "<rootDir>/stubs/isomorphic-dompurify.ts"
@@ -15,5 +22,8 @@
   "maxWorkers": 1,
   "forceExit": true,
   "collectCoverageFrom": ["../src/**/*.(t|j)s"],
-  "coverageDirectory": "../coverage-e2e"
+  "coverageDirectory": "../coverage-e2e",
+  "transformIgnorePatterns": [
+    "/node_modules/(?!\\.pnpm/|otplib/|@otplib/|@noble/|@scure/|openid-client/|oauth4webapi/|jose/)"
+  ]
 }

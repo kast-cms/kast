@@ -1,14 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, MinLength } from 'class-validator';
+import { IsString, MaxLength, MinLength } from 'class-validator';
 
 export class VerifyMfaSetupDto {
   @ApiProperty({ description: 'Base32 TOTP secret returned by setup start' })
   @IsString()
   @MinLength(16)
+  @MaxLength(128)
   secret!: string;
 
   @ApiProperty({ example: '123456' })
   @IsString()
+  @MaxLength(64)
   code!: string;
 }
 
@@ -19,6 +21,7 @@ export class VerifyMfaChallengeDto {
 
   @ApiProperty({ description: 'Six-digit TOTP code or one recovery code' })
   @IsString()
+  @MaxLength(64)
   code!: string;
 }
 
@@ -30,11 +33,13 @@ export class DisableMfaDto {
 
   @ApiProperty({ description: 'Six-digit TOTP code or one recovery code' })
   @IsString()
+  @MaxLength(64)
   code!: string;
 }
 
 export class MfaCodeDto {
   @ApiProperty({ description: 'Six-digit TOTP code or one recovery code' })
   @IsString()
+  @MaxLength(64)
   code!: string;
 }

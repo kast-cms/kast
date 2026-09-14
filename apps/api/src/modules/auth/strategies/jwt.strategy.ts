@@ -30,7 +30,11 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       throw new UnauthorizedException('User account is inactive');
     }
 
+    if (!payload.sid || !(await this.authRepository.findActiveSession(payload.sid, user.id))) {
+      throw new UnauthorizedException('Session expired or revoked. Sign in again.');
+    }
     return {
+      sessionId: payload.sid,
       id: user.id,
       email: user.email,
       roles: user.roles.map(({ role }) => role.name),

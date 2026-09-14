@@ -1,4 +1,3 @@
-/* eslint-disable max-lines */
 import { Injectable } from '@nestjs/common';
 import type {
   ApiToken,
@@ -11,6 +10,7 @@ import { createHash, randomBytes } from 'crypto';
 import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
 import { PrismaService } from '../../prisma/prisma.service';
 import { generateResetToken, hashResetToken } from './reset-token.util';
+import { SessionRepository } from './session.repository';
 
 /** Mirrors prisma/seed.ts — the roles the RBAC guard expects to exist. */
 const SYSTEM_ROLE_SEED = [
@@ -61,8 +61,10 @@ const DEFAULT_LOCALE_SEED = [
 const SETUP_ADVISORY_LOCK_KEY = 4922421n;
 
 @Injectable()
-export class AuthRepository {
-  constructor(private readonly prisma: PrismaService) {}
+export class AuthRepository extends SessionRepository {
+  constructor(prisma: PrismaService) {
+    super(prisma);
+  }
 
   findUserByEmail(email: string): Promise<(User & { roles: { role: { name: string } }[] }) | null> {
     return this.prisma.user.findUnique({
@@ -78,21 +80,11 @@ export class AuthRepository {
     });
   }
 
-  async createRefreshToken(
-    userId: string,
-    expiresAt: Date,
-    metadata: { userAgent?: string; ipAddress?: string } = {},
-  ): Promise<string> {
+  async createRefreshToken(userId: string, expiresAt: Date): Promise<string> {
     const raw = randomBytes(40).toString('hex');
     const tokenHash = this.hashToken(raw);
     await this.prisma.refreshToken.create({
-      data: {
-        tokenHash,
-        userId,
-        expiresAt,
-        userAgent: metadata.userAgent ?? null,
-        ipAddress: metadata.ipAddress ?? null,
-      },
+      data: { tokenHash, userId, expiresAt },
     });
     return raw;
   }
@@ -106,48 +98,8 @@ export class AuthRepository {
     const tokenHash = this.hashToken(raw);
     return this.prisma.refreshToken.update({
       where: { tokenHash },
-      data: { revokedAt: new Date(), lastUsedAt: new Date() },
-    });
-  }
-
-  markRefreshTokenUsed(raw: string): Promise<RefreshToken> {
-    const tokenHash = this.hashToken(raw);
-    return this.prisma.refreshToken.update({
-      where: { tokenHash },
-      data: { lastUsedAt: new Date() },
-    });
-  }
-
-  listActiveRefreshTokensForUser(
-    userId: string,
-  ): Promise<
-    Array<
-      Pick<
-        RefreshToken,
-        'id' | 'createdAt' | 'expiresAt' | 'lastUsedAt' | 'userAgent' | 'ipAddress'
-      >
-    >
-  > {
-    return this.prisma.refreshToken.findMany({
-      where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },
-      select: {
-        id: true,
-        createdAt: true,
-        expiresAt: true,
-        lastUsedAt: true,
-        userAgent: true,
-        ipAddress: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-  }
-
-  async revokeRefreshTokenByIdForUser(userId: string, id: string): Promise<boolean> {
-    const result = await this.prisma.refreshToken.updateMany({
-      where: { id, userId, revokedAt: null },
       data: { revokedAt: new Date() },
     });
-    return result.count > 0;
   }
 
   revokeAllRefreshTokensForUser(userId: string): Promise<{ count: number }> {
@@ -198,18 +150,15 @@ export class AuthRepository {
     userId: string,
     data: { firstName?: string; lastName?: string; avatarUrl?: string; passwordHash?: string },
   ): Promise<User> {
-    return this.prisma.user.update({ where: { id: userId }, data });
-  }
-
-  updateMfa(
-    userId: string,
-    data: { mfaSecret: string | null; mfaEnabledAt: Date | null; mfaRecoveryCodes: string[] },
-  ): Promise<User> {
-    return this.prisma.user.update({ where: { id: userId }, data });
-  }
-
-  updateMfaRecoveryCodes(userId: string, mfaRecoveryCodes: string[]): Promise<User> {
-    return this.prisma.user.update({ where: { id: userId }, data: { mfaRecoveryCodes } });
+    if (!data.passwordHash) return this.prisma.user.update({ where: { id: userId }, data });
+    return this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.update({ where: { id: userId }, data });
+      await tx.refreshToken.updateMany({
+        where: { userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      return user;
+    });
   }
 
   hashToken(raw: string): string {

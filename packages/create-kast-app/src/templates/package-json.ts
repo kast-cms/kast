@@ -19,7 +19,7 @@ export const PACKAGE_JSON_TEMPLATE = `{
     "prepare": "husky"
   },
   "engines": {
-    "node": ">=20"
+    "node": "^20.19.0 || >=22.12.0"
   },
   "packageManager": "{{packageManager}}@{{pmVersion}}",
   "devDependencies": {
@@ -85,7 +85,7 @@ export const PACKAGE_JSON_API_ONLY_TEMPLATE = `{
     "prepare": "husky"
   },
   "engines": {
-    "node": ">=20"
+    "node": "^20.19.0 || >=22.12.0"
   },
   "packageManager": "{{packageManager}}@{{pmVersion}}",
   "dependencies": {
@@ -117,12 +117,16 @@ export const PACKAGE_JSON_API_ONLY_TEMPLATE = `{
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
     "helmet": "^8.0.0",
+    "hono": "^4.13.5",
     "ioredis": "^5.3.2",
     "isomorphic-dompurify": "^3.10.0",
     "jsonwebtoken": "^9.0.3",
     "meilisearch": "^0.58.0",
-    "multer": "^2.2.0",
-    "nodemailer": "^9.0.1",
+    "multer": "^2.3.0",
+    "nodemailer": "^9.1.1",
+    "openid-client": "^6",
+    "otplib": "^13.5.0",
+    "qrcode": "^1.5.4",
     "passport": "^0.7.0",
     "passport-github2": "^0.1.12",
     "passport-google-oauth20": "^2.0.0",
@@ -131,7 +135,7 @@ export const PACKAGE_JSON_API_ONLY_TEMPLATE = `{
     "reflect-metadata": "^0.2.2",
     "resend": "^6.14.0",
     "rxjs": "^7.8.2",
-    "sharp": "^0.35.0",
+    "sharp": "^0.35.4",
     "stripe": "^22.2.2",
     "zod": "^4.3.6"
   },
@@ -149,6 +153,7 @@ export const PACKAGE_JSON_API_ONLY_TEMPLATE = `{
     "@types/passport-github2": "^1.2.9",
     "@types/passport-google-oauth20": "^2.0.17",
     "@types/passport-jwt": "^4.0.1",
+    "@types/qrcode": "^1.5.6",
     "@types/sharp": "^0.32.0",
     "@types/supertest": "^6.0.2",
     "dompurify": "^3.4.1",
@@ -173,10 +178,12 @@ export const PACKAGE_JSON_API_ONLY_TEMPLATE = `{
     "moduleFileExtensions": ["js", "json", "ts"],
     "rootDir": "src",
     "testRegex": ".*\\\\.spec\\\\.ts$",
-    "transform": { "^.+\\\\.(t|j)s$": "ts-jest" },
+    "transform": { "^.+\\\\.(t|j)s$": ["ts-jest", { "tsconfig": { "allowJs": true } }] },
     "collectCoverageFrom": ["**/*.(t|j)s"],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "transformIgnorePatterns": ["/node_modules/(?!\\\\.pnpm/|otplib/|@otplib/|@noble/|@scure/|openid-client/|oauth4webapi/|jose/)"],
+    "moduleNameMapper": { "^isomorphic-dompurify$": "<rootDir>/../test/stubs/isomorphic-dompurify.ts" }
   }{{#if isPnpmLegacyConfig}},
   "pnpm": {
     "overrides": {

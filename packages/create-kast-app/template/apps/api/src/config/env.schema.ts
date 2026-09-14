@@ -103,12 +103,18 @@ const envSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   GITHUB_CLIENT_ID: z.string().optional(),
   GITHUB_CLIENT_SECRET: z.string().optional(),
+  /**
+   * Generic OpenID Connect provider (Entra, Okta, Keycloak, …). All four vars
+   * must be set together or the provider stays hidden; the issuer URL is the
+   * one whose /.well-known/openid-configuration is fetched server-side.
+   */
+  OIDC_ISSUER_URL: z.string().optional(),
   OIDC_CLIENT_ID: z.string().optional(),
   OIDC_CLIENT_SECRET: z.string().optional(),
-  OIDC_AUTHORIZATION_URL: z.string().url().optional(),
-  OIDC_TOKEN_URL: z.string().url().optional(),
-  OIDC_USERINFO_URL: z.string().url().optional(),
+  /** Space- or comma-separated; the 'openid' scope is always sent. */
   OIDC_SCOPES: z.string().default('openid email profile'),
+  /** Issuer label shown in authenticator apps for this install's TOTP codes. */
+  TOTP_ISSUER: z.string().default('Kast'),
   SITE_URL: z.string().default('http://localhost:3000'),
   /**
    * Public base URL of the admin panel, INCLUDING its base path. The Next.js
@@ -228,5 +234,27 @@ export function validateEnv(config: Record<string, unknown>): Env {
   }
   assertProductionEnvironment(result.data);
   assertStorageEnvironment(result.data);
+  assertOidcEnvironment(result.data);
   return result.data;
+}
+
+function assertOidcEnvironment(env: Env): void {
+  const oidc = [env.OIDC_ISSUER_URL, env.OIDC_CLIENT_ID, env.OIDC_CLIENT_SECRET];
+  if (oidc.some(Boolean)) {
+    if (!oidc.every(Boolean))
+      throw new Error('OIDC requires issuer URL, client ID and client secret');
+    const issuer = new URL(env.OIDC_ISSUER_URL ?? '');
+    if (
+      issuer.protocol !== 'https:' ||
+      issuer.username ||
+      issuer.password ||
+      issuer.search ||
+      issuer.hash
+    )
+      throw new Error(
+        'OIDC_ISSUER_URL must be an HTTPS issuer URL without credentials, query or fragment',
+      );
+    if (!env.OIDC_SCOPES.split(/\s+/).includes('openid'))
+      throw new Error('OIDC_SCOPES must include openid');
+  }
 }

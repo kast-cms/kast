@@ -18,6 +18,7 @@ describe('AuthController route exposure', () => {
     controller = new AuthController(
       service as unknown as AuthService,
       { get: jest.fn() } as unknown as ConfigService<Env>,
+      {} as never,
     );
   });
 

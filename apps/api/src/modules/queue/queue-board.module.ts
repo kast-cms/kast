@@ -4,6 +4,7 @@ import { BullBoardModule } from '@bull-board/nestjs';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import type { Env } from '../../config/env.schema';
+import { PrismaService } from '../../prisma/prisma.service';
 import { createBullBoardAuthMiddleware } from './bull-board-auth.middleware';
 import { QueueBoardSessionController } from './queue-board-session.controller';
 import { QUEUE_NAMES } from './queue.constants';
@@ -12,12 +13,13 @@ import { QUEUE_NAMES } from './queue.constants';
   imports: [
     BullBoardModule.forRootAsync({
       imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService<Env>) => ({
+      inject: [ConfigService, PrismaService],
+      useFactory: (configService: ConfigService<Env>, prisma: PrismaService) => ({
         route: '/bull-board',
         adapter: ExpressAdapter,
         middleware: createBullBoardAuthMiddleware(
           configService.get('JWT_SECRET', { infer: true }) ?? '',
+          prisma,
         ),
       }),
     }),

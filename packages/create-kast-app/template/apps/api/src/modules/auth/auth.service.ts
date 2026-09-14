@@ -1,4 +1,3 @@
-/* eslint-disable max-lines, complexity */
 import {
   BadRequestException,
   ForbiddenException,
@@ -8,15 +7,10 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import type { User } from '@prisma/client';
 import * as argon2 from 'argon2';
-import { createHmac, randomBytes, randomUUID, scryptSync } from 'crypto';
-import { SecretEncryptionService } from '../../common/security/secret-encryption.service';
+import { randomBytes, randomUUID, scryptSync } from 'crypto';
 import type {
   LoginResult,
-  MfaChallenge,
-  MfaSetup,
-  MfaSetupVerified,
-  MfaStatus,
-  SessionSummary,
+  SessionMetadata,
   TokenPair,
   UserSummary,
 } from '../../common/types/auth.types';
@@ -26,30 +20,14 @@ import { AuthRepository } from './auth.repository';
 import type { LoginDto } from './dto/login.dto';
 import type { SetupDto } from './dto/setup.dto';
 import type { UpdateProfileDto } from './dto/update-profile.dto';
-import {
-  buildTotpUri,
-  generateRecoveryCodes,
-  generateTotpSecret,
-  normalizeRecoveryCode,
-  normalizeRecoveryCodeForVerification,
-  verifyTotp,
-} from './mfa-totp.util';
+import { issueLoginChallenge, verifyLoginChallenge } from './login-challenge';
 import { OAuthPolicy } from './oauth-policy';
+import { verifyProfilePassword } from './profile-password';
+import { TwoFactorService } from './two-factor.service';
 import type { OAuthProfile } from './types/oauth.types';
 
 /** An OAuth code only has to survive one provider→admin redirect hop. */
 const OAUTH_CODE_TTL_MS = 60_000;
-/** Generic OAuth/OIDC state only guards one provider round trip. */
-const OAUTH_STATE_TTL_MS = 10 * 60_000;
-/** A password-verified MFA challenge should only survive one prompt. */
-const MFA_CHALLENGE_TTL_MS = 5 * 60_000;
-const OAUTH_CODE_LOOKUP_SALT = 'kast-oauth-code-lookup-v1';
-const OPAQUE_TOKEN_LOOKUP_KEY = 'kast-opaque-token-lookup-v1';
-
-export interface RequestMetadata {
-  userAgent?: string;
-  ipAddress?: string;
-}
 
 @Injectable()
 export class AuthService {
@@ -66,7 +44,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly queueAdapter: QueueAdapter,
     private readonly oauthPolicy: OAuthPolicy,
-    private readonly secrets: SecretEncryptionService,
+    private readonly twoFactor: TwoFactorService,
   ) {}
 
   /** True while the install has no users and the setup endpoint is still open. */
@@ -109,45 +87,50 @@ export class AuthService {
     return result;
   }
 
-  async login(dto: LoginDto, metadata: RequestMetadata = {}): Promise<LoginResult> {
+  async login(dto: LoginDto, metadata: SessionMetadata = {}): Promise<LoginResult> {
     const user = await this.authRepository.findUserByEmail(dto.email);
-    if (!user?.isActive) throw new UnauthorizedException('Invalid credentials');
-
-    const valid = await argon2.verify(user.passwordHash ?? '', dto.password);
+    if (!user?.isActive || user.trashedAt || !user.passwordHash)
+      throw new UnauthorizedException('Invalid credentials');
+    const valid = await argon2.verify(user.passwordHash, dto.password);
     if (!valid) throw new UnauthorizedException('Invalid credentials');
-
-    const roles = user.roles.map((ur) => ur.role.name);
-    if (this.isMfaEnabled(user)) {
-      return this.issueMfaChallenge(user, roles);
-    }
-
-    await this.authRepository.updateLastLogin(user.id);
-    const [accessToken, refreshToken] = await Promise.all([
-      this.issueAccessToken(user.id, user.email, roles),
-      this.authRepository.createRefreshToken(user.id, this.refreshTokenExpiry(), metadata),
-    ]);
-
-    return { accessToken, refreshToken, expiresIn: 900, user: this.toSummary(user, roles) };
+    return this.completePrimaryAuthentication(user, metadata);
   }
 
-  async refresh(raw: string, metadata: RequestMetadata = {}): Promise<TokenPair> {
-    const record = await this.authRepository.findRefreshToken(raw);
-    if (!record || record.revokedAt || record.expiresAt < new Date()) {
-      throw new UnauthorizedException('Invalid or expired refresh token');
-    }
+  private async completePrimaryAuthentication(
+    user: User & { roles: { role: { name: string } }[] },
+    metadata: SessionMetadata = {},
+  ): Promise<LoginResult> {
+    if (user.twoFactorEnabled) return issueLoginChallenge(user, metadata, this.queueAdapter);
+    await this.authRepository.updateLastLogin(user.id);
+    return this.issueTokenPair(user, metadata);
+  }
 
-    await this.authRepository.revokeRefreshToken(raw);
+  async verifyTwoFactor(challengeToken: string, code: string): Promise<TokenPair> {
+    const { user, metadata } = await verifyLoginChallenge(
+      challengeToken,
+      code,
+      this.queueAdapter,
+      this.authRepository,
+      this.twoFactor,
+    );
+    await this.authRepository.updateLastLogin(user.id);
+    return this.issueTokenPair(user, metadata);
+  }
 
+  async refresh(raw: string): Promise<TokenPair> {
+    const record = await this.authRepository.rotateSession(raw);
+    if (!record) throw new UnauthorizedException('Invalid or expired refresh token');
     const user = await this.authRepository.findUserById(record.userId);
-    if (!user?.isActive) throw new UnauthorizedException('User not found or inactive');
-
+    if (!user?.isActive || user.trashedAt)
+      throw new UnauthorizedException('User not found or inactive');
     const roles = user.roles.map((ur) => ur.role.name);
-    const [accessToken, refreshToken] = await Promise.all([
-      this.issueAccessToken(user.id, user.email, roles),
-      this.authRepository.createRefreshToken(user.id, this.refreshTokenExpiry(), metadata),
-    ]);
-
-    return { accessToken, refreshToken, expiresIn: 900, user: this.toSummary(user, roles) };
+    const accessToken = await this.issueAccessToken(user.id, user.email, roles, record.id);
+    return {
+      accessToken,
+      refreshToken: record.raw,
+      expiresIn: 900,
+      user: this.toSummary(user, roles),
+    };
   }
 
   async logout(raw: string): Promise<void> {
@@ -170,17 +153,7 @@ export class AuthService {
     const user = await this.authRepository.findUserById(userId);
     if (!user) throw new UnauthorizedException('User not found');
 
-    // class-validator has already rejected any non-nullish newPassword shorter
-    // than 8 characters, so a validated truthy value here is a real change
-    // request — the branch below is the "only verify when changing" rule, not
-    // a bypass a caller can shape.
-    if (dto.newPassword) {
-      if (!dto.currentPassword) {
-        throw new BadRequestException('currentPassword is required to change password');
-      }
-      const valid = await argon2.verify(user.passwordHash ?? '', dto.currentPassword);
-      if (!valid) throw new BadRequestException('Current password is incorrect');
-    }
+    await verifyProfilePassword(user.passwordHash, dto);
 
     const data: Parameters<AuthRepository['updateUser']>[1] = {};
     if (dto.firstName !== undefined) data.firstName = dto.firstName;
@@ -189,113 +162,20 @@ export class AuthService {
     if (dto.newPassword) data.passwordHash = await argon2.hash(dto.newPassword);
 
     const updated = await this.authRepository.updateUser(userId, data);
-    if (dto.newPassword) await this.authRepository.revokeAllRefreshTokensForUser(userId);
     const roles = user.roles.map((ur) => ur.role.name);
     return this.toSummary({ ...user, ...updated }, roles);
   }
 
-  async mfaStatus(userId: string): Promise<MfaStatus> {
-    const user = await this.authRepository.findUserById(userId);
-    if (!user) throw new UnauthorizedException('User not found');
-    return {
-      enabled: this.isMfaEnabled(user),
-      enabledAt: user.mfaEnabledAt?.toISOString() ?? null,
-      recoveryCodeCount: user.mfaRecoveryCodes.length,
-    };
-  }
-
-  async beginMfaSetup(userId: string): Promise<MfaSetup> {
-    const user = await this.authRepository.findUserById(userId);
-    if (!user) throw new UnauthorizedException('User not found');
-    const secret = generateTotpSecret();
-    return { secret, otpauthUrl: buildTotpUri(secret, user.email) };
-  }
-
-  async verifyMfaSetup(userId: string, secret: string, code: string): Promise<MfaSetupVerified> {
-    if (!verifyTotp(secret, code)) throw new BadRequestException('Invalid MFA code');
-    const recoveryCodes = generateRecoveryCodes();
-    await this.authRepository.updateMfa(userId, {
-      mfaSecret: this.secrets.encrypt(secret),
-      mfaEnabledAt: new Date(),
-      mfaRecoveryCodes: await Promise.all(recoveryCodes.map((item) => this.hashRecoveryCode(item))),
-    });
-    return { enabled: true, recoveryCodes };
-  }
-
-  async disableMfa(userId: string, currentPassword: string, code: string): Promise<MfaStatus> {
-    const user = await this.authRepository.findUserById(userId);
-    if (!user) throw new UnauthorizedException('User not found');
-    const valid = await argon2.verify(user.passwordHash ?? '', currentPassword);
-    if (!valid) throw new BadRequestException('Current password is incorrect');
-    await this.verifyUserMfa(user, code);
-    await this.authRepository.updateMfa(userId, {
-      mfaSecret: null,
-      mfaEnabledAt: null,
-      mfaRecoveryCodes: [],
-    });
-    await this.authRepository.revokeAllRefreshTokensForUser(userId);
-    return { enabled: false, enabledAt: null, recoveryCodeCount: 0 };
-  }
-
-  async regenerateRecoveryCodes(
-    userId: string,
-    code: string,
-  ): Promise<{ recoveryCodes: string[] }> {
-    const user = await this.authRepository.findUserById(userId);
-    if (!user) throw new UnauthorizedException('User not found');
-    await this.verifyUserMfa(user, code);
-    const recoveryCodes = generateRecoveryCodes();
-    await this.authRepository.updateMfaRecoveryCodes(
-      userId,
-      await Promise.all(recoveryCodes.map((item) => this.hashRecoveryCode(item))),
-    );
-    return { recoveryCodes };
-  }
-
-  async completeMfaChallenge(
-    challengeToken: string,
-    code: string,
-    metadata: RequestMetadata = {},
-  ): Promise<TokenPair> {
-    const userId = await this.consumeMfaChallenge(challengeToken);
-    const user = await this.authRepository.findUserById(userId);
-    if (!user?.isActive) throw new UnauthorizedException('User not found or inactive');
-    await this.verifyUserMfa(user, code);
-    await this.authRepository.updateLastLogin(user.id);
-    return this.issueTokenPair(user, metadata);
-  }
-
-  async listSessions(userId: string): Promise<SessionSummary[]> {
-    const rows = await this.authRepository.listActiveRefreshTokensForUser(userId);
-    return rows.map((row) => ({
-      id: row.id,
-      userAgent: row.userAgent,
-      ipAddress: row.ipAddress,
-      createdAt: row.createdAt.toISOString(),
-      lastUsedAt: row.lastUsedAt?.toISOString() ?? null,
-      expiresAt: row.expiresAt.toISOString(),
-    }));
-  }
-
-  async revokeSession(userId: string, sessionId: string): Promise<void> {
-    const revoked = await this.authRepository.revokeRefreshTokenByIdForUser(userId, sessionId);
-    if (!revoked) throw new BadRequestException('Session not found or already revoked');
-  }
-
-  async revokeAllSessions(userId: string): Promise<{ revoked: number }> {
-    const result = await this.authRepository.revokeAllRefreshTokensForUser(userId);
-    return { revoked: result.count };
-  }
-
-  async oauthCallback(provider: string, profile: OAuthProfile): Promise<LoginResult> {
+  async oauthCallback(
+    provider: string,
+    profile: OAuthProfile,
+    metadata: SessionMetadata = {},
+  ): Promise<LoginResult> {
     const email = profile.emails?.[0]?.value ?? null;
     const user = await this.findOrCreateOAuthUser(provider, profile, email);
-    if (!user.isActive) throw new UnauthorizedException('Account is inactive');
+    if (!user.isActive || user.trashedAt) throw new UnauthorizedException('Account is inactive');
     await this.authRepository.upsertOAuthAccount(user.id, provider, profile.id, email);
-    const roles = user.roles.map((ur) => ur.role.name);
-    if (this.isMfaEnabled(user)) return this.issueMfaChallenge(user, roles);
-    await this.authRepository.updateLastLogin(user.id);
-    return this.issueTokenPair(user);
+    return this.completePrimaryAuthentication(user, metadata);
   }
 
   /**
@@ -313,30 +193,6 @@ export class AuthService {
     return code;
   }
 
-  async issueOAuthState(provider: string): Promise<string> {
-    const state = randomBytes(32).toString('base64url');
-    await this.queueAdapter.setEphemeral(
-      `oauth-state:${this.hashOpaqueToken(state)}`,
-      JSON.stringify({ provider }),
-      OAUTH_STATE_TTL_MS,
-    );
-    return state;
-  }
-
-  async consumeOAuthState(provider: string, state: string): Promise<void> {
-    const pending = await this.queueAdapter.consumeEphemeral(
-      `oauth-state:${this.hashOpaqueToken(state)}`,
-    );
-    if (!pending) throw new UnauthorizedException('Invalid or expired OAuth state');
-    try {
-      const parsed = JSON.parse(pending) as { provider?: unknown };
-      if (parsed.provider === provider) return;
-    } catch {
-      // Fall through to the uniform failure below.
-    }
-    throw new UnauthorizedException('Invalid or expired OAuth state');
-  }
-
   async exchangeOAuthCode(code: string): Promise<LoginResult> {
     const key = this.hashOAuthCode(code);
     const pending = await this.queueAdapter.consumeEphemeral(`oauth-code:${key}`);
@@ -344,18 +200,15 @@ export class AuthService {
       throw new UnauthorizedException('Invalid or expired authorization code');
     }
     try {
-      return JSON.parse(pending) as TokenPair;
+      return JSON.parse(pending) as LoginResult;
     } catch {
       throw new UnauthorizedException('Invalid or expired authorization code');
     }
   }
 
-  /**
-   * The code is 32 random bytes whose deterministic derived value is only the
-   * lookup key for a 60-second ephemeral entry.
-   */
+  /** Preserve the derived lookup keys used by the existing OAuth-code exchange. */
   private hashOAuthCode(code: string): string {
-    return scryptSync(code, OAUTH_CODE_LOOKUP_SALT, 32).toString('hex');
+    return scryptSync(code, 'kast-oauth-code-lookup-v1', 32).toString('hex');
   }
 
   private async findOrCreateOAuthUser(
@@ -415,97 +268,23 @@ export class AuthService {
   }
 
   private async issueTokenPair(
-    user: {
-      id: string;
-      email: string;
-      firstName: string | null;
-      lastName: string | null;
-      avatarUrl: string | null;
-      roles: { role: { name: string } }[];
-    },
-    metadata: RequestMetadata = {},
+    user: User & { roles: { role: { name: string } }[] },
+    metadata: SessionMetadata = {},
   ): Promise<TokenPair> {
     const roles = user.roles.map((ur) => ur.role.name);
-    const [accessToken, refreshToken] = await Promise.all([
-      this.issueAccessToken(user.id, user.email, roles),
-      this.authRepository.createRefreshToken(user.id, this.refreshTokenExpiry(), metadata),
-    ]);
-    return { accessToken, refreshToken, expiresIn: 900, user: this.toSummary(user, roles) };
-  }
-
-  private async issueMfaChallenge(
-    user: {
-      id: string;
-      email: string;
-      firstName: string | null;
-      lastName: string | null;
-      avatarUrl: string | null;
-    },
-    roles: string[],
-  ): Promise<MfaChallenge> {
-    const challengeToken = randomBytes(32).toString('base64url');
-    await this.queueAdapter.setEphemeral(
-      `mfa-challenge:${this.hashOpaqueToken(challengeToken)}`,
-      JSON.stringify({ userId: user.id }),
-      MFA_CHALLENGE_TTL_MS,
+    const session = await this.authRepository.createSession(
+      user.id,
+      this.refreshTokenExpiry(),
+      metadata,
+      user,
     );
+    const accessToken = await this.issueAccessToken(user.id, user.email, roles, session.id);
     return {
-      mfaRequired: true,
-      challengeToken,
-      expiresIn: Math.floor(MFA_CHALLENGE_TTL_MS / 1000),
+      accessToken,
+      refreshToken: session.raw,
+      expiresIn: 900,
       user: this.toSummary(user, roles),
     };
-  }
-
-  private async consumeMfaChallenge(challengeToken: string): Promise<string> {
-    const pending = await this.queueAdapter.consumeEphemeral(
-      `mfa-challenge:${this.hashOpaqueToken(challengeToken)}`,
-    );
-    if (!pending) throw new UnauthorizedException('Invalid or expired MFA challenge');
-    try {
-      const parsed = JSON.parse(pending) as { userId?: unknown };
-      if (typeof parsed.userId === 'string') return parsed.userId;
-    } catch {
-      // Fall through to the uniform failure below.
-    }
-    throw new UnauthorizedException('Invalid or expired MFA challenge');
-  }
-
-  private isMfaEnabled(user: { mfaSecret?: string | null; mfaEnabledAt?: Date | null }): boolean {
-    return Boolean(user.mfaSecret && user.mfaEnabledAt);
-  }
-
-  private async verifyUserMfa(
-    user: {
-      id: string;
-      mfaSecret?: string | null;
-      mfaRecoveryCodes?: string[];
-    },
-    code: string,
-  ): Promise<void> {
-    if (!user.mfaSecret) throw new UnauthorizedException('MFA is not enabled');
-    if (verifyTotp(this.secrets.decrypt(user.mfaSecret), code)) return;
-
-    const recoveryCode = normalizeRecoveryCodeForVerification(code);
-    const recoveryCodeHashes = user.mfaRecoveryCodes ?? [];
-    for (const hash of recoveryCodeHashes) {
-      if (await argon2.verify(hash, recoveryCode)) {
-        await this.authRepository.updateMfaRecoveryCodes(
-          user.id,
-          recoveryCodeHashes.filter((item) => item !== hash),
-        );
-        return;
-      }
-    }
-    throw new UnauthorizedException('Invalid MFA code');
-  }
-
-  private hashRecoveryCode(code: string): Promise<string> {
-    return argon2.hash(normalizeRecoveryCode(code), { type: argon2.argon2id });
-  }
-
-  private hashOpaqueToken(token: string): string {
-    return createHmac('sha256', OPAQUE_TOKEN_LOOKUP_KEY).update(token).digest('hex');
   }
 
   async forgotPassword(email: string): Promise<void> {
@@ -549,25 +328,22 @@ export class AuthService {
     if (!userId) throw new BadRequestException(failureMessage);
   }
 
-  private async issueAccessToken(id: string, email: string, roles: string[]): Promise<string> {
-    return this.jwtService.signAsync({ sub: id, email, roles, jti: randomUUID() });
+  private async issueAccessToken(
+    id: string,
+    email: string,
+    roles: string[],
+    sid: string,
+  ): Promise<string> {
+    return this.jwtService.signAsync({ sub: id, email, roles, sid, jti: randomUUID() });
   }
 
   private refreshTokenExpiry(): Date {
     // BR-AUT-002: refresh tokens expire in 30 days.
-    const d = new Date();
-    d.setDate(d.getDate() + 30);
-    return d;
+    return new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   }
 
   private toSummary(
-    user: {
-      id: string;
-      email: string;
-      firstName: string | null;
-      lastName: string | null;
-      avatarUrl: string | null;
-    },
+    user: Pick<User, 'id' | 'email' | 'firstName' | 'lastName' | 'avatarUrl'>,
     roles: string[],
   ): UserSummary {
     return {

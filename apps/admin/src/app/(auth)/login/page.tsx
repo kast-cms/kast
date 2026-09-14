@@ -1,78 +1,65 @@
 'use client';
 
+import { TwoFactorPrompt } from '@/components/auth/two-factor-prompt';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SeparatorWithLabel } from '@/components/ui/separator';
-import { adminRoute, API_URL } from '@/config/env';
+import { API_URL } from '@/config/env';
 import { createApiClient } from '@/lib/api';
+import { persistSignIn } from '@/lib/complete-sign-in';
 import { useSession } from '@/lib/session';
-import type { LoginResult, MfaChallenge, TokenPair } from '@/types';
+import type { TokenPair } from '@/types';
+import type { AuthProviders } from '@kast-cms/sdk';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { type JSX, useEffect, useState } from 'react';
 
 export default function LoginPage(): JSX.Element {
   const t = useTranslations('auth.login');
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { setSession } = useSession();
+
+  const [challenge, setChallenge] = useState<string | null>(null);
+  const [providers, setProviders] = useState<AuthProviders>({
+    google: false,
+    github: false,
+    oidc: false,
+  });
+  useEffect(() => {
+    void createApiClient()
+      .auth.providers()
+      .then(({ data }) => setProviders(data))
+      .catch(() => undefined);
+  }, []);
+  const finishSignIn = async (pair: TokenPair): Promise<void> => {
+    await persistSignIn(pair);
+    setSession(pair);
+    router.push('/content-types');
+  };
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [mfaCode, setMfaCode] = useState('');
-  const [challenge, setChallenge] = useState<MfaChallenge | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
-
-  useEffect(() => {
-    const challengeToken = searchParams.get('challenge');
-    if (!challengeToken) return;
-    const challengeEmail = searchParams.get('email') ?? '';
-    setChallenge({
-      mfaRequired: true,
-      challengeToken,
-      expiresIn: 300,
-      user: { id: '', email: challengeEmail, firstName: null, lastName: null, roles: [] },
-    });
-  }, [searchParams]);
-
-  async function establishSession(pair: TokenPair): Promise<void> {
-    await fetch(adminRoute('/api/auth/set-session'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken: pair.refreshToken }),
-    });
-    setSession(pair);
-    router.push('/content-types');
-  }
-
-  function isMfaChallenge(result: LoginResult): result is MfaChallenge {
-    return 'mfaRequired' in result && result.mfaRequired;
-  }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     setError(null);
     setIsPending(true);
+
     try {
       const client = createApiClient();
-      if (challenge) {
-        const res = await client.auth.completeMfaChallenge(challenge.challengeToken, mfaCode);
-        await establishSession(res.data as TokenPair);
+      const { data } = await client.auth.login(email, password);
+      if ('requiresTwoFactor' in data) {
+        setChallenge(data.challengeToken);
+        setPassword('');
         return;
       }
-      const res = (await client.auth.login(email, password)) as { data: LoginResult };
-      const result = res.data;
-      if (isMfaChallenge(result)) {
-        setChallenge(result);
-        setMfaCode('');
-        return;
-      }
-      await establishSession(result);
+      await finishSignIn(data);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : '';
       const isUnauthorized = (err as { status?: number }).status === 401 || message.includes('401');
@@ -90,29 +77,44 @@ export default function LoginPage(): JSX.Element {
       </CardHeader>
 
       <CardContent className="space-y-5 px-6 pt-5 pb-6">
-        <div className="grid gap-2">
-          <Button variant="outline" className="w-full" asChild>
-            <a href={`${API_URL}/api/v1/auth/oauth/google`}>
-              <GoogleIcon />
-              {t('continueWithGoogle')}
-            </a>
-          </Button>
-          <Button variant="outline" className="w-full" asChild>
-            <a href={`${API_URL}/api/v1/auth/oauth/github`}>
-              <GitHubIcon />
-              {t('continueWithGitHub')}
-            </a>
-          </Button>
-          <Button variant="outline" className="w-full" asChild>
-            <a href={`${API_URL}/api/v1/auth/oauth/oidc`}>{t('continueWithOidc')}</a>
-          </Button>
-        </div>
+        {challenge ? (
+          <TwoFactorPrompt
+            challengeToken={challenge}
+            onSuccess={finishSignIn}
+            onCancel={() => {
+              setChallenge(null);
+              setError(null);
+            }}
+          />
+        ) : (
+          <>
+            <div className="grid gap-2">
+              {providers.google && (
+                <Button variant="outline" className="w-full" asChild>
+                  <a href={`${API_URL}/api/v1/auth/oauth/google`}>
+                    <GoogleIcon />
+                    {t('continueWithGoogle')}
+                  </a>
+                </Button>
+              )}
+              {providers.github && (
+                <Button variant="outline" className="w-full" asChild>
+                  <a href={`${API_URL}/api/v1/auth/oauth/github`}>
+                    <GitHubIcon />
+                    {t('continueWithGitHub')}
+                  </a>
+                </Button>
+              )}
+              {providers.oidc && (
+                <Button variant="outline" className="w-full" asChild>
+                  <a href={`${API_URL}/api/v1/auth/oauth/oidc`}>Continue with SSO</a>
+                </Button>
+              )}
+            </div>
 
-        <SeparatorWithLabel>{t('orContinueWith')}</SeparatorWithLabel>
+            <SeparatorWithLabel>{t('orContinueWith')}</SeparatorWithLabel>
 
-        <form onSubmit={(e) => void handleSubmit(e)} noValidate className="space-y-4">
-          {!challenge && (
-            <>
+            <form onSubmit={(e) => void handleSubmit(e)} noValidate className="space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="email">{t('emailLabel')}</Label>
                 <Input
@@ -148,47 +150,19 @@ export default function LoginPage(): JSX.Element {
                   disabled={isPending}
                 />
               </div>
-            </>
-          )}
 
-          {challenge && (
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between gap-2">
-                <Label htmlFor="mfa-code">{t('mfaCodeLabel')}</Label>
-                <button
-                  type="button"
-                  className="rounded-sm text-xs font-medium text-muted-foreground transition-colors duration-150 ease-out-quad hover:text-foreground"
-                  onClick={() => {
-                    setChallenge(null);
-                    setMfaCode('');
-                  }}
-                >
-                  {t('useDifferentAccount')}
-                </button>
-              </div>
-              <Input
-                id="mfa-code"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                placeholder={t('mfaCodePlaceholder')}
-                value={mfaCode}
-                onChange={(e) => setMfaCode(e.target.value)}
-                required
-                disabled={isPending}
-              />
-            </div>
-          )}
+              {error !== null && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
 
-          {error !== null && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          <Button type="submit" className="w-full" loading={isPending}>
-            {isPending ? t('submitting') : challenge ? t('verifyMfa') : t('submit')}
-          </Button>
-        </form>
+              <Button type="submit" className="w-full" loading={isPending}>
+                {isPending ? t('submitting') : t('submit')}
+              </Button>
+            </form>
+          </>
+        )}
       </CardContent>
     </Card>
   );

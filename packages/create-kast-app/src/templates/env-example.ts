@@ -113,6 +113,16 @@ UPLOAD_ALLOWED_MIME_TYPES=image/jpeg,image/png,image/webp,image/gif,application/
 # GITHUB_CLIENT_ID=
 # GITHUB_CLIENT_SECRET=
 
+# Generic OIDC provider (Entra, Okta, Keycloak, ...). All three must be set
+# together; the issuer is whose /.well-known/openid-configuration is fetched.
+# OIDC_ISSUER_URL=
+# OIDC_CLIENT_ID=
+# OIDC_CLIENT_SECRET=
+# OIDC_SCOPES=openid email profile
+
+# Label shown in authenticator apps for this install's TOTP codes.
+TOTP_ISSUER=Kast
+
 # Whether an OAuth identity with no matching account may create one. Any
 # provider will hand back an address for any inbox its own users control, so
 # this is a self-registration policy and it stays closed until opened.

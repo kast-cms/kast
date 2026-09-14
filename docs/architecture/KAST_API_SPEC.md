@@ -371,9 +371,10 @@ Management endpoints:
 | GET    | `/auth/oauth/oidc`          | Start generic OIDC login                     |
 | GET    | `/auth/oauth/oidc/callback` | Complete generic OIDC login                  |
 
-Generic OIDC is configured with `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`,
-`OIDC_AUTHORIZATION_URL`, `OIDC_TOKEN_URL`, `OIDC_USERINFO_URL`, and optional
-`OIDC_SCOPES`.
+Generic OIDC is configured with `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`,
+`OIDC_CLIENT_SECRET`, and optional `OIDC_SCOPES`. See
+[Trust and access](../decisions/TRUST_ACCESS.md) for the account-security endpoints,
+session revocation semantics, and compatibility notes.
 
 ---
 

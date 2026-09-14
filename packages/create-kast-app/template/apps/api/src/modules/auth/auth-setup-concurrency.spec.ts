@@ -1,7 +1,6 @@
 import { ForbiddenException } from '@nestjs/common';
 import type { JwtService } from '@nestjs/jwt';
 import type { User } from '@prisma/client';
-import type { SecretEncryptionService } from '../../common/security/secret-encryption.service';
 import type { QueueAdapter } from '../queue/queue.adapter';
 import type { AuthRepository } from './auth.repository';
 import { AuthService } from './auth.service';
@@ -47,8 +46,7 @@ describe('AuthService setup concurrency', () => {
     const policy = {
       canProvision: jest.fn().mockReturnValue({ allowed: false, reason: 'disabled' }),
     } as unknown as OAuthPolicy;
-    const secrets = {} as unknown as SecretEncryptionService;
-    return new AuthService(repo, jwt, queue, policy, secrets);
+    return new AuthService(repo, jwt, queue, policy, {} as never);
   }
 
   it('creates exactly one owner when eight setup requests arrive at once', async () => {

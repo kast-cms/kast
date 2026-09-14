@@ -6,7 +6,6 @@ import {
 import type { ConfigService } from '@nestjs/config';
 import type { JwtService } from '@nestjs/jwt';
 import type { Response } from 'express';
-import type { SecretEncryptionService } from '../../common/security/secret-encryption.service';
 import type { TokenPair } from '../../common/types/auth.types';
 import type { Env } from '../../config/env.schema';
 import type { QueueAdapter } from '../queue/queue.adapter';
@@ -41,10 +40,6 @@ function buildPolicy(): OAuthPolicy {
   } as unknown as OAuthPolicy;
 }
 
-function buildSecrets(): SecretEncryptionService {
-  return {} as unknown as SecretEncryptionService;
-}
-
 function buildQueue(): QueueAdapter {
   const values = new Map<string, { value: string; expiresAt: number }>();
   return {
@@ -76,7 +71,7 @@ describe('OAuth authorization-code exchange', () => {
       {} as unknown as JwtService,
       buildQueue(),
       buildPolicy(),
-      buildSecrets(),
+      {} as never,
     );
   });
 
@@ -84,7 +79,11 @@ describe('OAuth authorization-code exchange', () => {
 
   describe('callback redirect', () => {
     it('never puts access or refresh tokens in the redirect URL', async () => {
-      const controller = new AuthController(service, buildConfig('http://localhost:3001'));
+      const controller = new AuthController(
+        service,
+        buildConfig('http://localhost:3001'),
+        {} as never,
+      );
       const res = buildResponse();
       const pair = buildTokenPair();
 
@@ -100,7 +99,11 @@ describe('OAuth authorization-code exchange', () => {
     });
 
     it('redirects to the configured admin origin, not an API-relative path', async () => {
-      const controller = new AuthController(service, buildConfig('https://cms.example.com/admin'));
+      const controller = new AuthController(
+        service,
+        buildConfig('https://cms.example.com/admin'),
+        {} as never,
+      );
       const res = buildResponse();
 
       await controller.githubCallback({ user: buildTokenPair() } as never, res);
@@ -114,13 +117,13 @@ describe('OAuth authorization-code exchange', () => {
       const res = buildResponse();
 
       await expect(
-        new AuthController(service, buildConfig('/oauth-callback')).googleCallback(
+        new AuthController(service, buildConfig('/oauth-callback'), {} as never).googleCallback(
           { user: buildTokenPair() } as never,
           res,
         ),
       ).rejects.toThrow(InternalServerErrorException);
       await expect(
-        new AuthController(service, buildConfig('javascript:alert(1)')).googleCallback(
+        new AuthController(service, buildConfig('javascript:alert(1)'), {} as never).googleCallback(
           { user: buildTokenPair() } as never,
           res,
         ),
@@ -129,7 +132,11 @@ describe('OAuth authorization-code exchange', () => {
     });
 
     it('rejects a callback that carries no authenticated token pair', async () => {
-      const controller = new AuthController(service, buildConfig('http://localhost:3001'));
+      const controller = new AuthController(
+        service,
+        buildConfig('http://localhost:3001'),
+        {} as never,
+      );
       await expect(controller.googleCallback({} as never, buildResponse())).rejects.toThrow(
         BadRequestException,
       );
@@ -138,7 +145,11 @@ describe('OAuth authorization-code exchange', () => {
 
   describe('exchange', () => {
     it('returns the token pair once for a freshly issued code', async () => {
-      const controller = new AuthController(service, buildConfig('http://localhost:3001'));
+      const controller = new AuthController(
+        service,
+        buildConfig('http://localhost:3001'),
+        {} as never,
+      );
       const res = buildResponse();
       const pair = buildTokenPair();
       await controller.googleCallback({ user: pair } as never, res);
@@ -172,7 +183,11 @@ describe('OAuth authorization-code exchange', () => {
     });
 
     it('rejects a missing or non-string code before touching the store', async () => {
-      const controller = new AuthController(service, buildConfig('http://localhost:3001'));
+      const controller = new AuthController(
+        service,
+        buildConfig('http://localhost:3001'),
+        {} as never,
+      );
       expect(() => controller.exchangeOAuthCode(undefined)).toThrow(BadRequestException);
       expect(() => controller.exchangeOAuthCode('')).toThrow(BadRequestException);
       expect(() => controller.exchangeOAuthCode({ toString: () => 'x' })).toThrow(
@@ -193,7 +208,7 @@ describe('OAuth authorization-code exchange', () => {
         {} as unknown as JwtService,
         buildQueue(),
         buildPolicy(),
-        buildSecrets(),
+        {} as never,
       );
 
       await expect(

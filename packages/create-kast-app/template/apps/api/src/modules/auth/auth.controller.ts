@@ -1,17 +1,14 @@
-/* eslint-disable max-lines, complexity */
 import {
   BadRequestException,
   Body,
   Controller,
-  Delete,
   Get,
+  Header,
   HttpCode,
   HttpStatus,
   InternalServerErrorException,
-  Param,
   Patch,
   Post,
-  Query,
   Req,
   Res,
   UseGuards,
@@ -24,27 +21,19 @@ import type { Request, Response } from 'express';
 import { Authenticated } from '../../common/decorators/authenticated.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
-import type {
-  AuthUser,
-  LoginResult,
-  MfaSetup,
-  MfaSetupVerified,
-  MfaStatus,
-  SessionSummary,
-  TokenPair,
-  UserSummary,
-} from '../../common/types/auth.types';
+import type { AuthUser, LoginResult, TokenPair, UserSummary } from '../../common/types/auth.types';
 import type { Env } from '../../config/env.schema';
 import { AuthService } from './auth.service';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
-import { DisableMfaDto, MfaCodeDto, VerifyMfaChallengeDto, VerifyMfaSetupDto } from './dto/mfa.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { SetupDto } from './dto/setup.dto';
+import { VerifyTwoFactorDto } from './dto/two-factor.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
-import type { OAuthProfile } from './types/oauth.types';
+import { OidcService } from './oidc.service';
+import { requestMetadata } from './request-metadata';
 
 @ApiTags('auth')
 @Controller({ path: 'auth', version: '1' })
@@ -52,6 +41,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService<Env>,
+    private readonly oidc: OidcService,
   ) {}
 
   @Get('setup')
@@ -77,7 +67,16 @@ export class AuthController {
   @Throttle({ default: { limit: 20, ttl: 900000 } })
   @ApiOperation({ summary: 'Login with email and password' })
   login(@Body() dto: LoginDto, @Req() req: Request): Promise<{ data: LoginResult }> {
-    return this.authService.login(dto, this.requestMetadata(req)).then((data) => ({ data }));
+    return this.authService.login(dto, requestMetadata(req)).then((data) => ({ data }));
+  }
+
+  @Post('two-factor/verify')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Header('Cache-Control', 'no-store')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  async verifyTwoFactor(@Body() dto: VerifyTwoFactorDto): Promise<{ data: TokenPair }> {
+    return { data: await this.authService.verifyTwoFactor(dto.challengeToken, dto.code) };
   }
 
   @Post('refresh')
@@ -85,10 +84,8 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 60, ttl: 60000 } })
   @ApiOperation({ summary: 'Refresh access token' })
-  refresh(@Body() dto: RefreshTokenDto, @Req() req: Request): Promise<{ data: TokenPair }> {
-    return this.authService
-      .refresh(dto.refreshToken, this.requestMetadata(req))
-      .then((data) => ({ data }));
+  refresh(@Body() dto: RefreshTokenDto): Promise<{ data: TokenPair }> {
+    return this.authService.refresh(dto.refreshToken).then((data) => ({ data }));
   }
 
   /**
@@ -125,101 +122,60 @@ export class AuthController {
     return this.authService.updateProfile(user.id, dto).then((data) => ({ data }));
   }
 
-  @Get('mfa')
-  @Authenticated()
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get current MFA status' })
-  async mfaStatus(@CurrentUser() user: AuthUser): Promise<{ data: MfaStatus }> {
-    return { data: await this.authService.mfaStatus(user.id) };
-  }
-
-  @Post('mfa/setup')
-  @Authenticated()
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Start TOTP MFA setup' })
-  async beginMfaSetup(@CurrentUser() user: AuthUser): Promise<{ data: MfaSetup }> {
-    return { data: await this.authService.beginMfaSetup(user.id) };
-  }
-
-  @Post('mfa/verify-setup')
-  @Authenticated()
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Verify and enable TOTP MFA' })
-  verifyMfaSetup(
-    @CurrentUser() user: AuthUser,
-    @Body() dto: VerifyMfaSetupDto,
-  ): Promise<{ data: MfaSetupVerified }> {
-    return this.authService
-      .verifyMfaSetup(user.id, dto.secret, dto.code)
-      .then((data) => ({ data }));
-  }
-
-  @Post('mfa/challenge')
-  @Public()
-  @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 20, ttl: 900000 } })
-  @ApiOperation({ summary: 'Complete a password-verified MFA login challenge' })
-  completeMfaChallenge(
-    @Body() dto: VerifyMfaChallengeDto,
-    @Req() req: Request,
-  ): Promise<{ data: TokenPair }> {
-    return this.authService
-      .completeMfaChallenge(dto.challengeToken, dto.code, this.requestMetadata(req))
-      .then((data) => ({ data }));
-  }
-
-  @Post('mfa/recovery-codes')
-  @Authenticated()
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Regenerate MFA recovery codes' })
-  regenerateRecoveryCodes(
-    @CurrentUser() user: AuthUser,
-    @Body() dto: MfaCodeDto,
-  ): Promise<{ data: { recoveryCodes: string[] } }> {
-    return this.authService.regenerateRecoveryCodes(user.id, dto.code).then((data) => ({ data }));
-  }
-
-  @Delete('mfa')
-  @Authenticated()
-  @HttpCode(HttpStatus.OK)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Disable MFA for the current user' })
-  disableMfa(
-    @CurrentUser() user: AuthUser,
-    @Body() dto: DisableMfaDto,
-  ): Promise<{ data: MfaStatus }> {
-    return this.authService
-      .disableMfa(user.id, dto.currentPassword, dto.code)
-      .then((data) => ({ data }));
-  }
-
-  @Get('sessions')
-  @Authenticated()
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'List active refresh-token sessions' })
-  listSessions(@CurrentUser() user: AuthUser): Promise<{ data: SessionSummary[] }> {
-    return this.authService.listSessions(user.id).then((data) => ({ data }));
-  }
-
-  @Delete('sessions/:id')
-  @Authenticated()
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Revoke one active refresh-token session' })
-  revokeSession(@CurrentUser() user: AuthUser, @Param('id') id: string): Promise<void> {
-    return this.authService.revokeSession(user.id, id);
-  }
-
-  @Delete('sessions')
-  @Authenticated()
-  @HttpCode(HttpStatus.OK)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Revoke all active refresh-token sessions for the current user' })
-  revokeAllSessions(@CurrentUser() user: AuthUser): Promise<{ data: { revoked: number } }> {
-    return this.authService.revokeAllSessions(user.id).then((data) => ({ data }));
-  }
-
   // ─── OAuth ───────────────────────────────────────────────────
+
+  @Get('providers')
+  @Public()
+  providers(): { data: { google: boolean; github: boolean; oidc: boolean } } {
+    return {
+      data: {
+        google: Boolean(
+          this.configService.get('GOOGLE_CLIENT_ID') &&
+          this.configService.get('GOOGLE_CLIENT_SECRET'),
+        ),
+        github: Boolean(
+          this.configService.get('GITHUB_CLIENT_ID') &&
+          this.configService.get('GITHUB_CLIENT_SECRET'),
+        ),
+        oidc: this.oidc.enabled(),
+      },
+    };
+  }
+
+  @Get('oauth/oidc')
+  @Public()
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  async oidcLogin(@Res() res: Response): Promise<void> {
+    const { state, url } = await this.oidc.start();
+    res.cookie('kast_oidc_state', state, {
+      httpOnly: true,
+      secure: this.oidc.callbackUrl().startsWith('https:'),
+      sameSite: 'lax',
+      path: '/api/v1/auth/oauth/oidc/callback',
+      maxAge: 300_000,
+    });
+    res.setHeader('Cache-Control', 'no-store');
+    res.redirect(url);
+  }
+
+  @Get('oauth/oidc/callback')
+  @Public()
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  async oidcCallback(@Req() req: Request, @Res() res: Response): Promise<void> {
+    const browserState = req.headers.cookie
+      ?.split(';')
+      .map((part) => part.trim())
+      .find((part) => part.startsWith('kast_oidc_state='))
+      ?.slice('kast_oidc_state='.length);
+    res.clearCookie('kast_oidc_state', { path: '/api/v1/auth/oauth/oidc/callback' });
+    const url = new URL(this.oidc.callbackUrl());
+    url.search = new URL(req.originalUrl, url.origin).search;
+    const profile = await this.oidc.callback(url, browserState);
+    await this.redirectWithCode(
+      await this.authService.oauthCallback(this.oidc.providerKey(), profile, requestMetadata(req)),
+      res,
+    );
+  }
 
   @Get('oauth/google')
   @Public()
@@ -261,37 +217,6 @@ export class AuthController {
     @Res() res: Response,
   ): Promise<void> {
     await this.redirectWithCode(req.user, res);
-  }
-
-  @Get('oauth/oidc')
-  @Public()
-  @SkipThrottle()
-  @ApiOperation({ summary: 'Initiate generic OIDC login' })
-  async oidcLogin(@Res() res: Response): Promise<void> {
-    const cfg = this.oidcConfig();
-    const target = new URL(cfg.authorizationUrl);
-    target.searchParams.set('response_type', 'code');
-    target.searchParams.set('client_id', cfg.clientId);
-    target.searchParams.set('redirect_uri', cfg.redirectUri);
-    target.searchParams.set('scope', cfg.scopes);
-    target.searchParams.set('state', await this.authService.issueOAuthState('oidc'));
-    res.redirect(target.toString());
-  }
-
-  @Get('oauth/oidc/callback')
-  @Public()
-  @SkipThrottle()
-  @ApiOperation({ summary: 'Generic OIDC callback' })
-  async oidcCallback(
-    @Query('code') code: string | undefined,
-    @Query('state') state: string | undefined,
-    @Res() res: Response,
-  ): Promise<void> {
-    if (!code || !state) throw new BadRequestException('OIDC code and state are required');
-    await this.authService.consumeOAuthState('oidc', state);
-    const token = await this.exchangeOidcCode(code);
-    const profile = await this.loadOidcProfile(token);
-    await this.redirectWithCode(await this.authService.oauthCallback('oidc', profile), res);
   }
 
   @Post('oauth/exchange')
@@ -345,91 +270,6 @@ export class AuthController {
     const target = this.adminCallbackUrl();
     target.searchParams.set('code', await this.authService.issueOAuthAuthorizationCode(tokenPair));
     res.redirect(target.toString());
-  }
-
-  private requestMetadata(req: Request): { userAgent?: string; ipAddress?: string } {
-    const userAgent = req.get('user-agent');
-    const ipAddress = req.ip;
-    return {
-      ...(userAgent ? { userAgent } : {}),
-      ...(ipAddress ? { ipAddress } : {}),
-    };
-  }
-
-  private oidcConfig(): {
-    authorizationUrl: string;
-    tokenUrl: string;
-    userinfoUrl: string;
-    clientId: string;
-    clientSecret: string;
-    redirectUri: string;
-    scopes: string;
-  } {
-    const clientId = this.configService.get('OIDC_CLIENT_ID', { infer: true }) ?? '';
-    const clientSecret = this.configService.get('OIDC_CLIENT_SECRET', { infer: true }) ?? '';
-    const authorizationUrl =
-      this.configService.get('OIDC_AUTHORIZATION_URL', { infer: true }) ?? '';
-    const tokenUrl = this.configService.get('OIDC_TOKEN_URL', { infer: true }) ?? '';
-    const userinfoUrl = this.configService.get('OIDC_USERINFO_URL', { infer: true }) ?? '';
-    if (!clientId || !clientSecret || !authorizationUrl || !tokenUrl || !userinfoUrl) {
-      throw new BadRequestException('OIDC is not configured');
-    }
-    return {
-      authorizationUrl,
-      tokenUrl,
-      userinfoUrl,
-      clientId,
-      clientSecret,
-      redirectUri: `${this.configService.get('SITE_URL', { infer: true })}/api/v1/auth/oauth/oidc/callback`,
-      scopes: this.configService.get('OIDC_SCOPES', { infer: true }) ?? 'openid email profile',
-    };
-  }
-
-  private async exchangeOidcCode(code: string): Promise<string> {
-    const cfg = this.oidcConfig();
-    const body = new URLSearchParams({
-      grant_type: 'authorization_code',
-      code,
-      redirect_uri: cfg.redirectUri,
-      client_id: cfg.clientId,
-      client_secret: cfg.clientSecret,
-    });
-    const response = await fetch(cfg.tokenUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body,
-    });
-    const payload = (await response.json()) as { access_token?: unknown };
-    if (!response.ok || typeof payload.access_token !== 'string') {
-      throw new BadRequestException('OIDC token exchange failed');
-    }
-    return payload.access_token;
-  }
-
-  private async loadOidcProfile(accessToken: string): Promise<OAuthProfile> {
-    const cfg = this.oidcConfig();
-    const response = await fetch(cfg.userinfoUrl, {
-      headers: { Accept: 'application/json', Authorization: 'Bearer '.concat(accessToken) },
-    });
-    const info = (await response.json()) as Record<string, unknown>;
-    if (!response.ok || typeof info['sub'] !== 'string') {
-      throw new BadRequestException('OIDC userinfo lookup failed');
-    }
-    const email = typeof info['email'] === 'string' ? info['email'] : undefined;
-    const name = typeof info['name'] === 'string' ? info['name'] : undefined;
-    const givenName = typeof info['given_name'] === 'string' ? info['given_name'] : undefined;
-    const familyName = typeof info['family_name'] === 'string' ? info['family_name'] : undefined;
-    return {
-      id: info['sub'],
-      provider: 'oidc',
-      ...(name ? { displayName: name } : {}),
-      name: {
-        ...(givenName ? { givenName } : {}),
-        ...(familyName ? { familyName } : {}),
-      },
-      ...(email ? { emails: [{ value: email, verified: info['email_verified'] === true }] } : {}),
-      ...(typeof info['picture'] === 'string' ? { photos: [{ value: info['picture'] }] } : {}),
-    };
   }
 
   /**

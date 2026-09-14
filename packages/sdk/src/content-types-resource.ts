@@ -1,3 +1,12 @@
+import type {
+  AuthProviders,
+  AuthSession,
+  LoginResult,
+  RecoveryCodes,
+  TokenPair,
+  TwoFactorSetup,
+  TwoFactorStatus,
+} from './auth-types.js';
 import type { KastClient } from './client.js';
 import type {
   AddFieldBody,
@@ -7,13 +16,11 @@ import type {
   ContentTypeDetail,
   ContentTypeSummary,
   CreateContentTypeBody,
-  LoginResult,
   MfaSetup,
   MfaSetupVerified,
   MfaStatus,
   ReorderFieldsBody,
   SessionSummary,
-  TokenPair,
   UpdateContentTypeBody,
   UpdateFieldBody,
 } from './types.js';
@@ -42,6 +49,51 @@ export class AuthResource {
     return `${this.client.getBaseUrl()}/api/v1/auth/oauth/${provider}`;
   }
 
+  providers(): Promise<ApiResponse<AuthProviders>> {
+    return this.client.request('/api/v1/auth/providers');
+  }
+  verifyTwoFactor(challengeToken: string, code: string): Promise<ApiResponse<TokenPair>> {
+    return this.client.request('/api/v1/auth/two-factor/verify', {
+      method: 'POST',
+      body: { challengeToken, code },
+    });
+  }
+  twoFactorStatus(): Promise<ApiResponse<TwoFactorStatus>> {
+    return this.client.request('/api/v1/auth/two-factor');
+  }
+  setupTwoFactor(): Promise<ApiResponse<TwoFactorSetup>> {
+    return this.client.request('/api/v1/auth/two-factor/setup', { method: 'POST' });
+  }
+  enableTwoFactor(code: string): Promise<ApiResponse<RecoveryCodes>> {
+    return this.client.request('/api/v1/auth/two-factor/enable', {
+      method: 'POST',
+      body: { code },
+    });
+  }
+  disableTwoFactor(code: string): Promise<ApiResponse<{ enabled: false }>> {
+    return this.client.request('/api/v1/auth/two-factor/disable', {
+      method: 'POST',
+      body: { code },
+    });
+  }
+  regenerateRecoveryCodes(code: string): Promise<ApiResponse<RecoveryCodes>> {
+    return this.client.request('/api/v1/auth/two-factor/recovery-codes', {
+      method: 'POST',
+      body: { code },
+    });
+  }
+  sessions(): Promise<ApiResponse<AuthSession[]>> {
+    return this.client.request('/api/v1/auth/sessions');
+  }
+  revokeSession(id: string): Promise<void> {
+    return this.client.request(`/api/v1/auth/sessions/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+  }
+  revokeAllSessions(): Promise<ApiResponse<{ revoked: number }>> {
+    return this.client.request('/api/v1/auth/sessions', { method: 'DELETE' });
+  }
+
   mfaStatus(): Promise<ApiResponse<MfaStatus>> {
     return this.client.request('/api/v1/auth/mfa');
   }
@@ -64,13 +116,6 @@ export class AuthResource {
     });
   }
 
-  regenerateRecoveryCodes(code: string): Promise<ApiResponse<{ recoveryCodes: string[] }>> {
-    return this.client.request('/api/v1/auth/mfa/recovery-codes', {
-      method: 'POST',
-      body: { code },
-    });
-  }
-
   disableMfa(currentPassword: string, code: string): Promise<ApiResponse<MfaStatus>> {
     return this.client.request('/api/v1/auth/mfa', {
       method: 'DELETE',
@@ -80,14 +125,6 @@ export class AuthResource {
 
   listSessions(): Promise<ApiResponse<SessionSummary[]>> {
     return this.client.request('/api/v1/auth/sessions');
-  }
-
-  revokeSession(id: string): Promise<void> {
-    return this.client.request(`/api/v1/auth/sessions/${id}`, { method: 'DELETE' });
-  }
-
-  revokeAllSessions(): Promise<ApiResponse<{ revoked: number }>> {
-    return this.client.request('/api/v1/auth/sessions', { method: 'DELETE' });
   }
 
   forgotPassword(email: string): Promise<{ message: string }> {

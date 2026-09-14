@@ -344,6 +344,10 @@ model User {
   apiTokens        ApiToken[]
   agentTokens      AgentToken[]
   passwordResetToken PasswordResetToken?
+  twoFactorSecret String?
+  twoFactorEnabled Boolean @default(false)
+  twoFactorLastCounter Int?
+  twoFactorRecoveryCodes String?
   mfaSecret        String?
   mfaEnabledAt     DateTime?
   mfaRecoveryCodes String[]  @default([])

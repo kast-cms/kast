@@ -111,6 +111,7 @@ export type {
   InviteUserBody,
   IssueSeverity,
   KastClientOptions,
+  LoginResult,
   MediaFileDetail,
   MediaFileSummary,
   MediaFolder,
@@ -159,3 +160,12 @@ export type {
 } from './webhooks-resource.js';
 /** OAuth provider identifier — pass to `client.auth.getOAuthUrl()`. */
 export type OAuthProvider = 'google' | 'github';
+
+export type {
+  AuthProviders,
+  AuthSession,
+  RecoveryCodes,
+  TwoFactorChallenge,
+  TwoFactorSetup,
+  TwoFactorStatus,
+} from './auth-types.js';

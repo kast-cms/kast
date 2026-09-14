@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from 'express';
 import { verify, type JwtPayload as JwtVerifyPayload } from 'jsonwebtoken';
 import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
 import type { JwtPayload } from '../../common/types/auth.types';
+import type { PrismaService } from '../../prisma/prisma.service';
 
 function parseCookieHeader(header: string | undefined, name: string): string | undefined {
   if (!header) return undefined;
@@ -11,8 +12,9 @@ function parseCookieHeader(header: string | undefined, name: string): string | u
 
 export function createBullBoardAuthMiddleware(
   jwtSecret: string,
-): (req: Request, res: Response, next: NextFunction) => void {
-  return (req: Request, res: Response, next: NextFunction): void => {
+  prisma: PrismaService,
+): (req: Request, res: Response, next: NextFunction) => Promise<void> {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const cookieToken = parseCookieHeader(req.headers.cookie, 'kast_bull');
     const token = cookieToken;
 
@@ -23,7 +25,22 @@ export function createBullBoardAuthMiddleware(
 
     try {
       const payload = verify(token, jwtSecret) as JwtVerifyPayload & JwtPayload;
-      const roles: string[] = Array.isArray(payload.roles) ? payload.roles : [];
+      const session = payload.sid
+        ? await prisma.refreshToken.findFirst({
+            where: {
+              id: payload.sid,
+              userId: payload.sub,
+              revokedAt: null,
+              expiresAt: { gt: new Date() },
+            },
+            include: { user: { include: { roles: { include: { role: true } } } } },
+          })
+        : null;
+      if (!session?.user.isActive || session.user.trashedAt) {
+        res.status(401).json({ message: 'Unauthorized' });
+        return;
+      }
+      const roles = session.user.roles.map(({ role }) => role.name);
 
       if (!roles.includes(SYSTEM_ROLES.SUPER_ADMIN)) {
         res.status(403).json({ message: 'Forbidden' });

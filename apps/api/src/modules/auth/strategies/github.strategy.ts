@@ -1,9 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
+import type { Request } from 'express';
 import { Strategy } from 'passport-github2';
 import type { Env } from '../../../config/env.schema';
+import { QueueAdapter } from '../../queue/queue.adapter';
 import { AuthService } from '../auth.service';
+import { OAuthStateStore } from '../oauth-state.store';
+import { requestMetadata } from '../request-metadata';
 import type { OAuthProfile } from '../types/oauth.types';
 
 interface GitHubEmail {
@@ -22,6 +26,7 @@ export class GitHubStrategy extends PassportStrategy(Strategy, 'github') {
   constructor(
     configService: ConfigService<Env>,
     private readonly authService: AuthService,
+    queue: QueueAdapter,
   ) {
     super({
       clientID: configService.get('GITHUB_CLIENT_ID', { infer: true }) ?? 'placeholder',
@@ -29,10 +34,17 @@ export class GitHubStrategy extends PassportStrategy(Strategy, 'github') {
       callbackURL: `${configService.get('SITE_URL', { infer: true })}/api/v1/auth/oauth/github/callback`,
       scope: ['user:email'],
       state: true,
+      passReqToCallback: true,
+      store: new OAuthStateStore(
+        queue,
+        'github',
+        (configService.get('SITE_URL', { infer: true }) ?? '').startsWith('https:'),
+      ),
     });
   }
 
   async validate(
+    req: Request,
     accessToken: string,
     _refreshToken: string,
     profile: OAuthProfile,
@@ -41,7 +53,7 @@ export class GitHubStrategy extends PassportStrategy(Strategy, 'github') {
     if (selectedEmail && selectedEmail.verified === undefined) {
       selectedEmail.verified = await this.isVerifiedGitHubEmail(accessToken, selectedEmail.value);
     }
-    return this.authService.oauthCallback('github', profile);
+    return this.authService.oauthCallback('github', profile, requestMetadata(req));
   }
 
   private async isVerifiedGitHubEmail(accessToken: string, selected: string): Promise<boolean> {

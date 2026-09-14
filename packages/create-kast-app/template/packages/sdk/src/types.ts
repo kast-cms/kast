@@ -40,6 +40,7 @@ export interface TokenPair {
 
 export interface MfaChallenge {
   mfaRequired: true;
+  requiresTwoFactor: true;
   challengeToken: string;
   expiresIn: number;
   user: AuthUserSummary;

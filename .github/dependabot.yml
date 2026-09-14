@@ -7,7 +7,14 @@ updates:
       interval: 'weekly'
       day: 'monday'
     open-pull-requests-limit: 10
+    ignore:
+      # Major framework/toolchain migrations need their own compatibility work.
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
     groups:
+      security-patches:
+        applies-to: security-updates
+        patterns: ['*']
       dev-dependencies:
         dependency-type: 'development'
       production-dependencies:
