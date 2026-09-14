@@ -46,7 +46,7 @@ describe('AuthService setup concurrency', () => {
     const policy = {
       canProvision: jest.fn().mockReturnValue({ allowed: false, reason: 'disabled' }),
     } as unknown as OAuthPolicy;
-    return new AuthService(repo, jwt, queue, policy);
+    return new AuthService(repo, jwt, queue, policy, {} as never);
   }
 
   it('creates exactly one owner when eight setup requests arrive at once', async () => {

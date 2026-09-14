@@ -2,21 +2,27 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
+import { SecretEncryptionModule } from '../../common/security/secret-encryption.module';
 import type { Env } from '../../config/env.schema';
+import { AccountSecurityController } from './account-security.controller';
 import { AuthController } from './auth.controller';
 import { AuthRepository } from './auth.repository';
 import { AuthService } from './auth.service';
 import { OAuthPolicy } from './oauth-policy';
+import { OidcService } from './oidc.service';
 import { ApiTokenStrategy } from './strategies/api-token.strategy';
 import { GitHubStrategy } from './strategies/github.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { TotpService } from './totp.service';
+import { TwoFactorService } from './two-factor.service';
 
 @Module({
   imports: [
+    SecretEncryptionModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
-      imports: [ConfigModule],
+      imports: [SecretEncryptionModule, ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService<Env>) => {
         const secret = config.get('JWT_SECRET', { infer: true }) ?? '';
@@ -25,9 +31,12 @@ import { JwtStrategy } from './strategies/jwt.strategy';
       },
     }),
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, AccountSecurityController],
   providers: [
     AuthService,
+    TotpService,
+    TwoFactorService,
+    OidcService,
     AuthRepository,
     OAuthPolicy,
     JwtStrategy,

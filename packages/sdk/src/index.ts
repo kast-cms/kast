@@ -147,3 +147,14 @@ export type {
 } from './webhooks-resource.js';
 /** OAuth provider identifier — pass to `client.auth.getOAuthUrl()`. */
 export type OAuthProvider = 'google' | 'github';
+
+export type {
+  AuthProviders,
+  AuthSession,
+  LoginResult,
+  RecoveryCodes,
+  TokenPair,
+  TwoFactorChallenge,
+  TwoFactorSetup,
+  TwoFactorStatus,
+} from './auth-types.js';

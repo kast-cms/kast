@@ -8,14 +8,21 @@ import { JwtService } from '@nestjs/jwt';
 import type { User } from '@prisma/client';
 import * as argon2 from 'argon2';
 import { createHash, randomBytes, randomUUID } from 'crypto';
-import type { TokenPair, UserSummary } from '../../common/types/auth.types';
+import type {
+  LoginResult,
+  SessionMetadata,
+  TokenPair,
+  UserSummary,
+} from '../../common/types/auth.types';
 import { QueueAdapter } from '../queue/queue.adapter';
 import { QUEUE_NAMES } from '../queue/queue.constants';
 import { AuthRepository } from './auth.repository';
 import type { LoginDto } from './dto/login.dto';
 import type { SetupDto } from './dto/setup.dto';
 import type { UpdateProfileDto } from './dto/update-profile.dto';
+import { issueLoginChallenge, verifyLoginChallenge } from './login-challenge';
 import { OAuthPolicy } from './oauth-policy';
+import { TwoFactorService } from './two-factor.service';
 import type { OAuthProfile } from './types/oauth.types';
 
 /** An OAuth code only has to survive one provider→admin redirect hop. */
@@ -36,6 +43,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly queueAdapter: QueueAdapter,
     private readonly oauthPolicy: OAuthPolicy,
+    private readonly twoFactor: TwoFactorService,
   ) {}
 
   /** True while the install has no users and the setup endpoint is still open. */
@@ -78,41 +86,50 @@ export class AuthService {
     return result;
   }
 
-  async login(dto: LoginDto): Promise<TokenPair> {
+  async login(dto: LoginDto, metadata: SessionMetadata = {}): Promise<LoginResult> {
     const user = await this.authRepository.findUserByEmail(dto.email);
-    if (!user?.isActive) throw new UnauthorizedException('Invalid credentials');
-
-    const valid = await argon2.verify(user.passwordHash ?? '', dto.password);
+    if (!user?.isActive || user.trashedAt || !user.passwordHash)
+      throw new UnauthorizedException('Invalid credentials');
+    const valid = await argon2.verify(user.passwordHash, dto.password);
     if (!valid) throw new UnauthorizedException('Invalid credentials');
-
-    await this.authRepository.updateLastLogin(user.id);
-    const roles = user.roles.map((ur) => ur.role.name);
-    const [accessToken, refreshToken] = await Promise.all([
-      this.issueAccessToken(user.id, user.email, roles),
-      this.authRepository.createRefreshToken(user.id, this.refreshTokenExpiry()),
-    ]);
-
-    return { accessToken, refreshToken, expiresIn: 900, user: this.toSummary(user, roles) };
+    return this.completePrimaryAuthentication(user, metadata);
   }
 
-  async refresh(raw: string): Promise<TokenPair> {
-    const record = await this.authRepository.findRefreshToken(raw);
-    if (!record || record.revokedAt || record.expiresAt < new Date()) {
-      throw new UnauthorizedException('Invalid or expired refresh token');
-    }
+  private async completePrimaryAuthentication(
+    user: User & { roles: { role: { name: string } }[] },
+    metadata: SessionMetadata = {},
+  ): Promise<LoginResult> {
+    if (user.twoFactorEnabled) return issueLoginChallenge(user, metadata, this.queueAdapter);
+    await this.authRepository.updateLastLogin(user.id);
+    return this.issueTokenPair(user, metadata);
+  }
 
-    await this.authRepository.revokeRefreshToken(raw);
+  async verifyTwoFactor(challengeToken: string, code: string): Promise<TokenPair> {
+    const { user, metadata } = await verifyLoginChallenge(
+      challengeToken,
+      code,
+      this.queueAdapter,
+      this.authRepository,
+      this.twoFactor,
+    );
+    await this.authRepository.updateLastLogin(user.id);
+    return this.issueTokenPair(user, metadata);
+  }
 
+  async refresh(raw: string, metadata: SessionMetadata = {}): Promise<TokenPair> {
+    const record = await this.authRepository.rotateSession(raw, metadata);
+    if (!record) throw new UnauthorizedException('Invalid or expired refresh token');
     const user = await this.authRepository.findUserById(record.userId);
-    if (!user?.isActive) throw new UnauthorizedException('User not found or inactive');
-
+    if (!user?.isActive || user.trashedAt)
+      throw new UnauthorizedException('User not found or inactive');
     const roles = user.roles.map((ur) => ur.role.name);
-    const [accessToken, refreshToken] = await Promise.all([
-      this.issueAccessToken(user.id, user.email, roles),
-      this.authRepository.createRefreshToken(user.id, this.refreshTokenExpiry()),
-    ]);
-
-    return { accessToken, refreshToken, expiresIn: 900, user: this.toSummary(user, roles) };
+    const accessToken = await this.issueAccessToken(user.id, user.email, roles, record.id);
+    return {
+      accessToken,
+      refreshToken: record.raw,
+      expiresIn: 900,
+      user: this.toSummary(user, roles),
+    };
   }
 
   async logout(raw: string): Promise<void> {
@@ -158,13 +175,16 @@ export class AuthService {
     return this.toSummary({ ...user, ...updated }, roles);
   }
 
-  async oauthCallback(provider: string, profile: OAuthProfile): Promise<TokenPair> {
+  async oauthCallback(
+    provider: string,
+    profile: OAuthProfile,
+    metadata: SessionMetadata = {},
+  ): Promise<LoginResult> {
     const email = profile.emails?.[0]?.value ?? null;
     const user = await this.findOrCreateOAuthUser(provider, profile, email);
-    if (!user.isActive) throw new UnauthorizedException('Account is inactive');
+    if (!user.isActive || user.trashedAt) throw new UnauthorizedException('Account is inactive');
     await this.authRepository.upsertOAuthAccount(user.id, provider, profile.id, email);
-    await this.authRepository.updateLastLogin(user.id);
-    return this.issueTokenPair(user);
+    return this.completePrimaryAuthentication(user, metadata);
   }
 
   /**
@@ -172,7 +192,7 @@ export class AuthService {
    * code is what travels through the browser redirect, so nothing long-lived
    * ends up in history, Referer headers or access logs.
    */
-  async issueOAuthAuthorizationCode(tokenPair: TokenPair): Promise<string> {
+  async issueOAuthAuthorizationCode(tokenPair: LoginResult): Promise<string> {
     const code = randomBytes(32).toString('base64url');
     await this.queueAdapter.setEphemeral(
       `oauth-code:${this.hashOAuthCode(code)}`,
@@ -182,14 +202,14 @@ export class AuthService {
     return code;
   }
 
-  async exchangeOAuthCode(code: string): Promise<TokenPair> {
+  async exchangeOAuthCode(code: string): Promise<LoginResult> {
     const key = this.hashOAuthCode(code);
     const pending = await this.queueAdapter.consumeEphemeral(`oauth-code:${key}`);
     if (!pending) {
       throw new UnauthorizedException('Invalid or expired authorization code');
     }
     try {
-      return JSON.parse(pending) as TokenPair;
+      return JSON.parse(pending) as LoginResult;
     } catch {
       throw new UnauthorizedException('Invalid or expired authorization code');
     }
@@ -262,20 +282,24 @@ export class AuthService {
     };
   }
 
-  private async issueTokenPair(user: {
-    id: string;
-    email: string;
-    firstName: string | null;
-    lastName: string | null;
-    avatarUrl: string | null;
-    roles: { role: { name: string } }[];
-  }): Promise<TokenPair> {
+  private async issueTokenPair(
+    user: User & { roles: { role: { name: string } }[] },
+    metadata: SessionMetadata = {},
+  ): Promise<TokenPair> {
     const roles = user.roles.map((ur) => ur.role.name);
-    const [accessToken, refreshToken] = await Promise.all([
-      this.issueAccessToken(user.id, user.email, roles),
-      this.authRepository.createRefreshToken(user.id, this.refreshTokenExpiry()),
-    ]);
-    return { accessToken, refreshToken, expiresIn: 900, user: this.toSummary(user, roles) };
+    const session = await this.authRepository.createSession(
+      user.id,
+      this.refreshTokenExpiry(),
+      metadata,
+      user,
+    );
+    const accessToken = await this.issueAccessToken(user.id, user.email, roles, session.id);
+    return {
+      accessToken,
+      refreshToken: session.raw,
+      expiresIn: 900,
+      user: this.toSummary(user, roles),
+    };
   }
 
   async forgotPassword(email: string): Promise<void> {
@@ -319,8 +343,13 @@ export class AuthService {
     if (!userId) throw new BadRequestException(failureMessage);
   }
 
-  private async issueAccessToken(id: string, email: string, roles: string[]): Promise<string> {
-    return this.jwtService.signAsync({ sub: id, email, roles, jti: randomUUID() });
+  private async issueAccessToken(
+    id: string,
+    email: string,
+    roles: string[],
+    sid: string,
+  ): Promise<string> {
+    return this.jwtService.signAsync({ sub: id, email, roles, sid, jti: randomUUID() });
   }
 
   private refreshTokenExpiry(): Date {
