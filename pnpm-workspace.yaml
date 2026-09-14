@@ -4,7 +4,7 @@ packages:
   - 'plugins/*'
 
 catalog:
-  typescript: ^5.5.0
+  typescript: ^7.0.2
 
 # The pinned runner (packageManager: pnpm@9.0.0) reads the pins below from
 # package.json pnpm.overrides and ignores this copy; pnpm >=10 run directly
