@@ -75,6 +75,8 @@ issued recovery codes use random 64-bit values with SHA-256 storage hashes.
 Apply migrations before starting the upgraded API. The migration published on
 `main` is unchanged; a new migration follows it. The earlier unpublished
 `feat/trust-access` schema migration has been replaced to avoid duplicate session
-columns on fresh installs. A development database that applied that unpublished
-migration can retain its extra columns: the new migration uses `IF NOT EXISTS`.
+columns on fresh installs. A disposable development database that applied that unpublished migration must
+be recreated or have its schema and migration history reconciled with `main`
+before upgrading; otherwise the published migration would add duplicate session
+columns. The production upgrade path from `main` is covered by the migration tests.
 Old access tokens without a session identifier require refresh or sign-in.
