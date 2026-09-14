@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import {
   Body,
   Controller,
@@ -30,6 +31,8 @@ import {
   AddLocaleDto,
   BulkEntryActionDto,
   CreateContentEntryDto,
+  ImportContentDto,
+  ImportWordPressDto,
   PublishContentDto,
   SchedulePublishDto,
   UpdateContentEntryDto,
@@ -103,8 +106,9 @@ export class ContentController {
   bulkPublish(
     @Param('typeSlug') typeSlug: string,
     @Body() dto: BulkEntryActionDto,
+    @CurrentUser() user: AuthUser,
   ): Promise<{ data: BulkEntryOutcome }> {
-    return this.service.bulkPublish(typeSlug, dto.ids);
+    return this.service.bulkPublish(typeSlug, dto.ids, user);
   }
 
   @Post('bulk/unpublish')
@@ -122,6 +126,38 @@ export class ContentController {
     @Body() dto: BulkEntryActionDto,
   ): Promise<{ data: BulkEntryOutcome }> {
     return this.service.bulkUnpublish(typeSlug, dto.ids);
+  }
+
+  @Get('export')
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Export all entries for a content type as JSON' })
+  exportType(@Param('typeSlug') typeSlug: string): ReturnType<ContentService['exportType']> {
+    return this.service.exportType(typeSlug);
+  }
+
+  @Post('import')
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Import entries from a Kast JSON export' })
+  importType(
+    @Param('typeSlug') typeSlug: string,
+    @Body() dto: ImportContentDto,
+    @CurrentUser() user: AuthUser,
+  ): ReturnType<ContentService['importType']> {
+    return this.service.importType(typeSlug, dto, user.id);
+  }
+
+  @Post('import/wordpress')
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Import WordPress REST JSON posts into this content type' })
+  importWordPress(
+    @Param('typeSlug') typeSlug: string,
+    @Body() dto: ImportWordPressDto,
+    @CurrentUser() user: AuthUser,
+  ): ReturnType<ContentService['importWordPress']> {
+    return this.service.importWordPress(typeSlug, dto, user.id);
   }
 
   @Get(':id')
@@ -159,8 +195,9 @@ export class ContentController {
     @Param('typeSlug') typeSlug: string,
     @Param('id') id: string,
     @Body() dto: PublishContentDto,
+    @CurrentUser() user: AuthUser,
   ): Promise<{ data: ContentEntryDetailResponse }> {
-    return this.present(this.service.publish(typeSlug, id, dto));
+    return this.present(this.service.publish(typeSlug, id, dto, user));
   }
 
   @Post(':id/locale')
@@ -242,8 +279,9 @@ export class ContentController {
     @Param('typeSlug') typeSlug: string,
     @Param('id') id: string,
     @Body() dto: SchedulePublishDto,
+    @CurrentUser() user: AuthUser,
   ): Promise<{ data: ContentEntryDetailResponse }> {
-    return this.present(this.service.schedulePublish(typeSlug, id, dto));
+    return this.present(this.service.schedulePublish(typeSlug, id, dto, user));
   }
 
   @Delete(':id/schedule')
@@ -308,6 +346,83 @@ export class ContentController {
     @CurrentUser() user: AuthUser,
   ): Promise<{ data: ContentEntryDetailResponse }> {
     return this.present(this.service.revertToVersion(typeSlug, id, versionId, user.id));
+  }
+
+  @Get(':id/versions/:versionId/diff')
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Diff a saved version against the current entry data' })
+  diffVersion(
+    @Param('typeSlug') typeSlug: string,
+    @Param('id') id: string,
+    @Param('versionId') versionId: string,
+    @Query('locale') locale?: string,
+  ): ReturnType<ContentService['diffVersion']> {
+    return this.service.diffVersion(typeSlug, id, versionId, locale);
+  }
+
+  @Post(':id/review/submit')
+  @AuditAction('content.review_submit')
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Submit a content entry for review' })
+  submitForReview(
+    @Param('typeSlug') typeSlug: string,
+    @Param('id') id: string,
+    @CurrentUser() user: AuthUser,
+  ): Promise<{ data: ContentEntryDetailResponse }> {
+    return this.present(this.service.submitForReview(typeSlug, id, user.id));
+  }
+
+  @Post(':id/review/approve')
+  @AuditAction('content.review_approve')
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Approve a content entry for publishing' })
+  approveReview(
+    @Param('typeSlug') typeSlug: string,
+    @Param('id') id: string,
+    @CurrentUser() user: AuthUser,
+  ): Promise<{ data: ContentEntryDetailResponse }> {
+    return this.present(this.service.approveReview(typeSlug, id, user.id));
+  }
+
+  @Post(':id/review/changes')
+  @AuditAction('content.review_changes')
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Request changes on a content entry under review' })
+  requestChanges(
+    @Param('typeSlug') typeSlug: string,
+    @Param('id') id: string,
+    @CurrentUser() user: AuthUser,
+  ): Promise<{ data: ContentEntryDetailResponse }> {
+    return this.present(this.service.requestChanges(typeSlug, id, user.id));
+  }
+
+  @Post(':id/lock')
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Acquire or renew an edit lock for an entry' })
+  acquireLock(
+    @Param('typeSlug') typeSlug: string,
+    @Param('id') id: string,
+    @CurrentUser() user: AuthUser,
+  ): Promise<{ data: ContentEntryDetailResponse }> {
+    return this.present(this.service.acquireLock(typeSlug, id, user.id));
+  }
+
+  @Delete(':id/lock')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiBearerAuth()
+  @Roles(SYSTEM_ROLES.EDITOR, SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Release the current user edit lock for an entry' })
+  releaseLock(
+    @Param('typeSlug') typeSlug: string,
+    @Param('id') id: string,
+    @CurrentUser() user: AuthUser,
+  ): Promise<void> {
+    return this.service.releaseLock(typeSlug, id, user.id);
   }
 
   private async present(

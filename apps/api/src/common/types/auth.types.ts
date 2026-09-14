@@ -55,6 +55,9 @@ export interface PaginationMeta {
 
 export interface TwoFactorChallenge {
   requiresTwoFactor: true;
+  mfaRequired: true;
+  expiresIn: number;
+  user: UserSummary;
   challengeToken: string;
 }
 export type LoginResult = TokenPair | TwoFactorChallenge;

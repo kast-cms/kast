@@ -48,12 +48,14 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "helmet": "^8.3.0",
+    "hono": "^4.13.5",
     "ioredis": "^5.3.2",
     "isomorphic-dompurify": "^3.22.0",
     "jsonwebtoken": "^9.0.3",
     "meilisearch": "^0.60.0",
-    "multer": "^2.2.0",
-    "nodemailer": "^9.0.5",
+    "multer": "^2.3.0",
+    "nodemailer": "^9.1.1",
+    "openid-client": "^6",
     "otplib": "^13.5.0",
     "passport": "^0.7.0",
     "passport-github2": "^0.1.12",
@@ -64,7 +66,7 @@
     "reflect-metadata": "^0.2.2",
     "resend": "^6.20.0",
     "rxjs": "^7.8.2",
-    "sharp": "^0.35.0",
+    "sharp": "^0.35.4",
     "stripe": "^22.5.0",
     "zod": "^4.4.3"
   },
@@ -103,7 +105,14 @@
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
+      "^.+\\.(t|j)s$": [
+        "ts-jest",
+        {
+          "tsconfig": {
+            "allowJs": true
+          }
+        }
+      ]
     },
     "collectCoverageFrom": [
       "**/*.(t|j)s"
@@ -112,6 +121,12 @@
     "testEnvironment": "node",
     "moduleNameMapper": {
       "^isomorphic-dompurify$": "<rootDir>/../test/stubs/isomorphic-dompurify.ts"
-    }
+    },
+    "transformIgnorePatterns": [
+      "/node_modules/(?!\\.pnpm/|otplib/|@otplib/|@noble/|@scure/|openid-client/|oauth4webapi/|jose/)"
+    ]
+  },
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
   }
 }

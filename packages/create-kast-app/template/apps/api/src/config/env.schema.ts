@@ -234,5 +234,27 @@ export function validateEnv(config: Record<string, unknown>): Env {
   }
   assertProductionEnvironment(result.data);
   assertStorageEnvironment(result.data);
+  assertOidcEnvironment(result.data);
   return result.data;
+}
+
+function assertOidcEnvironment(env: Env): void {
+  const oidc = [env.OIDC_ISSUER_URL, env.OIDC_CLIENT_ID, env.OIDC_CLIENT_SECRET];
+  if (oidc.some(Boolean)) {
+    if (!oidc.every(Boolean))
+      throw new Error('OIDC requires issuer URL, client ID and client secret');
+    const issuer = new URL(env.OIDC_ISSUER_URL ?? '');
+    if (
+      issuer.protocol !== 'https:' ||
+      issuer.username ||
+      issuer.password ||
+      issuer.search ||
+      issuer.hash
+    )
+      throw new Error(
+        'OIDC_ISSUER_URL must be an HTTPS issuer URL without credentials, query or fragment',
+      );
+    if (!env.OIDC_SCOPES.split(/\s+/).includes('openid'))
+      throw new Error('OIDC_SCOPES must include openid');
+  }
 }

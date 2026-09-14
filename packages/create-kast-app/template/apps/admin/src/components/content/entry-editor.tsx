@@ -1,5 +1,6 @@
 'use client';
 
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -121,6 +122,7 @@ export function EntryEditor({ typeId, contentType, entry }: EntryEditorProps): J
     data,
     seo,
     status,
+    reviewStatus,
     scheduledAt,
     isSaving,
     isPublishing,
@@ -129,7 +131,9 @@ export function EntryEditor({ typeId, contentType, entry }: EntryEditorProps): J
     isRestoring,
     isScheduling,
     isCancellingSchedule,
+    isReviewing,
     autosaved,
+    lockWarning,
     isReverting,
     revertToVersion,
     createdEntryId,
@@ -142,6 +146,9 @@ export function EntryEditor({ typeId, contentType, entry }: EntryEditorProps): J
     restore,
     schedulePublish,
     cancelSchedule,
+    submitForReview,
+    approveReview,
+    requestChanges,
   } = useEntryEditor({ typeId, entryId: entry?.id ?? null, initialEntry: entry });
 
   const [versionPanelOpen, setVersionPanelOpen] = useState(false);
@@ -196,7 +203,10 @@ export function EntryEditor({ typeId, contentType, entry }: EntryEditorProps): J
     router.refresh();
   }
 
-  const busy = [isSaving, isPublishing, isUnpublishing, isArchiving, isRestoring].some(Boolean);
+  const locked = lockWarning !== null;
+  const busy = [isSaving, isPublishing, isUnpublishing, isArchiving, isRestoring, locked].some(
+    Boolean,
+  );
   const { metaTitle, metaDescription, canonicalUrl, ogImage } = getSeoFields(seo);
 
   return (
@@ -204,6 +214,7 @@ export function EntryEditor({ typeId, contentType, entry }: EntryEditorProps): J
       <EditorHeader isEditing={entry !== null} autosaved={autosaved} />
       <ActionBar
         status={status}
+        reviewStatus={reviewStatus}
         isSaving={isSaving}
         isPublishing={isPublishing}
         isUnpublishing={isUnpublishing}
@@ -211,6 +222,8 @@ export function EntryEditor({ typeId, contentType, entry }: EntryEditorProps): J
         isRestoring={isRestoring}
         isScheduling={isScheduling}
         isCancellingSchedule={isCancellingSchedule}
+        isReviewing={isReviewing}
+        disabled={locked}
         scheduledAt={scheduledAt}
         onSaveDraft={() => {
           void handleSaveDraft();
@@ -236,7 +249,22 @@ export function EntryEditor({ typeId, contentType, entry }: EntryEditorProps): J
         onOpenVersions={() => {
           setVersionPanelOpen(true);
         }}
+        onSubmitForReview={() => {
+          void submitForReview();
+        }}
+        onApproveReview={() => {
+          void approveReview();
+        }}
+        onRequestChanges={() => {
+          void requestChanges();
+        }}
       />
+      {lockWarning && (
+        <Alert variant="warning">
+          <AlertTitle>Entry locked</AlertTitle>
+          <AlertDescription>{lockWarning}</AlertDescription>
+        </Alert>
+      )}
       <SeoWarningDialog
         open={seoWarnings !== null}
         warnings={seoWarnings ?? []}

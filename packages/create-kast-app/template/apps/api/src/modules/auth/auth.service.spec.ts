@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import type { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
+import type { TokenPair } from '../../common/types/auth.types';
 import type { QueueAdapter } from '../queue/queue.adapter';
 import { QUEUE_NAMES } from '../queue/queue.constants';
 import type { AuthRepository } from './auth.repository';
@@ -46,6 +47,8 @@ describe('AuthService', () => {
       findUserById: jest.fn(),
       updateLastLogin: jest.fn().mockResolvedValue(undefined),
       createRefreshToken: jest.fn().mockResolvedValue('refresh-raw'),
+      createSession: jest.fn().mockResolvedValue({ id: 's1', raw: 'refresh-raw' }),
+      rotateSession: jest.fn(),
       findRefreshToken: jest.fn(),
       revokeRefreshToken: jest.fn().mockResolvedValue(undefined),
       revokeAllRefreshTokensForUser: jest.fn().mockResolvedValue({ count: 1 }),
@@ -79,6 +82,7 @@ describe('AuthService', () => {
       jwt as unknown as JwtService,
       queue as unknown as QueueAdapter,
       policy as unknown as OAuthPolicy,
+      {} as never,
     );
   });
 
@@ -137,10 +141,10 @@ describe('AuthService', () => {
 
       const result = await service.login({ email: 'admin@kast.local', password: 'Admin1234!' });
 
-      expect(result.accessToken).toBe('access-jwt');
-      expect(result.refreshToken).toBe('refresh-raw');
-      expect(result.expiresIn).toBe(900);
-      expect(result.user.roles).toEqual(['super_admin']);
+      expect((result as TokenPair).accessToken).toBe('access-jwt');
+      expect((result as TokenPair).refreshToken).toBe('refresh-raw');
+      expect((result as TokenPair).expiresIn).toBe(900);
+      expect((result as TokenPair).user.roles).toEqual(['super_admin']);
       expect(repo.updateLastLogin).toHaveBeenCalledWith('u1');
       expect(jwt.signAsync).toHaveBeenCalledWith(
         expect.objectContaining({ sub: 'u1', email: 'admin@kast.local', roles: ['super_admin'] }),
@@ -174,47 +178,24 @@ describe('AuthService', () => {
   });
 
   describe('refresh', () => {
-    it('rotates the refresh token and issues a new pair', async () => {
-      repo.findRefreshToken.mockResolvedValue({
-        userId: 'u1',
-        revokedAt: null,
-        expiresAt: new Date(Date.now() + 100000),
-      });
+    it('rotates the credential while preserving the session identity', async () => {
+      repo.rotateSession.mockResolvedValue({ id: 's1', userId: 'u1', raw: 'new-refresh' });
       repo.findUserById.mockResolvedValue(buildUser());
-
       const result = await service.refresh('old-refresh');
-
-      expect(repo.revokeRefreshToken).toHaveBeenCalledWith('old-refresh');
-      expect(result.accessToken).toBe('access-jwt');
+      expect(repo.rotateSession).toHaveBeenCalledWith('old-refresh');
+      expect(result.refreshToken).toBe('new-refresh');
+      expect(jwt.signAsync).toHaveBeenCalledWith(expect.objectContaining({ sid: 's1' }));
     });
-
-    it('rejects a revoked refresh token', async () => {
-      repo.findRefreshToken.mockResolvedValue({
-        userId: 'u1',
-        revokedAt: new Date(),
-        expiresAt: new Date(Date.now() + 100000),
-      });
-      await expect(service.refresh('revoked')).rejects.toThrow(UnauthorizedException);
-      expect(repo.revokeRefreshToken).not.toHaveBeenCalled();
+    it.each(['revoked', 'expired', 'replayed'])('rejects a %s credential', async (raw) => {
+      repo.rotateSession.mockResolvedValue(null);
+      await expect(service.refresh(raw)).rejects.toThrow(UnauthorizedException);
+      expect(jwt.signAsync).not.toHaveBeenCalled();
     });
-
-    it('rejects an expired refresh token', async () => {
-      repo.findRefreshToken.mockResolvedValue({
-        userId: 'u1',
-        revokedAt: null,
-        expiresAt: new Date(Date.now() - 1000),
-      });
-      await expect(service.refresh('expired')).rejects.toThrow(UnauthorizedException);
-    });
-
-    it('rejects when the underlying user is now inactive', async () => {
-      repo.findRefreshToken.mockResolvedValue({
-        userId: 'u1',
-        revokedAt: null,
-        expiresAt: new Date(Date.now() + 100000),
-      });
+    it('rejects an inactive user after rotation', async () => {
+      repo.rotateSession.mockResolvedValue({ id: 's1', userId: 'u1', raw: 'new-refresh' });
       repo.findUserById.mockResolvedValue(buildUser({ isActive: false }));
       await expect(service.refresh('valid')).rejects.toThrow(UnauthorizedException);
+      expect(jwt.signAsync).not.toHaveBeenCalled();
     });
   });
 
@@ -373,7 +354,7 @@ describe('AuthService', () => {
 
       const result = await service.oauthCallback('google', buildProfile());
 
-      expect(result.accessToken).toBe('access-jwt');
+      expect((result as TokenPair).accessToken).toBe('access-jwt');
       expect(repo.upsertOAuthAccount).toHaveBeenCalled();
     });
 
@@ -398,7 +379,7 @@ describe('AuthService', () => {
       expect(repo.createUser).toHaveBeenCalledWith(
         expect.objectContaining({ email: 'new@kast.local', defaultRoleId: 'role-viewer' }),
       );
-      expect(result.user.roles).toEqual(['viewer']);
+      expect((result as TokenPair).user.roles).toEqual(['viewer']);
     });
 
     it('throws when the provider supplies no email and no linked account exists', async () => {
@@ -436,7 +417,7 @@ describe('AuthService', () => {
 
       const result = await service.oauthCallback('google', buildProfile());
 
-      expect(result.accessToken).toBe('access-jwt');
+      expect((result as TokenPair).accessToken).toBe('access-jwt');
       expect(policy.canProvision).not.toHaveBeenCalled();
     });
 

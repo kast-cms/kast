@@ -150,7 +150,15 @@ export class AuthRepository extends SessionRepository {
     userId: string,
     data: { firstName?: string; lastName?: string; avatarUrl?: string; passwordHash?: string },
   ): Promise<User> {
-    return this.prisma.user.update({ where: { id: userId }, data });
+    if (!data.passwordHash) return this.prisma.user.update({ where: { id: userId }, data });
+    return this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.update({ where: { id: userId }, data });
+      await tx.refreshToken.updateMany({
+        where: { userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      return user;
+    });
   }
 
   hashToken(raw: string): string {

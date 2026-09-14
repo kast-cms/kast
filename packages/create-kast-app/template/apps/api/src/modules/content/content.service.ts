@@ -1,8 +1,11 @@
+/* eslint-disable max-lines */
 import { InjectQueue } from '@nestjs/bullmq';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import type { ContentStatus } from '@prisma/client';
 import type { Queue } from 'bullmq';
-import type { PaginatedResult } from '../../common/types/auth.types';
+import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
+import type { AuthUser, PaginatedResult } from '../../common/types/auth.types';
 import type { ContentTypeWithFields } from '../content-types/content-types.repository';
 import { ContentTypesService } from '../content-types/content-types.service';
 import type { PublishJobData } from '../publish/publish.processor';
@@ -33,6 +36,8 @@ import { ContentRepository, EntryWithLocale, VersionWithAuthor } from './content
 import type {
   AddLocaleDto,
   CreateContentEntryDto,
+  ImportContentDto,
+  ImportWordPressDto,
   PublishContentDto,
   SchedulePublishDto,
   UpdateContentEntryDto,
@@ -205,8 +210,10 @@ export class ContentService {
     typeSlug: string,
     id: string,
     dto?: PublishContentDto,
+    actor?: AuthUser,
   ): Promise<{ data: EntryWithLocale }> {
     const { ct, entry } = await this.requireWritableEntry(typeSlug, id);
+    this.assertReviewGate(entry, actor);
 
     await this.gate.assertStoredPublishable(ct, entry);
     assertSeoPublishable(await this.seoService.validateNow(id), dto?.force);
@@ -295,8 +302,12 @@ export class ContentService {
     return { data: await runBulkEntryAction(ids, (id) => this.trash(typeSlug, id, actorId)) };
   }
 
-  async bulkPublish(typeSlug: string, ids: string[]): Promise<{ data: BulkEntryOutcome }> {
-    return { data: await runBulkEntryAction(ids, (id) => this.publish(typeSlug, id)) };
+  async bulkPublish(
+    typeSlug: string,
+    ids: string[],
+    actor?: AuthUser,
+  ): Promise<{ data: BulkEntryOutcome }> {
+    return { data: await runBulkEntryAction(ids, (id) => this.publish(typeSlug, id, {}, actor)) };
   }
 
   async bulkUnpublish(typeSlug: string, ids: string[]): Promise<{ data: BulkEntryOutcome }> {
@@ -307,8 +318,10 @@ export class ContentService {
     typeSlug: string,
     id: string,
     dto: SchedulePublishDto,
+    actor?: AuthUser,
   ): Promise<{ data: EntryWithLocale }> {
     const { ct, entry } = await this.requireWritableEntry(typeSlug, id);
+    this.assertReviewGate(entry, actor);
     const queue = this.publishQueue;
     await scheduleEntryPublish(this.repo, this.gate, queue, ct, entry, typeSlug, dto.publishAt);
     return { data: await this.reload(ct.id, id) };
@@ -353,4 +366,210 @@ export class ContentService {
     await this.repo.syncReferences(id, ct.fields);
     return { data };
   }
+
+  async submitForReview(
+    typeSlug: string,
+    id: string,
+    userId: string,
+  ): Promise<{ data: EntryWithLocale }> {
+    const { ct } = await this.requireWritableEntry(typeSlug, id);
+    assertApplied(await this.repo.updateReviewStatus(id, ct.id, 'IN_REVIEW', userId), id);
+    return { data: await this.reload(ct.id, id) };
+  }
+
+  async approveReview(
+    typeSlug: string,
+    id: string,
+    userId: string,
+  ): Promise<{ data: EntryWithLocale }> {
+    const { ct } = await this.requireWritableEntry(typeSlug, id);
+    assertApplied(await this.repo.updateReviewStatus(id, ct.id, 'APPROVED', userId), id);
+    return { data: await this.reload(ct.id, id) };
+  }
+
+  async requestChanges(
+    typeSlug: string,
+    id: string,
+    userId: string,
+  ): Promise<{ data: EntryWithLocale }> {
+    const { ct } = await this.requireWritableEntry(typeSlug, id);
+    assertApplied(await this.repo.updateReviewStatus(id, ct.id, 'CHANGES_REQUESTED', userId), id);
+    return { data: await this.reload(ct.id, id) };
+  }
+
+  async acquireLock(
+    typeSlug: string,
+    id: string,
+    userId: string,
+  ): Promise<{ data: EntryWithLocale }> {
+    const { ct } = await this.requireWritableEntry(typeSlug, id);
+    const locked = await this.repo.acquireLock(
+      id,
+      ct.id,
+      userId,
+      new Date(Date.now() + 15 * 60_000),
+    );
+    if (!locked) throw new ConflictException('Entry is locked by another editor');
+    return { data: locked };
+  }
+
+  async releaseLock(typeSlug: string, id: string, userId: string): Promise<void> {
+    const { ct } = await this.requireEntry(typeSlug, id);
+    await this.repo.releaseLock(id, ct.id, userId);
+  }
+
+  async diffVersion(
+    typeSlug: string,
+    id: string,
+    versionId: string,
+    locale?: string,
+  ): Promise<{
+    data: {
+      fromVersionId: string;
+      fromVersionNumber: number;
+      to: 'current';
+      changes: JsonDiff[];
+    };
+  }> {
+    const [{ data: version }, { entry }] = await Promise.all([
+      this.getVersion(typeSlug, id, versionId),
+      this.requireEntry(typeSlug, id, locale),
+    ]);
+    return {
+      data: {
+        fromVersionId: version.id,
+        fromVersionNumber: version.versionNumber,
+        to: 'current',
+        changes: diffJson(
+          version.data as Record<string, unknown>,
+          localeData(entry, writeLocale(entry, locale)),
+        ),
+      },
+    };
+  }
+
+  async exportType(typeSlug: string): Promise<{
+    data: {
+      formatVersion: 1;
+      exportedAt: string;
+      contentType: ContentTypeWithFields;
+      entries: Awaited<ReturnType<ContentRepository['findAllForExport']>>;
+    };
+  }> {
+    const ct = await this.contentTypesService.findByName(typeSlug);
+    return {
+      data: {
+        formatVersion: 1,
+        exportedAt: new Date().toISOString(),
+        contentType: ct,
+        entries: await this.repo.findAllForExport(ct.id),
+      },
+    };
+  }
+
+  async importType(
+    typeSlug: string,
+    dto: ImportContentDto,
+    userId: string,
+  ): Promise<{ data: { imported: number; ids: string[] } }> {
+    const ct = await this.contentTypesService.findByName(typeSlug);
+    const ids: string[] = [];
+    for (const entry of dto.entries) {
+      for (const locale of entry.locales) {
+        await this.gate.validatePayload(ct, locale.data, {
+          mode: 'draft',
+          localeCode: locale.localeCode,
+          applyDefaults: true,
+        });
+      }
+      const created = await this.repo.importEntry({
+        contentTypeId: ct.id,
+        ...(entry.id ? { id: entry.id } : {}),
+        status: (entry.status ?? 'DRAFT') as ContentStatus,
+        locales: entry.locales,
+        versions:
+          entry.versions?.map((version) => ({
+            versionNumber: version.versionNumber,
+            status: (version.status ?? 'DRAFT') as ContentStatus,
+            data: version.data,
+            localesData: version.localesData,
+          })) ?? [],
+        overwrite: dto.overwrite === true,
+        actorId: userId,
+      });
+      ids.push(created.id);
+      await this.repo.syncReferences(created.id, ct.fields);
+    }
+    return { data: { imported: ids.length, ids } };
+  }
+
+  async importWordPress(
+    typeSlug: string,
+    dto: ImportWordPressDto,
+    userId: string,
+  ): Promise<{ data: { imported: number; ids: string[] } }> {
+    const ids: string[] = [];
+    for (const post of dto.posts) {
+      const created = await this.create(
+        typeSlug,
+        {
+          locale: dto.locale ?? 'en',
+          ...(post.slug ? { slug: post.slug } : {}),
+          data: {
+            title: post.title,
+            content: post.content,
+            excerpt: post.excerpt ?? '',
+            publishedAt: post.date ?? null,
+            source: 'wordpress',
+          },
+        },
+        userId,
+      );
+      ids.push(created.data.id);
+    }
+    return { data: { imported: ids.length, ids } };
+  }
+
+  private assertReviewGate(entry: EntryWithLocale, actor?: AuthUser): void {
+    if (!actor) return;
+    const canBypass =
+      actor.roles.includes(SYSTEM_ROLES.ADMIN) || actor.roles.includes(SYSTEM_ROLES.SUPER_ADMIN);
+    if (canBypass || entry.reviewStatus === 'APPROVED') return;
+    throw new ConflictException('Entry must be approved before publishing');
+  }
+}
+
+interface JsonDiff {
+  path: string;
+  before: unknown;
+  after: unknown;
+  type: 'added' | 'removed' | 'changed';
+}
+
+function diffJson(
+  before: Record<string, unknown>,
+  after: Record<string, unknown>,
+  path = '',
+): JsonDiff[] {
+  const changes: JsonDiff[] = [];
+  const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+  for (const key of [...keys].sort()) {
+    const nextPath = path ? `${path}.${key}` : key;
+    const left = before[key];
+    const right = after[key];
+    if (!(key in before)) {
+      changes.push({ path: nextPath, before: undefined, after: right, type: 'added' });
+    } else if (!(key in after)) {
+      changes.push({ path: nextPath, before: left, after: undefined, type: 'removed' });
+    } else if (isPlainObject(left) && isPlainObject(right)) {
+      changes.push(...diffJson(left, right, nextPath));
+    } else if (JSON.stringify(left) !== JSON.stringify(right)) {
+      changes.push({ path: nextPath, before: left, after: right, type: 'changed' });
+    }
+  }
+  return changes;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
 }

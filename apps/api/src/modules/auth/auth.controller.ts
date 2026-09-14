@@ -84,10 +84,8 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 60, ttl: 60000 } })
   @ApiOperation({ summary: 'Refresh access token' })
-  refresh(@Body() dto: RefreshTokenDto, @Req() req: Request): Promise<{ data: TokenPair }> {
-    return this.authService
-      .refresh(dto.refreshToken, requestMetadata(req))
-      .then((data) => ({ data }));
+  refresh(@Body() dto: RefreshTokenDto): Promise<{ data: TokenPair }> {
+    return this.authService.refresh(dto.refreshToken).then((data) => ({ data }));
   }
 
   /**

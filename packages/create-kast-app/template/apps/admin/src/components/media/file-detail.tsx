@@ -21,7 +21,7 @@ import { formatBytes } from './media-grid';
 
 interface FileDetailProps {
   file: MediaFileDetail;
-  onUpdate: (id: string, altText: string) => void;
+  onUpdate: (id: string, data: { altText: string; focalPoint?: { x: number; y: number } }) => void;
   onTrash: (id: string) => void;
   onClose: () => void;
 }
@@ -63,13 +63,21 @@ function MetaDl({
 export function FileDetail({ file, onUpdate, onTrash, onClose }: FileDetailProps): JSX.Element {
   const t = useTranslations('mediaLibrary');
   const [altText, setAltText] = useState(file.altText ?? '');
+  const [focalX, setFocalX] = useState(String(file.focalPoint?.x ?? 0.5));
+  const [focalY, setFocalY] = useState(String(file.focalPoint?.y ?? 0.5));
   const [saving, setSaving] = useState(false);
   const usages = file.usages;
   const inUse = usages.length > 0;
+  const variantEntries = Object.entries(file.variants);
 
   function handleSave(): void {
     setSaving(true);
-    void Promise.resolve(onUpdate(file.id, altText)).finally(() => {
+    void Promise.resolve(
+      onUpdate(file.id, {
+        altText,
+        focalPoint: { x: Number(focalX), y: Number(focalY) },
+      }),
+    ).finally(() => {
       setSaving(false);
     });
   }
@@ -121,7 +129,65 @@ export function FileDetail({ file, onUpdate, onTrash, onClose }: FileDetailProps
           </Button>
         </div>
 
+        {file.mimeType.startsWith('image/') && (
+          <div className="space-y-2">
+            <Label className="text-xs">{t('detail.focalPoint')}</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                type="number"
+                min="0"
+                max="1"
+                step="0.01"
+                value={focalX}
+                onChange={(e) => {
+                  setFocalX(e.target.value);
+                }}
+                aria-label="Focal point X"
+              />
+              <Input
+                type="number"
+                min="0"
+                max="1"
+                step="0.01"
+                value={focalY}
+                onChange={(e) => {
+                  setFocalY(e.target.value);
+                }}
+                aria-label="Focal point Y"
+              />
+            </div>
+            <p className="text-2xs text-muted-foreground">{t('detail.focalPointHint')}</p>
+          </div>
+        )}
+
         <MetaDl file={file} t={t} />
+
+        {variantEntries.length > 0 && (
+          <div className="space-y-2">
+            <Label className="text-xs">{t('detail.variants')}</Label>
+            <div className="divide-y divide-border overflow-hidden rounded-md border border-border text-xs">
+              {variantEntries.map(([name, variant]) => (
+                <div key={name} className="flex items-center gap-2 px-3 py-2">
+                  <span className="font-medium text-foreground">{name}</span>
+                  <span className="text-muted-foreground">
+                    {variant.width}×{variant.height}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="ms-auto"
+                    aria-label={`${t('detail.url')} ${name}`}
+                    onClick={() => {
+                      void navigator.clipboard.writeText(variant.url);
+                    }}
+                  >
+                    <Copy />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label htmlFor="media-url" className="text-xs">

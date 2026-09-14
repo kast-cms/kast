@@ -7,7 +7,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import type { User } from '@prisma/client';
 import * as argon2 from 'argon2';
-import { createHash, randomBytes, randomUUID } from 'crypto';
+import { randomBytes, randomUUID, scryptSync } from 'crypto';
 import type {
   LoginResult,
   SessionMetadata,
@@ -22,6 +22,7 @@ import type { SetupDto } from './dto/setup.dto';
 import type { UpdateProfileDto } from './dto/update-profile.dto';
 import { issueLoginChallenge, verifyLoginChallenge } from './login-challenge';
 import { OAuthPolicy } from './oauth-policy';
+import { verifyProfilePassword } from './profile-password';
 import { TwoFactorService } from './two-factor.service';
 import type { OAuthProfile } from './types/oauth.types';
 
@@ -116,8 +117,8 @@ export class AuthService {
     return this.issueTokenPair(user, metadata);
   }
 
-  async refresh(raw: string, metadata: SessionMetadata = {}): Promise<TokenPair> {
-    const record = await this.authRepository.rotateSession(raw, metadata);
+  async refresh(raw: string): Promise<TokenPair> {
+    const record = await this.authRepository.rotateSession(raw);
     if (!record) throw new UnauthorizedException('Invalid or expired refresh token');
     const user = await this.authRepository.findUserById(record.userId);
     if (!user?.isActive || user.trashedAt)
@@ -152,17 +153,7 @@ export class AuthService {
     const user = await this.authRepository.findUserById(userId);
     if (!user) throw new UnauthorizedException('User not found');
 
-    // class-validator has already rejected any non-nullish newPassword shorter
-    // than 8 characters, so a validated truthy value here is a real change
-    // request — the branch below is the "only verify when changing" rule, not
-    // a bypass a caller can shape.
-    if (dto.newPassword) {
-      if (!dto.currentPassword) {
-        throw new BadRequestException('currentPassword is required to change password');
-      }
-      const valid = await argon2.verify(user.passwordHash ?? '', dto.currentPassword);
-      if (!valid) throw new BadRequestException('Current password is incorrect');
-    }
+    await verifyProfilePassword(user.passwordHash, dto);
 
     const data: Parameters<AuthRepository['updateUser']>[1] = {};
     if (dto.firstName !== undefined) data.firstName = dto.firstName;
@@ -215,15 +206,9 @@ export class AuthService {
     }
   }
 
-  /**
-   * Unsalted SHA-256 is deliberate here: the code is 32 random bytes whose
-   * hash is the lookup key for a 60-second ephemeral entry, so it needs a
-   * deterministic function — a salted or password-hashing construction would
-   * make the exchange lookup impossible. Brute-forcing 256 bits of entropy is
-   * out of scope for any adversary who could read the store.
-   */
+  /** Preserve the derived lookup keys used by the existing OAuth-code exchange. */
   private hashOAuthCode(code: string): string {
-    return createHash('sha256').update(code).digest('hex');
+    return scryptSync(code, 'kast-oauth-code-lookup-v1', 32).toString('hex');
   }
 
   private async findOrCreateOAuthUser(
@@ -354,19 +339,11 @@ export class AuthService {
 
   private refreshTokenExpiry(): Date {
     // BR-AUT-002: refresh tokens expire in 30 days.
-    const d = new Date();
-    d.setDate(d.getDate() + 30);
-    return d;
+    return new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   }
 
   private toSummary(
-    user: {
-      id: string;
-      email: string;
-      firstName: string | null;
-      lastName: string | null;
-      avatarUrl: string | null;
-    },
+    user: Pick<User, 'id' | 'email' | 'firstName' | 'lastName' | 'avatarUrl'>,
     roles: string[],
   ): UserSummary {
     return {

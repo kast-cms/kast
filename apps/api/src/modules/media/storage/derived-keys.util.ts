@@ -3,6 +3,11 @@
  * purge both read this so a new size cannot be written without being cleaned up.
  */
 export const THUMBNAIL_WIDTHS = [400, 800] as const;
+export const MEDIA_VARIANTS = {
+  thumbnail: { width: 320, height: 180 },
+  card: { width: 640, height: 360 },
+  hero: { width: 1280, height: 720 },
+} as const;
 
 /** Suffix {@link MediaProcessor.handleOptimize} appends to the uploaded key. */
 const OPTIMIZED_SUFFIX = '.webp';
@@ -29,5 +34,15 @@ export function derivedStorageKeys(storageKey: string): string[] {
   for (const width of THUMBNAIL_WIDTHS) {
     keys.add(`thumbs/${String(width)}/${uploadedKey}`);
   }
+  for (const name of Object.keys(MEDIA_VARIANTS)) {
+    keys.add(variantStorageKey(name, uploadedKey));
+  }
   return [...keys];
+}
+
+export function variantStorageKey(name: string, storageKey: string): string {
+  const uploadedKey = storageKey.endsWith(OPTIMIZED_SUFFIX)
+    ? storageKey.slice(0, -OPTIMIZED_SUFFIX.length)
+    : storageKey;
+  return `variants/${name}/${uploadedKey}.webp`;
 }

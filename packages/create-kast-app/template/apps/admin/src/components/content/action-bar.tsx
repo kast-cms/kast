@@ -3,8 +3,19 @@
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Hint } from '@/components/ui/tooltip';
-import type { EntryStatus } from '@kast-cms/sdk';
-import { Archive, CalendarClock, EyeOff, History, RotateCcw, Save, Send, X } from 'lucide-react';
+import type { EntryReviewStatus, EntryStatus } from '@kast-cms/sdk';
+import {
+  Archive,
+  CalendarClock,
+  CheckCircle2,
+  EyeOff,
+  History,
+  MessageSquareWarning,
+  RotateCcw,
+  Save,
+  Send,
+  X,
+} from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState, type JSX } from 'react';
 import { ScheduleDialog } from './schedule-dialog';
@@ -12,6 +23,7 @@ import { StatusBadge } from './status-badge';
 
 interface ActionBarProps {
   status: EntryStatus;
+  reviewStatus: EntryReviewStatus;
   isSaving: boolean;
   isPublishing: boolean;
   isUnpublishing: boolean;
@@ -19,6 +31,8 @@ interface ActionBarProps {
   isRestoring: boolean;
   isScheduling: boolean;
   isCancellingSchedule: boolean;
+  isReviewing: boolean;
+  disabled?: boolean;
   scheduledAt: string | null;
   onSaveDraft: () => void;
   onPublish: () => void;
@@ -28,6 +42,9 @@ interface ActionBarProps {
   onSchedule: (publishAt: string) => void;
   onCancelSchedule: () => void;
   onOpenVersions: () => void;
+  onSubmitForReview: () => void;
+  onApproveReview: () => void;
+  onRequestChanges: () => void;
 }
 
 /*
@@ -185,6 +202,13 @@ function ScheduledActions({
   );
 }
 
+function reviewLabel(status: EntryReviewStatus): string {
+  return status
+    .toLowerCase()
+    .replace(/_/g, ' ')
+    .replace(/^\w/, (letter) => letter.toUpperCase());
+}
+
 export function ActionBar(props: ActionBarProps): JSX.Element {
   const { status, scheduledAt, onSchedule, onOpenVersions, isScheduling } = props;
   const [scheduleOpen, setScheduleOpen] = useState(false);
@@ -199,12 +223,55 @@ export function ActionBar(props: ActionBarProps): JSX.Element {
     props.isRestoring,
     props.isScheduling,
     props.isCancellingSchedule,
+    props.isReviewing,
+    props.disabled === true,
   ].some(Boolean);
 
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-3 py-2.5 shadow-xs">
       <StatusBadge status={status} />
+      <span className="rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
+        {reviewLabel(props.reviewStatus)}
+      </span>
       <Separator orientation="vertical" className="mx-1 h-5" />
+
+      {(props.reviewStatus === 'DRAFT' || props.reviewStatus === 'CHANGES_REQUESTED') && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={busy}
+          loading={props.isReviewing}
+          onClick={props.onSubmitForReview}
+        >
+          {!props.isReviewing && <MessageSquareWarning />}
+          Submit for review
+        </Button>
+      )}
+      {props.reviewStatus === 'IN_REVIEW' && (
+        <>
+          <Button
+            type="button"
+            variant="success"
+            size="sm"
+            disabled={busy}
+            loading={props.isReviewing}
+            onClick={props.onApproveReview}
+          >
+            {!props.isReviewing && <CheckCircle2 />}
+            Approve
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={busy}
+            onClick={props.onRequestChanges}
+          >
+            Request changes
+          </Button>
+        </>
+      )}
 
       {status === 'DRAFT' && (
         <DraftActions

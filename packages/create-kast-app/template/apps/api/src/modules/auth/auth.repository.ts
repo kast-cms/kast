@@ -10,6 +10,7 @@ import { createHash, randomBytes } from 'crypto';
 import { SYSTEM_ROLES } from '../../common/constants/roles.constants';
 import { PrismaService } from '../../prisma/prisma.service';
 import { generateResetToken, hashResetToken } from './reset-token.util';
+import { SessionRepository } from './session.repository';
 
 /** Mirrors prisma/seed.ts — the roles the RBAC guard expects to exist. */
 const SYSTEM_ROLE_SEED = [
@@ -60,8 +61,10 @@ const DEFAULT_LOCALE_SEED = [
 const SETUP_ADVISORY_LOCK_KEY = 4922421n;
 
 @Injectable()
-export class AuthRepository {
-  constructor(private readonly prisma: PrismaService) {}
+export class AuthRepository extends SessionRepository {
+  constructor(prisma: PrismaService) {
+    super(prisma);
+  }
 
   findUserByEmail(email: string): Promise<(User & { roles: { role: { name: string } }[] }) | null> {
     return this.prisma.user.findUnique({
@@ -147,7 +150,15 @@ export class AuthRepository {
     userId: string,
     data: { firstName?: string; lastName?: string; avatarUrl?: string; passwordHash?: string },
   ): Promise<User> {
-    return this.prisma.user.update({ where: { id: userId }, data });
+    if (!data.passwordHash) return this.prisma.user.update({ where: { id: userId }, data });
+    return this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.update({ where: { id: userId }, data });
+      await tx.refreshToken.updateMany({
+        where: { userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      return user;
+    });
   }
 
   hashToken(raw: string): string {

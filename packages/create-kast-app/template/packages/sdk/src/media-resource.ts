@@ -15,6 +15,7 @@ interface Requester {
     path: string,
     opts?: { method?: string; body?: unknown; formData?: FormData },
   ): Promise<T>;
+  getBaseUrl(): string;
 }
 
 export class MediaResource {
@@ -27,6 +28,10 @@ export class MediaResource {
 
   get(id: string): Promise<ApiResponse<MediaFileDetail>> {
     return this.client.request(`/api/v1/media/${id}`);
+  }
+
+  renditionUrl(id: string, name: string): string {
+    return `${this.client.getBaseUrl()}/api/v1/media/${id}/renditions/${name}`;
   }
 
   /** The controller mounts this on the collection itself; /media/upload is a 404. */
@@ -42,7 +47,7 @@ export class MediaResource {
     return this.client.request('/api/v1/media/upload-url', { method: 'POST', body });
   }
 
-  update(id: string, body: UpdateMediaBody): Promise<ApiResponse<MediaFileSummary>> {
+  update(id: string, body: UpdateMediaBody): Promise<ApiResponse<MediaFileDetail>> {
     return this.client.request(`/api/v1/media/${id}`, { method: 'PATCH', body });
   }
 

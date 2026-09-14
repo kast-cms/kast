@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   HttpCode,
   HttpStatus,
   InternalServerErrorException,
@@ -20,7 +21,7 @@ import type { Request, Response } from 'express';
 import { Authenticated } from '../../common/decorators/authenticated.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
-import type { AuthUser, TokenPair, UserSummary } from '../../common/types/auth.types';
+import type { AuthUser, LoginResult, TokenPair, UserSummary } from '../../common/types/auth.types';
 import type { Env } from '../../config/env.schema';
 import { AuthService } from './auth.service';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
@@ -29,7 +30,10 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { SetupDto } from './dto/setup.dto';
+import { VerifyTwoFactorDto } from './dto/two-factor.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { OidcService } from './oidc.service';
+import { requestMetadata } from './request-metadata';
 
 @ApiTags('auth')
 @Controller({ path: 'auth', version: '1' })
@@ -37,6 +41,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService<Env>,
+    private readonly oidc: OidcService,
   ) {}
 
   @Get('setup')
@@ -61,8 +66,17 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 20, ttl: 900000 } })
   @ApiOperation({ summary: 'Login with email and password' })
-  login(@Body() dto: LoginDto): Promise<{ data: TokenPair }> {
-    return this.authService.login(dto).then((data) => ({ data }));
+  login(@Body() dto: LoginDto, @Req() req: Request): Promise<{ data: LoginResult }> {
+    return this.authService.login(dto, requestMetadata(req)).then((data) => ({ data }));
+  }
+
+  @Post('two-factor/verify')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Header('Cache-Control', 'no-store')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  async verifyTwoFactor(@Body() dto: VerifyTwoFactorDto): Promise<{ data: TokenPair }> {
+    return { data: await this.authService.verifyTwoFactor(dto.challengeToken, dto.code) };
   }
 
   @Post('refresh')
@@ -110,6 +124,59 @@ export class AuthController {
 
   // ─── OAuth ───────────────────────────────────────────────────
 
+  @Get('providers')
+  @Public()
+  providers(): { data: { google: boolean; github: boolean; oidc: boolean } } {
+    return {
+      data: {
+        google: Boolean(
+          this.configService.get('GOOGLE_CLIENT_ID') &&
+          this.configService.get('GOOGLE_CLIENT_SECRET'),
+        ),
+        github: Boolean(
+          this.configService.get('GITHUB_CLIENT_ID') &&
+          this.configService.get('GITHUB_CLIENT_SECRET'),
+        ),
+        oidc: this.oidc.enabled(),
+      },
+    };
+  }
+
+  @Get('oauth/oidc')
+  @Public()
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  async oidcLogin(@Res() res: Response): Promise<void> {
+    const { state, url } = await this.oidc.start();
+    res.cookie('kast_oidc_state', state, {
+      httpOnly: true,
+      secure: this.oidc.callbackUrl().startsWith('https:'),
+      sameSite: 'lax',
+      path: '/api/v1/auth/oauth/oidc/callback',
+      maxAge: 300_000,
+    });
+    res.setHeader('Cache-Control', 'no-store');
+    res.redirect(url);
+  }
+
+  @Get('oauth/oidc/callback')
+  @Public()
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  async oidcCallback(@Req() req: Request, @Res() res: Response): Promise<void> {
+    const browserState = req.headers.cookie
+      ?.split(';')
+      .map((part) => part.trim())
+      .find((part) => part.startsWith('kast_oidc_state='))
+      ?.slice('kast_oidc_state='.length);
+    res.clearCookie('kast_oidc_state', { path: '/api/v1/auth/oauth/oidc/callback' });
+    const url = new URL(this.oidc.callbackUrl());
+    url.search = new URL(req.originalUrl, url.origin).search;
+    const profile = await this.oidc.callback(url, browserState);
+    await this.redirectWithCode(
+      await this.authService.oauthCallback(this.oidc.providerKey(), profile, requestMetadata(req)),
+      res,
+    );
+  }
+
   @Get('oauth/google')
   @Public()
   @SkipThrottle()
@@ -125,7 +192,7 @@ export class AuthController {
   @UseGuards(AuthGuard('google'))
   @ApiOperation({ summary: 'Google OAuth callback' })
   async googleCallback(
-    @Req() req: Request & { user?: TokenPair },
+    @Req() req: Request & { user?: LoginResult },
     @Res() res: Response,
   ): Promise<void> {
     await this.redirectWithCode(req.user, res);
@@ -146,7 +213,7 @@ export class AuthController {
   @UseGuards(AuthGuard('github'))
   @ApiOperation({ summary: 'GitHub OAuth callback' })
   async githubCallback(
-    @Req() req: Request & { user?: TokenPair },
+    @Req() req: Request & { user?: LoginResult },
     @Res() res: Response,
   ): Promise<void> {
     await this.redirectWithCode(req.user, res);
@@ -157,7 +224,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 20, ttl: 60000 } })
   @ApiOperation({ summary: 'Exchange a single-use OAuth authorization code for tokens' })
-  exchangeOAuthCode(@Body('code') code: unknown): Promise<{ data: TokenPair }> {
+  exchangeOAuthCode(@Body('code') code: unknown): Promise<{ data: LoginResult }> {
     if (typeof code !== 'string' || code.length === 0) {
       throw new BadRequestException('code is required');
     }
@@ -198,7 +265,7 @@ export class AuthController {
 
   // ─── Helpers ──────────────────────────────────────────────────
 
-  private async redirectWithCode(tokenPair: TokenPair | undefined, res: Response): Promise<void> {
+  private async redirectWithCode(tokenPair: LoginResult | undefined, res: Response): Promise<void> {
     if (!tokenPair) throw new BadRequestException('OAuth authentication failed');
     const target = this.adminCallbackUrl();
     target.searchParams.set('code', await this.authService.issueOAuthAuthorizationCode(tokenPair));

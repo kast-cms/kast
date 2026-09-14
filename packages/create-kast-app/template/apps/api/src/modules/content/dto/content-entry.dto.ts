@@ -11,6 +11,7 @@ import {
   IsObject,
   IsOptional,
   IsString,
+  ValidateNested,
 } from 'class-validator';
 import { toBoolean } from '../../../common/dto/to-boolean.transform';
 
@@ -61,6 +62,14 @@ export class UpdateContentEntryDto {
   @IsOptional()
   @IsEnum(ContentStatus)
   status?: ContentStatus;
+
+  @ApiPropertyOptional({
+    description:
+      'Optimistic concurrency token. When set, the write is rejected if the entry was updated after this timestamp.',
+  })
+  @IsOptional()
+  @IsISO8601()
+  expectedUpdatedAt?: string;
 }
 
 export class SchedulePublishDto {
@@ -110,4 +119,124 @@ export class AddLocaleDto {
   @IsOptional()
   @IsString()
   copyFromLocale?: string;
+}
+
+export class ImportContentLocaleDto {
+  @ApiProperty({ example: 'en' })
+  @IsString()
+  localeCode!: string;
+
+  @ApiProperty({ example: 'hello-world' })
+  @IsString()
+  slug!: string;
+
+  @ApiProperty()
+  @IsObject()
+  @Type(() => Object)
+  data!: Record<string, unknown>;
+}
+
+export class ImportContentVersionDto {
+  @ApiProperty()
+  versionNumber!: number;
+
+  @ApiPropertyOptional({ enum: ContentStatus })
+  @IsOptional()
+  @IsEnum(ContentStatus)
+  status?: ContentStatus;
+
+  @ApiProperty()
+  @IsObject()
+  @Type(() => Object)
+  data!: Record<string, unknown>;
+
+  @ApiProperty()
+  @IsObject()
+  @Type(() => Object)
+  localesData!: Record<string, unknown>;
+}
+
+export class ImportContentEntryDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @ApiPropertyOptional({ enum: ContentStatus })
+  @IsOptional()
+  @IsEnum(ContentStatus)
+  status?: ContentStatus;
+
+  @ApiProperty({ type: [ImportContentLocaleDto] })
+  @IsArray()
+  @ArrayNotEmpty()
+  @ValidateNested({ each: true })
+  @Type(() => ImportContentLocaleDto)
+  locales!: ImportContentLocaleDto[];
+
+  @ApiPropertyOptional({ type: [ImportContentVersionDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ImportContentVersionDto)
+  versions?: ImportContentVersionDto[];
+}
+
+export class ImportContentDto {
+  @ApiProperty({ type: [ImportContentEntryDto] })
+  @IsArray()
+  @ArrayNotEmpty()
+  @ValidateNested({ each: true })
+  @Type(() => ImportContentEntryDto)
+  entries!: ImportContentEntryDto[];
+
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @IsBoolean()
+  @Transform(toBoolean)
+  overwrite?: boolean;
+}
+
+export class WordPressPostDto {
+  @ApiProperty()
+  @IsString()
+  title!: string;
+
+  @ApiProperty()
+  @IsString()
+  content!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  slug?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  excerpt?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  status?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsISO8601()
+  date?: string;
+}
+
+export class ImportWordPressDto {
+  @ApiProperty({ type: [WordPressPostDto] })
+  @IsArray()
+  @ArrayNotEmpty()
+  @ValidateNested({ each: true })
+  @Type(() => WordPressPostDto)
+  posts!: WordPressPostDto[];
+
+  @ApiPropertyOptional({ example: 'en' })
+  @IsOptional()
+  @IsString()
+  locale?: string;
 }

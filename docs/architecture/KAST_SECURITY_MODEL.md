@@ -113,7 +113,8 @@ app.use(
 
 ## 3. Authentication Architecture
 
-Kast uses a **stateless JWT + refresh token rotation** pattern. No server-side session state.
+Kast uses signed access JWTs backed by revocable database sessions and atomic
+refresh-token rotation. Each authenticated request checks the user and session.
 
 ### Flow Diagram
 
@@ -158,12 +159,13 @@ interface JwtPayload {
   roles: string[]; // ["ADMIN", "EDITOR"]
   iat: number; // issued at
   exp: number; // expires at (15 min from iat)
-  jti: string; // unique JWT ID (for future revocation if needed)
+  sid: string; // revocable database session ID
+  jti: string; // unique JWT ID
 }
 ```
 
 **JWT is signed with `HS256` using `JWT_SECRET` (min 32 chars, validated on startup).**
-**Refresh token is signed with a separate `JWT_REFRESH_SECRET`.**
+**Refresh tokens are opaque random credentials stored as SHA-256 hashes.**
 
 ### Token Lifetimes
 
@@ -174,21 +176,37 @@ interface JwtPayload {
 | API token (`kast_...`)        | Configurable or never       | Client — hash in DB                            |
 | Agent token (`kastagent_...`) | No expiry (revoke manually) | Client — hash in DB                            |
 
-### OAuth Flow
+### MFA
+
+Users can enable TOTP MFA from the admin security settings. The encrypted TOTP
+secret is stored on the user row. New random recovery codes are stored as SHA-256
+hashes; existing Argon2id recovery hashes remain valid after migration. Once enabled, password and OAuth/OIDC login first issue a short-lived
+opaque MFA challenge, then mint the normal token pair only after a valid TOTP or
+unused recovery code.
+
+### OAuth / OIDC Flow
 
 ```
-User clicks "Login with Google"
+User clicks "Login with Google, GitHub, or configured OIDC"
         ↓
-GET /auth/oauth/google → redirect to Google
+GET /auth/oauth/:provider → redirect to provider
         ↓
-Google redirects to /auth/oauth/google/callback
+Provider redirects to /auth/oauth/:provider/callback
         ↓
 [find or create User by email + OAuthAccount record]
         ↓
-Issue same accessToken + refreshToken pair as password login
+Issue same MFA challenge or accessToken + refreshToken pair as password login
 ```
 
-OAuth does not create separate session types. All flows converge on the same JWT.
+Google and GitHub use the provider strategy. Generic OIDC is configured with
+`OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, and optional
+`OIDC_SCOPES`. Discovery, PKCE, browser-bound state, and signed ID-token validation
+are required. See [Trust and access](../decisions/TRUST_ACCESS.md) for upgrade details.
+
+OAuth does not create separate session types. All flows converge on the same JWT
+and refresh-token session rows. The admin can list active sessions and revoke one
+or all sessions for the current account. Revocation rejects existing access JWTs
+immediately, including queue-dashboard sessions.
 
 ---
 

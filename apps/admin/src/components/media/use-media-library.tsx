@@ -33,7 +33,10 @@ export interface UseMediaLibraryReturn {
   selectFile: (file: MediaFileSummary) => void;
   upload: (files: File[]) => void;
   uploadUrl: (url: string) => void;
-  updateMeta: (id: string, altText: string) => void;
+  updateMeta: (
+    id: string,
+    data: { altText: string; focalPoint?: { x: number; y: number } },
+  ) => void;
   trashFile: (id: string) => void;
   createFolder: (name: string, parentId?: string) => void;
 }
@@ -126,8 +129,12 @@ export function useMediaLibrary(): UseMediaLibraryReturn {
     })();
   }
 
-  function updateMeta(id: string, altText: string): void {
-    void client.media.update(id, { altText }).then(() => {
+  function updateMeta(
+    id: string,
+    data: { altText: string; focalPoint?: { x: number; y: number } },
+  ): void {
+    void client.media.update(id, data).then((res) => {
+      setSelectedFile(res.data);
       void loadFiles();
     });
   }

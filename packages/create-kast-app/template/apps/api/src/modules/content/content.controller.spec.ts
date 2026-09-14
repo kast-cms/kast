@@ -120,7 +120,11 @@ describe('ContentController', () => {
       expect(service[method]).toHaveBeenCalledWith(
         'blog',
         ['a', 'b'],
-        ...(method === 'bulkTrash' ? ['u1'] : []),
+        ...(method === 'bulkTrash'
+          ? ['u1']
+          : method === 'bulkPublish'
+            ? [{ id: 'u1', email: 'a@k.local', roles: ['admin'] }]
+            : []),
       );
       // 'bulk' must not have been read as an entry id by the single-entry route.
       expect(service['publish']).not.toHaveBeenCalledWith('blog', 'bulk', expect.anything());
@@ -213,7 +217,16 @@ describe('ContentController', () => {
     it('forwards force to the publish gate', async () => {
       await request(server()).post(`${base}/e1/publish`).send({ force: true }).expect(201);
 
-      expect(service['publish']).toHaveBeenCalledWith('blog', 'e1', { force: true });
+      expect(service['publish']).toHaveBeenCalledWith(
+        'blog',
+        'e1',
+        { force: true },
+        {
+          id: 'u1',
+          email: 'a@k.local',
+          roles: ['admin'],
+        },
+      );
     });
   });
 });

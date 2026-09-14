@@ -16,7 +16,11 @@ import type {
   ContentTypeDetail,
   ContentTypeSummary,
   CreateContentTypeBody,
+  MfaSetup,
+  MfaSetupVerified,
+  MfaStatus,
   ReorderFieldsBody,
+  SessionSummary,
   UpdateContentTypeBody,
   UpdateFieldBody,
 } from './types.js';
@@ -81,13 +85,46 @@ export class AuthResource {
   sessions(): Promise<ApiResponse<AuthSession[]>> {
     return this.client.request('/api/v1/auth/sessions');
   }
-  revokeSession(id: string): Promise<ApiResponse<{ revoked: true }>> {
+  revokeSession(id: string): Promise<void> {
     return this.client.request(`/api/v1/auth/sessions/${encodeURIComponent(id)}`, {
       method: 'DELETE',
     });
   }
-  revokeAllSessions(): Promise<ApiResponse<{ revoked: true }>> {
+  revokeAllSessions(): Promise<ApiResponse<{ revoked: number }>> {
     return this.client.request('/api/v1/auth/sessions', { method: 'DELETE' });
+  }
+
+  mfaStatus(): Promise<ApiResponse<MfaStatus>> {
+    return this.client.request('/api/v1/auth/mfa');
+  }
+
+  beginMfaSetup(): Promise<ApiResponse<MfaSetup>> {
+    return this.client.request('/api/v1/auth/mfa/setup', { method: 'POST' });
+  }
+
+  verifyMfaSetup(secret: string, code: string): Promise<ApiResponse<MfaSetupVerified>> {
+    return this.client.request('/api/v1/auth/mfa/verify-setup', {
+      method: 'POST',
+      body: { secret, code },
+    });
+  }
+
+  completeMfaChallenge(challengeToken: string, code: string): Promise<ApiResponse<TokenPair>> {
+    return this.client.request('/api/v1/auth/mfa/challenge', {
+      method: 'POST',
+      body: { challengeToken, code },
+    });
+  }
+
+  disableMfa(currentPassword: string, code: string): Promise<ApiResponse<MfaStatus>> {
+    return this.client.request('/api/v1/auth/mfa', {
+      method: 'DELETE',
+      body: { currentPassword, code },
+    });
+  }
+
+  listSessions(): Promise<ApiResponse<SessionSummary[]>> {
+    return this.client.request('/api/v1/auth/sessions');
   }
 
   forgotPassword(email: string): Promise<{ message: string }> {

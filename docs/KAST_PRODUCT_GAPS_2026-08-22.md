@@ -3,7 +3,7 @@
 **Date:** 2026-08-22
 **Context:** written after the security-alert cleanup (#77, #78) and the dependency
 PRs (#73–#75, #79) landed on `main`. The 2026-08-10 full audit's P0 spine and the
-`KAST_OPEN_FINDINGS.md` register are closed; what follows are the *product-level*
+`KAST_OPEN_FINDINGS.md` register are closed; what follows are the _product-level_
 gaps that remain — depth, not plumbing. Ordered by adoption impact.
 
 ---

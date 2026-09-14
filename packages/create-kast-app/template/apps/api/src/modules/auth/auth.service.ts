@@ -7,15 +7,23 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import type { User } from '@prisma/client';
 import * as argon2 from 'argon2';
-import { createHash, randomBytes, randomUUID } from 'crypto';
-import type { TokenPair, UserSummary } from '../../common/types/auth.types';
+import { randomBytes, randomUUID, scryptSync } from 'crypto';
+import type {
+  LoginResult,
+  SessionMetadata,
+  TokenPair,
+  UserSummary,
+} from '../../common/types/auth.types';
 import { QueueAdapter } from '../queue/queue.adapter';
 import { QUEUE_NAMES } from '../queue/queue.constants';
 import { AuthRepository } from './auth.repository';
 import type { LoginDto } from './dto/login.dto';
 import type { SetupDto } from './dto/setup.dto';
 import type { UpdateProfileDto } from './dto/update-profile.dto';
+import { issueLoginChallenge, verifyLoginChallenge } from './login-challenge';
 import { OAuthPolicy } from './oauth-policy';
+import { verifyProfilePassword } from './profile-password';
+import { TwoFactorService } from './two-factor.service';
 import type { OAuthProfile } from './types/oauth.types';
 
 /** An OAuth code only has to survive one provider→admin redirect hop. */
@@ -36,6 +44,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly queueAdapter: QueueAdapter,
     private readonly oauthPolicy: OAuthPolicy,
+    private readonly twoFactor: TwoFactorService,
   ) {}
 
   /** True while the install has no users and the setup endpoint is still open. */
@@ -78,41 +87,50 @@ export class AuthService {
     return result;
   }
 
-  async login(dto: LoginDto): Promise<TokenPair> {
+  async login(dto: LoginDto, metadata: SessionMetadata = {}): Promise<LoginResult> {
     const user = await this.authRepository.findUserByEmail(dto.email);
-    if (!user?.isActive) throw new UnauthorizedException('Invalid credentials');
-
-    const valid = await argon2.verify(user.passwordHash ?? '', dto.password);
+    if (!user?.isActive || user.trashedAt || !user.passwordHash)
+      throw new UnauthorizedException('Invalid credentials');
+    const valid = await argon2.verify(user.passwordHash, dto.password);
     if (!valid) throw new UnauthorizedException('Invalid credentials');
+    return this.completePrimaryAuthentication(user, metadata);
+  }
 
+  private async completePrimaryAuthentication(
+    user: User & { roles: { role: { name: string } }[] },
+    metadata: SessionMetadata = {},
+  ): Promise<LoginResult> {
+    if (user.twoFactorEnabled) return issueLoginChallenge(user, metadata, this.queueAdapter);
     await this.authRepository.updateLastLogin(user.id);
-    const roles = user.roles.map((ur) => ur.role.name);
-    const [accessToken, refreshToken] = await Promise.all([
-      this.issueAccessToken(user.id, user.email, roles),
-      this.authRepository.createRefreshToken(user.id, this.refreshTokenExpiry()),
-    ]);
+    return this.issueTokenPair(user, metadata);
+  }
 
-    return { accessToken, refreshToken, expiresIn: 900, user: this.toSummary(user, roles) };
+  async verifyTwoFactor(challengeToken: string, code: string): Promise<TokenPair> {
+    const { user, metadata } = await verifyLoginChallenge(
+      challengeToken,
+      code,
+      this.queueAdapter,
+      this.authRepository,
+      this.twoFactor,
+    );
+    await this.authRepository.updateLastLogin(user.id);
+    return this.issueTokenPair(user, metadata);
   }
 
   async refresh(raw: string): Promise<TokenPair> {
-    const record = await this.authRepository.findRefreshToken(raw);
-    if (!record || record.revokedAt || record.expiresAt < new Date()) {
-      throw new UnauthorizedException('Invalid or expired refresh token');
-    }
-
-    await this.authRepository.revokeRefreshToken(raw);
-
+    const record = await this.authRepository.rotateSession(raw);
+    if (!record) throw new UnauthorizedException('Invalid or expired refresh token');
     const user = await this.authRepository.findUserById(record.userId);
-    if (!user?.isActive) throw new UnauthorizedException('User not found or inactive');
-
+    if (!user?.isActive || user.trashedAt)
+      throw new UnauthorizedException('User not found or inactive');
     const roles = user.roles.map((ur) => ur.role.name);
-    const [accessToken, refreshToken] = await Promise.all([
-      this.issueAccessToken(user.id, user.email, roles),
-      this.authRepository.createRefreshToken(user.id, this.refreshTokenExpiry()),
-    ]);
-
-    return { accessToken, refreshToken, expiresIn: 900, user: this.toSummary(user, roles) };
+    const accessToken = await this.issueAccessToken(user.id, user.email, roles, record.id);
+    return {
+      accessToken,
+      refreshToken: record.raw,
+      expiresIn: 900,
+      user: this.toSummary(user, roles),
+    };
   }
 
   async logout(raw: string): Promise<void> {
@@ -135,17 +153,7 @@ export class AuthService {
     const user = await this.authRepository.findUserById(userId);
     if (!user) throw new UnauthorizedException('User not found');
 
-    // class-validator has already rejected any non-nullish newPassword shorter
-    // than 8 characters, so a validated truthy value here is a real change
-    // request — the branch below is the "only verify when changing" rule, not
-    // a bypass a caller can shape.
-    if (dto.newPassword) {
-      if (!dto.currentPassword) {
-        throw new BadRequestException('currentPassword is required to change password');
-      }
-      const valid = await argon2.verify(user.passwordHash ?? '', dto.currentPassword);
-      if (!valid) throw new BadRequestException('Current password is incorrect');
-    }
+    await verifyProfilePassword(user.passwordHash, dto);
 
     const data: Parameters<AuthRepository['updateUser']>[1] = {};
     if (dto.firstName !== undefined) data.firstName = dto.firstName;
@@ -158,13 +166,16 @@ export class AuthService {
     return this.toSummary({ ...user, ...updated }, roles);
   }
 
-  async oauthCallback(provider: string, profile: OAuthProfile): Promise<TokenPair> {
+  async oauthCallback(
+    provider: string,
+    profile: OAuthProfile,
+    metadata: SessionMetadata = {},
+  ): Promise<LoginResult> {
     const email = profile.emails?.[0]?.value ?? null;
     const user = await this.findOrCreateOAuthUser(provider, profile, email);
-    if (!user.isActive) throw new UnauthorizedException('Account is inactive');
+    if (!user.isActive || user.trashedAt) throw new UnauthorizedException('Account is inactive');
     await this.authRepository.upsertOAuthAccount(user.id, provider, profile.id, email);
-    await this.authRepository.updateLastLogin(user.id);
-    return this.issueTokenPair(user);
+    return this.completePrimaryAuthentication(user, metadata);
   }
 
   /**
@@ -172,7 +183,7 @@ export class AuthService {
    * code is what travels through the browser redirect, so nothing long-lived
    * ends up in history, Referer headers or access logs.
    */
-  async issueOAuthAuthorizationCode(tokenPair: TokenPair): Promise<string> {
+  async issueOAuthAuthorizationCode(tokenPair: LoginResult): Promise<string> {
     const code = randomBytes(32).toString('base64url');
     await this.queueAdapter.setEphemeral(
       `oauth-code:${this.hashOAuthCode(code)}`,
@@ -182,28 +193,22 @@ export class AuthService {
     return code;
   }
 
-  async exchangeOAuthCode(code: string): Promise<TokenPair> {
+  async exchangeOAuthCode(code: string): Promise<LoginResult> {
     const key = this.hashOAuthCode(code);
     const pending = await this.queueAdapter.consumeEphemeral(`oauth-code:${key}`);
     if (!pending) {
       throw new UnauthorizedException('Invalid or expired authorization code');
     }
     try {
-      return JSON.parse(pending) as TokenPair;
+      return JSON.parse(pending) as LoginResult;
     } catch {
       throw new UnauthorizedException('Invalid or expired authorization code');
     }
   }
 
-  /**
-   * Unsalted SHA-256 is deliberate here: the code is 32 random bytes whose
-   * hash is the lookup key for a 60-second ephemeral entry, so it needs a
-   * deterministic function — a salted or password-hashing construction would
-   * make the exchange lookup impossible. Brute-forcing 256 bits of entropy is
-   * out of scope for any adversary who could read the store.
-   */
+  /** Preserve the derived lookup keys used by the existing OAuth-code exchange. */
   private hashOAuthCode(code: string): string {
-    return createHash('sha256').update(code).digest('hex');
+    return scryptSync(code, 'kast-oauth-code-lookup-v1', 32).toString('hex');
   }
 
   private async findOrCreateOAuthUser(
@@ -262,20 +267,24 @@ export class AuthService {
     };
   }
 
-  private async issueTokenPair(user: {
-    id: string;
-    email: string;
-    firstName: string | null;
-    lastName: string | null;
-    avatarUrl: string | null;
-    roles: { role: { name: string } }[];
-  }): Promise<TokenPair> {
+  private async issueTokenPair(
+    user: User & { roles: { role: { name: string } }[] },
+    metadata: SessionMetadata = {},
+  ): Promise<TokenPair> {
     const roles = user.roles.map((ur) => ur.role.name);
-    const [accessToken, refreshToken] = await Promise.all([
-      this.issueAccessToken(user.id, user.email, roles),
-      this.authRepository.createRefreshToken(user.id, this.refreshTokenExpiry()),
-    ]);
-    return { accessToken, refreshToken, expiresIn: 900, user: this.toSummary(user, roles) };
+    const session = await this.authRepository.createSession(
+      user.id,
+      this.refreshTokenExpiry(),
+      metadata,
+      user,
+    );
+    const accessToken = await this.issueAccessToken(user.id, user.email, roles, session.id);
+    return {
+      accessToken,
+      refreshToken: session.raw,
+      expiresIn: 900,
+      user: this.toSummary(user, roles),
+    };
   }
 
   async forgotPassword(email: string): Promise<void> {
@@ -319,25 +328,22 @@ export class AuthService {
     if (!userId) throw new BadRequestException(failureMessage);
   }
 
-  private async issueAccessToken(id: string, email: string, roles: string[]): Promise<string> {
-    return this.jwtService.signAsync({ sub: id, email, roles, jti: randomUUID() });
+  private async issueAccessToken(
+    id: string,
+    email: string,
+    roles: string[],
+    sid: string,
+  ): Promise<string> {
+    return this.jwtService.signAsync({ sub: id, email, roles, sid, jti: randomUUID() });
   }
 
   private refreshTokenExpiry(): Date {
     // BR-AUT-002: refresh tokens expire in 30 days.
-    const d = new Date();
-    d.setDate(d.getDate() + 30);
-    return d;
+    return new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   }
 
   private toSummary(
-    user: {
-      id: string;
-      email: string;
-      firstName: string | null;
-      lastName: string | null;
-      avatarUrl: string | null;
-    },
+    user: Pick<User, 'id' | 'email' | 'firstName' | 'lastName' | 'avatarUrl'>,
     roles: string[],
   ): UserSummary {
     return {

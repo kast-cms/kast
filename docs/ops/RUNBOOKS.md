@@ -7,7 +7,7 @@ volume names, but keep the ordering — it is the ordering that matters.
 
 **Status of these procedures:** written against the shipped code and configuration
 and reviewed line by line, but the full restore and failover drills have not been
-executed against a production-sized dataset. Run [the drill](#7-drill-schedule)
+executed against a production-sized dataset. Run [the drill](#8-drill-schedule)
 before you depend on them.
 
 ---
@@ -22,7 +22,7 @@ you took, and when.
 | PostgreSQL      | All content, users, tokens, settings, audit log, plugin rows            | Total                                   | §1           |
 | Object storage  | Uploaded media and its derivatives                                      | Media 404s; rows survive                | §2           |
 | Redis           | Queues, delayed publish jobs, OAuth exchange codes, Bull Board sessions | Recoverable — see below                 | §3           |
-| Secret material | `JWT_SECRET`, `KAST_SECRET_ENCRYPTION_KEY`                              | **Encrypted columns become unreadable** | §5           |
+| Secret material | `JWT_SECRET`, `KAST_SECRET_ENCRYPTION_KEY`                              | **Encrypted columns become unreadable** | §6           |
 
 Redis is deliberately _not_ the source of truth. Scheduled publishing reconciles
 from the database every minute (`PublishReconciliationService`), and the daily
@@ -78,7 +78,7 @@ docker compose up -d api admin
 
 The API applies `prisma migrate deploy` on start, so a dump from an older schema
 is migrated forward automatically. A dump from a _newer_ schema than the image
-will not be migrated backward — see §4.
+will not be migrated backward — see §5.
 
 ### 1.3 Restore one table
 
@@ -105,7 +105,7 @@ curl -fsS http://localhost:3000/api/v1/health/ready
 `/health` is database + Redis. `/health/ready` additionally probes storage and the
 workers — use that one after a restore. Then confirm an encrypted column still
 decrypts (Settings → Email → **Send test email**); if it fails, you restored the
-data without the matching key (§5.3).
+data without the matching key (§6.3).
 
 ---
 
@@ -136,7 +136,7 @@ running more than one API replica.
 Use the provider's own versioning and replication; do not roll your own copy job.
 Enable **object versioning** and a lifecycle rule that retains noncurrent versions
 for at least as long as your database backup retention. That combination is what
-makes §6 possible: media and rows can be restored to the same point in time.
+makes §7 possible: media and rows can be restored to the same point in time.
 
 ### Reconciling media against the database
 
@@ -181,14 +181,46 @@ curl -fsS -X POST -H "Authorization: Bearer $SUPER_ADMIN_TOKEN" \
 
 ---
 
-## 4. Migration rollback
+## 4. Cache purge and frontend revalidation
+
+Kast emits publish/unpublish webhooks; CDN and frontend cache invalidation should
+hang off those events rather than polling content. Configure one webhook per
+delivery surface and keep the receiver idempotent.
+
+### Vercel / Next.js
+
+Create a Kast webhook for `content.published`, `content.unpublished`,
+`content.scheduled`, and `content.trashed` that calls a protected route in the
+frontend, for example `/api/revalidate`. The frontend route should verify the
+Kast webhook signature, derive the affected path or tag from the entry payload,
+then call `revalidatePath` or `revalidateTag`.
+
+### Fastly and other CDNs
+
+Prefer surrogate-key purges over whole-site purges. Use stable keys such as
+`content:<type>`, `entry:<id>`, and `locale:<code>` in frontend responses, then
+let the webhook receiver call the provider purge API for only those keys. If the
+provider does not support surrogate keys, purge the canonical entry path and the
+content-type listing pages that can reference it.
+
+### Validation
+
+After wiring a receiver, publish and unpublish a test entry and confirm:
+
+1. Kast records a successful webhook delivery.
+2. The frontend cache contains the new content without manual refresh.
+3. Reverting or trashing the entry purges every path that linked to it.
+
+---
+
+## 5. Migration rollback
 
 Prisma migrations are forward-only. There is no `migrate down`, and generating a
 reverse migration by hand for a schema of this size is not a procedure you want to
 be inventing during an incident.
 
 **The supported rollback is: restore the database (§1.2) to a dump taken before
-the deploy, then deploy the matching older image.** This is why §7 pairs a backup
+the deploy, then deploy the matching older image.** This is why §8 pairs a backup
 with every release.
 
 Consequences to plan for:
@@ -211,9 +243,9 @@ docker compose run --rm --entrypoint sh api -c 'node_modules/.bin/prisma migrate
 
 ---
 
-## 5. Secret rotation
+## 6. Secret rotation
 
-### 5.1 `JWT_SECRET`
+### 6.1 `JWT_SECRET`
 
 Signs access tokens, and is the _fallback_ encryption key when
 `KAST_SECRET_ENCRYPTION_KEY` is unset. Production validation rejects that fallback,
@@ -236,9 +268,9 @@ continue.
 **If `KAST_SECRET_ENCRYPTION_KEY` was never set** (development, or a production
 instance that predates the check), `JWT_SECRET` is also encrypting your settings,
 webhook, and plugin secrets. Rotating it alone makes all of them undecryptable.
-Do §5.2 first, listing the old `JWT_SECRET` as a previous key.
+Do §6.2 first, listing the old `JWT_SECRET` as a previous key.
 
-### 5.2 `KAST_SECRET_ENCRYPTION_KEY`
+### 6.2 `KAST_SECRET_ENCRYPTION_KEY`
 
 Encrypts `GlobalSetting` secret values, `WebhookEndpoint.secretHash`, and secret
 fields inside `PluginConfig.data`. Rotation is supported and does not require
@@ -272,7 +304,7 @@ Verify before removing a previous key:
 SELECT key FROM "GlobalSetting" WHERE value LIKE 'enc:%';
 ```
 
-### 5.3 Lost encryption key
+### 6.3 Lost encryption key
 
 There is no recovery. Ciphertext without the key is unrecoverable by design.
 Re-enter every affected credential:
@@ -284,7 +316,7 @@ Re-enter every affected credential:
 Then rotate the underlying credentials themselves at their providers, because you
 no longer know who else holds them.
 
-### 5.4 Database and Redis passwords
+### 6.4 Database and Redis passwords
 
 ```bash
 # .env: POSTGRES_PASSWORD / REDIS_PASSWORD
@@ -297,14 +329,14 @@ applies it.
 
 ---
 
-## 6. Disaster recovery
+## 7. Disaster recovery
 
 Assumes total loss of the host, with off-host copies of: the database dump, the
 storage backup (or a versioned bucket), and `.env`.
 
 1. **Provision** a host with Docker, and clone the repository at the tag that was
    running. `git log` the deployed image if you are unsure — restoring into a newer
-   schema is fine, into an older one is not (§4).
+   schema is fine, into an older one is not (§5).
 2. **Restore `.env` first.** Without `KAST_SECRET_ENCRYPTION_KEY` the rest is a
    partial restore. Confirm the key is the one that matches the dump's vintage.
 3. **Start data services only:** `docker compose up -d postgres redis`. Wait for
@@ -316,6 +348,7 @@ storage backup (or a versioned bucket), and `.env`.
    on start.
 7. **Verify, in this order:**
    - `curl -fsS localhost:3000/api/v1/health/ready` → all indicators up
+   - `curl -fsS localhost:3000/api/v1/health/metrics` → Prometheus gauges scrape
    - Log into the admin
    - Open a media file → the object loads (proves storage)
    - Settings → Email → Send test email (proves the encryption key)
@@ -324,26 +357,26 @@ storage backup (or a versioned bucket), and `.env`.
    during the outage — reconciliation publishes them within a minute of startup,
    which may be a burst of webhook traffic. Replay failed deliveries (§3) once
    receivers are reachable.
-9. **Rotate** anything that may have been exposed by the incident itself (§5).
+9. **Rotate** anything that may have been exposed by the incident itself (§6).
 
 **Recovery objectives.** State them explicitly rather than inheriting them by
-accident: RPO is your backup interval (§7), RTO is dominated by the restore of the
+accident: RPO is your backup interval (§8), RTO is dominated by the restore of the
 largest store — measure it in the drill rather than estimating it.
 
 ---
 
-## 7. Drill schedule
+## 8. Drill schedule
 
 A backup that has never been restored is a hypothesis.
 
 | Interval                          | Exercise                                                                               |
 | --------------------------------- | -------------------------------------------------------------------------------------- |
-| Every deploy carrying a migration | Take a dump first (§4)                                                                 |
+| Every deploy carrying a migration | Take a dump first (§5)                                                                 |
 | Daily                             | Automated database dump; verify with `pg_restore --list`                               |
 | Weekly                            | Storage backup (local provider only)                                                   |
 | Quarterly                         | Full restore into a scratch environment (§1.2 + §2), timed — this is your measured RTO |
-| Quarterly                         | Secret rotation with a previous key (§5.2), verified by a test email                   |
-| Annually                          | Full DR from off-host copies onto a clean host (§6)                                    |
+| Quarterly                         | Secret rotation with a previous key (§6.2), verified by a test email                   |
+| Annually                          | Full DR from off-host copies onto a clean host (§7)                                    |
 
 Record the measured restore duration each quarter. A number that grows is the
 earliest signal that your recovery plan has quietly stopped fitting your data.

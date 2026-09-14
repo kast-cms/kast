@@ -201,7 +201,7 @@ function SidebarAccount({
           <DropdownMenuLabel>{email}</DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
-            <Link href={'/settings' as Route}>
+            <Link href={'/account' as Route}>
               <UserRound />
               Account
             </Link>

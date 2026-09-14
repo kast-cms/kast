@@ -8,6 +8,7 @@ import { AccountSecurityController } from './account-security.controller';
 import { AuthController } from './auth.controller';
 import { AuthRepository } from './auth.repository';
 import { AuthService } from './auth.service';
+import { LegacyMfaController } from './legacy-mfa.controller';
 import { OAuthPolicy } from './oauth-policy';
 import { OidcService } from './oidc.service';
 import { ApiTokenStrategy } from './strategies/api-token.strategy';
@@ -31,7 +32,7 @@ import { TwoFactorService } from './two-factor.service';
       },
     }),
   ],
-  controllers: [AuthController, AccountSecurityController],
+  controllers: [AuthController, AccountSecurityController, LegacyMfaController],
   providers: [
     AuthService,
     TotpService,

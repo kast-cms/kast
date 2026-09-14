@@ -1,3 +1,12 @@
+import type {
+  AuthProviders,
+  AuthSession,
+  LoginResult,
+  RecoveryCodes,
+  TokenPair,
+  TwoFactorSetup,
+  TwoFactorStatus,
+} from './auth-types.js';
 import type { KastClient } from './client.js';
 import type {
   AddFieldBody,
@@ -7,7 +16,11 @@ import type {
   ContentTypeDetail,
   ContentTypeSummary,
   CreateContentTypeBody,
+  MfaSetup,
+  MfaSetupVerified,
+  MfaStatus,
   ReorderFieldsBody,
+  SessionSummary,
   UpdateContentTypeBody,
   UpdateFieldBody,
 } from './types.js';
@@ -15,11 +28,11 @@ import type {
 export class AuthResource {
   constructor(private readonly client: KastClient) {}
 
-  login(email: string, password: string): Promise<unknown> {
+  login(email: string, password: string): Promise<ApiResponse<LoginResult>> {
     return this.client.request('/api/v1/auth/login', { method: 'POST', body: { email, password } });
   }
 
-  refresh(refreshToken: string): Promise<unknown> {
+  refresh(refreshToken: string): Promise<ApiResponse<TokenPair>> {
     return this.client.request('/api/v1/auth/refresh', { method: 'POST', body: { refreshToken } });
   }
 
@@ -32,8 +45,86 @@ export class AuthResource {
    * The provider initiates a server-side redirect, so this method
    * constructs the URL rather than following it.
    */
-  getOAuthUrl(provider: 'google' | 'github'): string {
+  getOAuthUrl(provider: 'google' | 'github' | 'oidc'): string {
     return `${this.client.getBaseUrl()}/api/v1/auth/oauth/${provider}`;
+  }
+
+  providers(): Promise<ApiResponse<AuthProviders>> {
+    return this.client.request('/api/v1/auth/providers');
+  }
+  verifyTwoFactor(challengeToken: string, code: string): Promise<ApiResponse<TokenPair>> {
+    return this.client.request('/api/v1/auth/two-factor/verify', {
+      method: 'POST',
+      body: { challengeToken, code },
+    });
+  }
+  twoFactorStatus(): Promise<ApiResponse<TwoFactorStatus>> {
+    return this.client.request('/api/v1/auth/two-factor');
+  }
+  setupTwoFactor(): Promise<ApiResponse<TwoFactorSetup>> {
+    return this.client.request('/api/v1/auth/two-factor/setup', { method: 'POST' });
+  }
+  enableTwoFactor(code: string): Promise<ApiResponse<RecoveryCodes>> {
+    return this.client.request('/api/v1/auth/two-factor/enable', {
+      method: 'POST',
+      body: { code },
+    });
+  }
+  disableTwoFactor(code: string): Promise<ApiResponse<{ enabled: false }>> {
+    return this.client.request('/api/v1/auth/two-factor/disable', {
+      method: 'POST',
+      body: { code },
+    });
+  }
+  regenerateRecoveryCodes(code: string): Promise<ApiResponse<RecoveryCodes>> {
+    return this.client.request('/api/v1/auth/two-factor/recovery-codes', {
+      method: 'POST',
+      body: { code },
+    });
+  }
+  sessions(): Promise<ApiResponse<AuthSession[]>> {
+    return this.client.request('/api/v1/auth/sessions');
+  }
+  revokeSession(id: string): Promise<void> {
+    return this.client.request(`/api/v1/auth/sessions/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+  }
+  revokeAllSessions(): Promise<ApiResponse<{ revoked: number }>> {
+    return this.client.request('/api/v1/auth/sessions', { method: 'DELETE' });
+  }
+
+  mfaStatus(): Promise<ApiResponse<MfaStatus>> {
+    return this.client.request('/api/v1/auth/mfa');
+  }
+
+  beginMfaSetup(): Promise<ApiResponse<MfaSetup>> {
+    return this.client.request('/api/v1/auth/mfa/setup', { method: 'POST' });
+  }
+
+  verifyMfaSetup(secret: string, code: string): Promise<ApiResponse<MfaSetupVerified>> {
+    return this.client.request('/api/v1/auth/mfa/verify-setup', {
+      method: 'POST',
+      body: { secret, code },
+    });
+  }
+
+  completeMfaChallenge(challengeToken: string, code: string): Promise<ApiResponse<TokenPair>> {
+    return this.client.request('/api/v1/auth/mfa/challenge', {
+      method: 'POST',
+      body: { challengeToken, code },
+    });
+  }
+
+  disableMfa(currentPassword: string, code: string): Promise<ApiResponse<MfaStatus>> {
+    return this.client.request('/api/v1/auth/mfa', {
+      method: 'DELETE',
+      body: { currentPassword, code },
+    });
+  }
+
+  listSessions(): Promise<ApiResponse<SessionSummary[]>> {
+    return this.client.request('/api/v1/auth/sessions');
   }
 
   forgotPassword(email: string): Promise<{ message: string }> {

@@ -182,7 +182,7 @@ describe('AuthService', () => {
       repo.rotateSession.mockResolvedValue({ id: 's1', userId: 'u1', raw: 'new-refresh' });
       repo.findUserById.mockResolvedValue(buildUser());
       const result = await service.refresh('old-refresh');
-      expect(repo.rotateSession).toHaveBeenCalledWith('old-refresh', {});
+      expect(repo.rotateSession).toHaveBeenCalledWith('old-refresh');
       expect(result.refreshToken).toBe('new-refresh');
       expect(jwt.signAsync).toHaveBeenCalledWith(expect.objectContaining({ sid: 's1' }));
     });

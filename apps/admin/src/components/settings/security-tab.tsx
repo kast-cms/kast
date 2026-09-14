@@ -1,5 +1,7 @@
 'use client';
 
+import { AccountSecurity } from '@/components/auth/account-security';
+
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -31,6 +33,7 @@ export function SecurityTab({ s }: Props): JSX.Element {
 
   return (
     <div className="max-w-3xl space-y-6">
+      <AccountSecurity />
       <Card>
         <CardHeader>
           <CardTitle>Access</CardTitle>

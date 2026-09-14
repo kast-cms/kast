@@ -4,6 +4,7 @@ export interface AuthUser {
   id: string;
   email: string;
   roles: string[];
+  sessionId?: string;
   isApiToken?: boolean;
   apiTokenId?: string;
   apiTokenScope?: TokenScope;
@@ -19,6 +20,7 @@ export interface JwtPayload {
   email: string;
   roles: string[];
   jti: string;
+  sid?: string;
   iat?: number;
   exp?: number;
 }
@@ -49,4 +51,17 @@ export interface PaginationMeta {
   limit: number;
   cursor: string | null;
   hasNextPage: boolean;
+}
+
+export interface TwoFactorChallenge {
+  requiresTwoFactor: true;
+  mfaRequired: true;
+  expiresIn: number;
+  user: UserSummary;
+  challengeToken: string;
+}
+export type LoginResult = TokenPair | TwoFactorChallenge;
+export interface SessionMetadata {
+  userAgent?: string;
+  ipAddress?: string;
 }

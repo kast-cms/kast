@@ -1,7 +1,10 @@
+/* eslint-disable max-lines, max-lines-per-function */
 import { Injectable } from '@nestjs/common';
 import {
   ContentEntry,
   ContentEntryLocale,
+  ContentEntryVersion,
+  ContentReviewStatus,
   ContentStatus,
   Prisma,
   User,
@@ -33,6 +36,11 @@ export type EntryAuthor = Pick<User, 'id' | 'firstName' | 'lastName'>;
 export type EntryWithLocale = ContentEntry & {
   locales: ContentEntryLocale[];
   createdBy?: EntryAuthor | null;
+};
+
+export type EntryExportRow = ContentEntry & {
+  locales: ContentEntryLocale[];
+  versions: ContentEntryVersion[];
 };
 
 const AUTHOR_SELECT = { select: { id: true, firstName: true, lastName: true } } as const;
@@ -67,6 +75,17 @@ export class ContentRepository {
     ]);
 
     return { items: items as EntryWithLocale[], total };
+  }
+
+  findAllForExport(contentTypeId: string): Promise<EntryExportRow[]> {
+    return this.prisma.contentEntry.findMany({
+      where: { contentTypeId, trashedAt: null },
+      include: {
+        locales: { orderBy: { localeCode: 'asc' } },
+        versions: { orderBy: { versionNumber: 'asc' } },
+      },
+      orderBy: { createdAt: 'asc' },
+    }) as Promise<EntryExportRow[]>;
   }
 
   /**
@@ -273,6 +292,53 @@ export class ContentRepository {
     return result.count > 0;
   }
 
+  async updateReviewStatus(
+    id: string,
+    contentTypeId: string,
+    status: ContentReviewStatus,
+    actorId: string,
+  ): Promise<boolean> {
+    const now = new Date();
+    const result = await this.prisma.contentEntry.updateMany({
+      where: { id, contentTypeId, trashedAt: null },
+      data: {
+        reviewStatus: status,
+        ...(status === 'IN_REVIEW'
+          ? { submittedAt: now, approvedAt: null, approvedById: null }
+          : {}),
+        ...(status === 'APPROVED' ? { approvedAt: now, approvedById: actorId } : {}),
+        ...(status === 'CHANGES_REQUESTED' ? { approvedAt: null, approvedById: null } : {}),
+      },
+    });
+    return result.count > 0;
+  }
+
+  async acquireLock(
+    id: string,
+    contentTypeId: string,
+    userId: string,
+    expiresAt: Date,
+  ): Promise<EntryWithLocale | null> {
+    const result = await this.prisma.contentEntry.updateMany({
+      where: {
+        id,
+        contentTypeId,
+        trashedAt: null,
+        OR: [{ lockedById: null }, { lockExpiresAt: { lte: new Date() } }, { lockedById: userId }],
+      },
+      data: { lockedById: userId, lockExpiresAt: expiresAt },
+    });
+    return result.count === 0 ? null : this.findByIdForType(id, contentTypeId);
+  }
+
+  async releaseLock(id: string, contentTypeId: string, userId: string): Promise<boolean> {
+    const result = await this.prisma.contentEntry.updateMany({
+      where: { id, contentTypeId, lockedById: userId },
+      data: { lockedById: null, lockExpiresAt: null },
+    });
+    return result.count > 0;
+  }
+
   /** `trashedByUserId` is what lets the trash screen name who deleted a row. */
   async trash(id: string, contentTypeId: string, trashedByUserId?: string): Promise<boolean> {
     const result = await this.prisma.contentEntry.updateMany({
@@ -339,5 +405,65 @@ export class ContentRepository {
     return this.prisma.$transaction((tx) =>
       applyVersionRevert(tx, { entryId, contentTypeId, version, userId, uniqueChecks }),
     );
+  }
+
+  importEntry(data: {
+    contentTypeId: string;
+    id?: string;
+    status: ContentStatus;
+    locales: Array<{ localeCode: string; slug: string; data: Record<string, unknown> }>;
+    versions: Array<{
+      versionNumber: number;
+      status: ContentStatus;
+      data: Record<string, unknown>;
+      localesData: Record<string, unknown>;
+    }>;
+    overwrite: boolean;
+    actorId: string;
+  }): Promise<EntryWithLocale> {
+    return this.prisma.$transaction(async (tx) => {
+      if (data.id) {
+        const existing = await tx.contentEntry.findFirst({
+          where: { id: data.id, contentTypeId: data.contentTypeId },
+          select: { id: true },
+        });
+        if (existing && !data.overwrite) {
+          throw new Prisma.PrismaClientKnownRequestError('Entry already exists', {
+            code: 'P2002',
+            clientVersion: '6',
+            meta: { target: ['id'] },
+          });
+        }
+        if (existing) await tx.contentEntry.delete({ where: { id: data.id } });
+      }
+
+      return tx.contentEntry.create({
+        data: {
+          ...(data.id ? { id: data.id } : {}),
+          contentTypeId: data.contentTypeId,
+          status: data.status,
+          reviewStatus: 'DRAFT',
+          createdById: data.actorId,
+          updatedById: data.actorId,
+          locales: {
+            create: data.locales.map((locale) => ({
+              localeCode: locale.localeCode,
+              slug: locale.slug,
+              data: locale.data as Prisma.InputJsonValue,
+            })),
+          },
+          versions: {
+            create: data.versions.map((version) => ({
+              versionNumber: version.versionNumber,
+              status: version.status,
+              data: version.data as Prisma.InputJsonValue,
+              localesData: version.localesData as Prisma.InputJsonValue,
+              savedById: data.actorId,
+            })),
+          },
+        },
+        include: { locales: true },
+      }) as Promise<EntryWithLocale>;
+    });
   }
 }
