@@ -123,7 +123,7 @@ export const PACKAGE_JSON_API_ONLY_TEMPLATE = `{
     "jsonwebtoken": "^9.0.3",
     "meilisearch": "^0.58.0",
     "multer": "^2.3.0",
-    "nodemailer": "^9.1.1",
+    "nodemailer": "^10.0.9",
     "openid-client": "^6",
     "otplib": "^13.5.0",
     "qrcode": "^1.5.4",
