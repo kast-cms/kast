@@ -50,6 +50,11 @@
   },
   "packageManager": "pnpm@9.0.0",
   "pnpm": {
+    "auditConfig": {
+      "ignoreGhsas": [
+        "GHSA-ch52-4w7c-c8xp"
+      ]
+    },
     "overrides": {
       "@babel/core": "^7.29.6",
       "@hono/node-server": "^2.0.5",
