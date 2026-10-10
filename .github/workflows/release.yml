@@ -222,7 +222,7 @@ jobs:
       # the next version is always derived from the latest existing v* tag.
       - name: Compute next product version
         id: semver
-        uses: mathieudutour/github-tag-action@v6.2
+        uses: mathieudutour/github-tag-action@v7
         with:
           github_token: ${{ secrets.RELEASE_PAT }}
           tag_prefix: v
