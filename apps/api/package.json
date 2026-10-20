@@ -71,7 +71,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@modelcontextprotocol/client": "^2.0.0",
+    "@modelcontextprotocol/client": "^2.3.0",
     "@nestjs/cli": "^11.0.24",
     "@nestjs/schematics": "^11.0.4",
     "@nestjs/testing": "^11.2.1",
