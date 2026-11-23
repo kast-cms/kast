@@ -52,7 +52,6 @@
   "pnpm": {
     "auditConfig": {
       "ignoreGhsas": [
-        "GHSA-ch52-4w7c-c8xp"
       ]
     },
     "overrides": {
